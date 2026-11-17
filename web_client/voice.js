@@ -125,13 +125,21 @@
    * Reads [text] aloud in the chat language; anything Toby was still saying is cut off first.
    * Never throws: a speech problem must never turn a good reply into an error.
    */
-  function speak(text, language, { rate = 1, pitch = 1 } = {}) {
+  // Each speak() gets a number; stopping or a newer speak() makes older callbacks stale, so an
+  // interrupted reply never triggers its onDone (live conversation must not reopen the mic then).
+  let speechToken = 0;
+  let speakingText = "";
+
+  function speak(text, language, { rate = 1, pitch = 1, onDone = null } = {}) {
     if (!synth || !text) return false;
     try {
       stopSpeaking();
+      const token = ++speechToken;
+      speakingText = text;
       const tag = languageTag(language);
       const voice = pickVoice(tag);
-      for (const piece of chunks(text)) {
+      const pieces = chunks(text);
+      pieces.forEach((piece, i) => {
         const utterance = new SpeechSynthesisUtterance(piece);
         utterance.lang = tag;
         try {
@@ -139,8 +147,16 @@
         } catch (e) { /* the browser's default voice for the language */ }
         utterance.rate = rate;
         utterance.pitch = pitch;
+        if (i === pieces.length - 1) {
+          utterance.onend = () => {
+            if (token !== speechToken) return;
+            speakingText = "";
+            if (onDone) onDone();
+          };
+        }
         synth.speak(utterance);
-      }
+      });
+      if (!pieces.length && onDone) onDone();
       return true;
     } catch (e) {
       console.warn("Read-aloud failed", e);
@@ -149,6 +165,8 @@
   }
 
   function stopSpeaking() {
+    speechToken++;
+    speakingText = "";
     try {
       if (synth && (synth.speaking || synth.pending)) synth.cancel();
     } catch (e) { /* nothing to stop */ }
@@ -160,5 +178,7 @@
     hasVoiceFor: (language) => Boolean(pickVoice(languageTag(language))),
     languageTag, dictationError, createDictation, chunks, speak, stopSpeaking,
     get speaking() { return Boolean(synth && (synth.speaking || synth.pending)); },
+    /** The text being read aloud right now ("" when silent): the speaker button toggles it. */
+    get speakingText() { return speakingText; },
   };
 })();

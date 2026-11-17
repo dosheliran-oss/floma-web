@@ -54,6 +54,19 @@ On the first launch it asks for your own Gemini API key from
 | Dictation and Toby's voice | ✅ (Web Speech API) | ✅ |
 | Floating avatar over other apps | ❌ | ✅ |
 
+## Floma and its assistants
+
+Floma is the app; the assistant is a profile it loads. **⚙ Settings → Assistant** switches between
+**Toby** (the jester, animated) and the neutral **Floma** assistant (calm, no jokes, a still logo).
+A default name follows the switch, a name you chose stays. **Appearance** has five color themes
+(Midnight, Ocean, Sunset, Forest, Jester), the same as on Android and the desktop. **Model** chooses
+which Gemini model answers first: Automatic, Flash or Flash-Lite.
+
+**When Gemini is slow or down:** if the first model times out (30 s), fails, can't be reached or is
+out of quota, Floma quietly asks the other model. If no model can be reached at all, the assistant
+answers in **local mode** from this browser: the time, the date, what it remembers about you, or
+its earlier answer to the very same question. Such answers are marked "⚡ Local mode".
+
 ## Voice
 
 - **Dictation:** the 🎤 button next to the text field uses the browser's speech recognition (Web Speech
@@ -62,6 +75,11 @@ On the first launch it asks for your own Gemini API key from
   microphone is blocked or nothing was heard, a short line says so. In Chrome, speech is recognized
   by Google's speech service. Browsers without speech recognition (such as Firefox) don't show the
   button.
+- **🔊 on every reply** reads that message aloud on demand (press again to stop).
+- **Live conversation** (the waveform button next to the mic): you talk, the message goes out by
+  itself, the assistant answers out loud and listens again right away. Two silent rounds, an error or
+  the button/Esc end it. It needs both speech recognition and a voice (Chrome, Edge).
+- **Voice settings:** speaking speed and pitch, with a test button.
 - **Toby's voice:** **⚙ Settings → Toby reads his replies aloud** (off by default on the web) reads
   each reply with the browser's or the system's voice in the chat language. Links are skipped, and
   long replies are split so Chrome doesn't cut them off. He stops at once when you type, press the
@@ -98,7 +116,8 @@ the notch and the home bar, and the settings panel takes the full width.
 
 ## Keeping it in sync with Android
 
-Toby's persona is not copied: the page loads the shared [`persona/toby_persona.js`](../persona/toby_persona.js),
+Nothing is copied: the page loads the shared [`persona/floma_platform.js`](../persona/floma_platform.js) and
+[`persona/personas.js`](../persona/personas.js),
 and `node persona-tests/check_web.js` proves the prompt is identical to Android's and the desktop's
 (see [persona-tests/](../persona-tests/README.md)). `memory.js` syncs the same GitHub memory
 repository as the other apps; its GitHub token stays in this browser's `localStorage`.
@@ -121,8 +140,8 @@ page from inside the repository.
 
 `.github/workflows/web-pages.yml` runs on every push to `main`:
 1. It runs the web checks below.
-2. It assembles only `web_client/` (without `serve.py` and the tests), `persona/toby_persona.js` and
-   Toby's pictures, and refuses to publish if anything looks like a key.
+2. It assembles only `web_client/` (without `serve.py` and the tests), the two persona files and
+   the assistants' pictures, and refuses to publish if anything looks like a key.
 3. It pushes them to the public repository
    [dosheliran-oss/floma-web](https://github.com/dosheliran-oss/floma-web), which GitHub Pages serves.
 

@@ -1,10 +1,12 @@
 /*
- * Floma web client - the chat core: Toby's persona prompt, the message router and the Gemini
- * client. No UI code here (that's app.js), so the logic can be tried in Chrome on its own.
+ * Floma web app - the Floma engine in the browser: the message router, the prompt layout around
+ * the active persona, the Gemini client with model fallback, and local (offline) answers. No UI
+ * code here (that's app.js), so the logic can be tried in Chrome on its own.
  *
- * This is a browser port of the Android core. The Android files are the source of truth;
- * when they change, update the matching part here:
- *   toby_persona.js        -> FlomaCore.systemPrompt (shared file, assembled like persona.py)
+ * Floma (persona/floma_platform.js) is the platform; the assistant is a profile from
+ * persona/personas.js ("toby" or the neutral "floma"). Same rules as persona.py and the Android
+ * core, checked against persona-tests/persona_cases.json:
+ *   floma_platform.js + personas.js -> FlomaCore.buildPrompt, avatarImage, offlineAnswer, ...
  *   MessageRouter.kt       -> FlomaCore.route / modelFor
  *   SeriousModeCommand.kt  -> FlomaCore.detectSeriousMode
  *   GeminiModels.kt        -> FlomaCore.MODELS
@@ -17,13 +19,18 @@
   "use strict";
 
   const API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
-  const MODELS = { DEFAULT: "gemini-3.5-flash-lite", RESEARCH: "gemini-3.5-flash" };
-  // Toby's emotions come from the shared persona file (like Android's CharacterState and chat_core.py).
-  const EMOTIONS = window.FLOMA_PERSONA.emotions.map((e) => e.key);
+  // Models and emotions come from the Floma platform file (like Android's GeminiModels / CharacterState).
+  const MODELS = { DEFAULT: window.FLOMA_PLATFORM.models.default, RESEARCH: window.FLOMA_PLATFORM.models.research };
+  const EMOTIONS = window.FLOMA_PLATFORM.emotions.map((e) => e.key);
   const RECENT_WINDOW = 20;
 
   const DEFAULT_SETTINGS = {
+    persona: "toby", // the assistant profile (personas.js): "toby" | "floma"
     assistantName: "Toby",
+    theme: "midnight", // floma_platform.js "themes"
+    modelChoice: "AUTO", // AUTO | FLASH | LITE
+    voiceRate: 1,
+    voicePitch: 1,
     personality: "FRIENDLY", // FRIENDLY | PLAYFUL | PROFESSIONAL | CONCISE
     humorLevel: 0.6,
     language: "HEBREW", // HEBREW | ENGLISH
@@ -133,16 +140,38 @@
     return { seriousChange, route: { kind: "model", model: webSearch ? MODELS.RESEARCH : MODELS.DEFAULT, webSearch } };
   }
 
-  // --- Persona (shared ../persona/toby_persona.js; same assembly as persona.py / PromptManager.kt) ---
+  // --- Platform and persona (../persona/*.js; same rules as persona.py / PromptManager.kt) -------
 
   const P = () => {
-    if (!window.FLOMA_PERSONA) throw new Error("persona/toby_persona.js is not loaded");
-    return window.FLOMA_PERSONA;
+    if (!window.FLOMA_PLATFORM) throw new Error("persona/floma_platform.js is not loaded");
+    return window.FLOMA_PLATFORM;
   };
+  const DEFAULT_PERSONA = "toby";
 
-  /** Replaces {key} placeholders; the user's own text (name, notes) is filled last. */
+  function personas() {
+    if (!window.FLOMA_PERSONAS) throw new Error("persona/personas.js is not loaded");
+    return window.FLOMA_PERSONAS;
+  }
+
+  /** The assistant profile; unknown ids load Toby. */
+  function profile(persona) {
+    const all = personas();
+    return all[persona || DEFAULT_PERSONA] || all[DEFAULT_PERSONA];
+  }
+
+  function personaId(persona) { return persona in personas() ? persona : DEFAULT_PERSONA; }
+
+  function assistantName(name, persona) { return (name || "").trim() || profile(persona).default_name; }
+
+  /** Switching persona: a name that was the old persona's default follows the new one; a chosen name stays. */
+  function nameAfterSwitch(name, oldPersona, newPersona) {
+    const trimmed = (name || "").trim();
+    return !trimmed || trimmed === profile(oldPersona).default_name ? profile(newPersona).default_name : trimmed;
+  }
+
+  /** Replaces {key} placeholders; the user's own text (name, notes, answer) is filled last. */
   function fill(template, values) {
-    const late = ["name", "notes"];
+    const late = ["name", "notes", "answer"];
     const keys = Object.keys(values).filter((k) => !late.includes(k)).concat(late.filter((k) => k in values));
     let out = template;
     for (const key of keys) out = out.split(`{${key}}`).join(String(values[key]));
@@ -155,29 +184,32 @@
   }
 
   /** The shared builder: identical output to persona.py and PromptManager.kt (persona-tests). */
-  function buildPrompt({ platform, name, personality, humor, language, serious, webSearch, memory = "", custom = "" }) {
+  function buildPrompt({ platform, name, personality, humor, language, serious, webSearch, memory = "", custom = "", persona = DEFAULT_PERSONA }) {
     const p = P();
-    const who = name.trim() || p.default_name;
+    const prof = profile(persona);
+    const who = name.trim() || prof.default_name;
     const where = p.platforms[platform];
     const [kill1, kill2] = p.kill_phrases;
     const percent = humorPercent(humor);
-    const lines = [fill(p.intro, { here: where.here, name: who }), "", "# Floma, on all your devices"];
+    const lines = [fill(prof.intro, { here: where.here, name: who }), "", "# Floma, on all your devices"];
     lines.push(...p.ecosystem.map((l) => fill(l, { name: who })));
     lines.push("", "# Personality");
     if (serious) {
-      lines.push(fill(p.serious, { kill1, kill2, focus: where.focus }));
-    } else {
-      lines.push(p.personalities[personality] || p.personalities.FRIENDLY);
-      lines.push(fill(p.humor_dial, { humor: percent }));
-      if (p.humorous_personalities.includes(personality) && percent > 0) {
-        lines.push("", "# Your attitude", ...p.attitude.map((l) => fill(l, { kill1, kill2 })));
+      lines.push(fill(prof.serious, { kill1, kill2, focus: where.focus }));
+    } else if (prof.personalities) {
+      lines.push(prof.personalities[personality] || prof.personalities.FRIENDLY);
+      lines.push(fill(prof.humor_dial, { humor: percent }));
+      if (prof.humorous_personalities.includes(personality) && percent > 0) {
+        lines.push("", "# Your attitude", ...prof.attitude.map((l) => fill(l, { kill1, kill2 })));
       }
+    } else {
+      lines.push(prof.style);
     }
     lines.push("", "# Being a companion", ...p.companion);
     lines.push("", "# Language", fill(p.language, { language }), "", "# Length", p.length);
     lines.push("", "# What you can do here", where.can, webSearch ? p.web_search_on : p.web_search_off);
-    if (webSearch && !serious && p.humor_sources.length) {
-      lines.push("", "# Humor sources", p.humor_sources_intro, ...p.humor_sources.map((s) => `- ${s}`), p.humor_sources_outro);
+    if (webSearch && !serious && (prof.humor_sources || []).length) {
+      lines.push("", "# Humor sources", prof.humor_sources_intro, ...prof.humor_sources.map((s) => `- ${s}`), prof.humor_sources_outro);
     }
     lines.push("", "# Reply format", ...p.reply_format, ...p.emotions.map((e) => `  ${e.key}: ${e.when}`));
     if (memory.trim()) {
@@ -198,6 +230,7 @@
       webSearch,
       memory,
       custom: settings.customInstructions || "",
+      persona: settings.persona || DEFAULT_PERSONA,
     });
   }
 
@@ -257,7 +290,7 @@
   async function post(apiKey, model, body) {
     // A hung request must end: after waiting.timeout_ms Toby says Gemini took too long.
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), window.FLOMA_PERSONA.waiting.timeout_ms);
+    const timer = setTimeout(() => controller.abort(), P().waiting.timeout_ms);
     try {
       let response;
       try {
@@ -351,9 +384,44 @@
    * search request (no Search quota on the key: 429, or a 400) is retried once without the tool.
    * memory: what goes inside <memory> (memoryNotes).
    */
+  // --- Models and fallback --------------------------------------------------------------------
+
+  /** The model to try first: the user's fixed choice (FLASH / LITE), or the router's pick (AUTO). */
+  function modelForChoice(choice, routed) {
+    const fixed = P().models.choices.find((c) => c.key === choice && c.model);
+    return fixed ? fixed.model : routed;
+  }
+
+  /** [first, then every other model in the fallback order]. */
+  function modelChain(first) {
+    return [first, ...P().models.fallback_order.filter((m) => m !== first)];
+  }
+
+  const fallsBack = (kind) => P().models.fallback_errors.includes(kind);
+  const goesOffline = (kind) => P().models.offline_errors.includes(kind);
+
+  /**
+   * The assistant's next reply. The first model is the user's choice or the router's; if it times
+   * out, fails, is unreachable or out of quota, the next model in the chain is tried quietly. Key and
+   * content problems (invalid key, refusal) are not retried. Returns the reply plus which model answered.
+   */
   async function complete(apiKey, settings, history, routeInfo, memory = "") {
     if (!apiKey) throw new AiError("MISSING_KEY");
-    const { model, webSearch } = routeInfo;
+    const chain = modelChain(modelForChoice(settings.modelChoice, routeInfo.model));
+    let failure = null;
+    for (const model of chain) {
+      try {
+        const reply = await completeWith(apiKey, settings, history, model, routeInfo.webSearch, memory);
+        return Object.assign(reply, { model, fellBack: model !== chain[0] });
+      } catch (e) {
+        if (!(e instanceof AiError) || !fallsBack(e.kind)) throw e;
+        failure = e;
+      }
+    }
+    throw failure;
+  }
+
+  async function completeWith(apiKey, settings, history, model, webSearch, memory) {
     if (webSearch) {
       try {
         return parseResponse(await post(apiKey, model, requestBody(systemPrompt(settings, true, memory), history, model, true)));
@@ -423,15 +491,27 @@
     }
   }
 
-  // --- Toby in the chat UI (persona.py: emotion_image, avatar_for, chat_line, error_line) ---------
+  // --- The assistant in the chat UI (persona.py: avatar_image, avatar_for, chat_line, ...) -------
 
   function emotionEntry(emotion) {
     const p = P();
     return p.emotions.find((e) => e.key === emotion) || p.emotions.find((e) => e.key === p.avatar.default);
   }
 
-  /** The avatar file for an emotion; unknown values show the default pose. */
-  function emotionImage(emotion) { return emotionEntry(emotion).image; }
+  /** The persona's picture for an emotion: Toby's art per emotion, or the neutral assistant's logo. */
+  function avatarImage(emotion, persona) {
+    const prof = profile(persona);
+    const images = prof.images || {};
+    return images[emotion] || images[P().avatar.default] || prof.logo;
+  }
+
+  /** True if the persona has per-emotion art that moves (Toby); a logo stays still. */
+  function animated(persona) { return Object.keys(profile(persona).images || {}).length > 0; }
+
+  function greeting(language, name, persona) {
+    const lines = profile(persona).greeting;
+    return fill(lines[language] || lines.HEBREW, { name: assistantName(name, persona) });
+  }
 
   /** The emotion's body language ("breathe", "bounce", ...), animated by styles.css. */
   function emotionMotion(emotion) { return emotionEntry(emotion).motion; }
@@ -443,10 +523,10 @@
   }
 
   /** A waiting line ("typing" | "slow" | "very_slow") in the chat language. */
-  function chatLine(key, language, name) {
+  function chatLine(key, language, name, persona) {
     const p = P();
     const lines = p.chat_lines[language] || p.chat_lines.HEBREW;
-    return fill(lines[key], { name: (name || "").trim() || p.default_name });
+    return fill(lines[key], { name: assistantName(name, persona) });
   }
 
   /** [what Toby says, the emotion he shows] for a failed request; unknown kinds read as BAD_RESPONSE. */
@@ -473,10 +553,107 @@
     return "typing";
   }
 
+  // --- Themes ---------------------------------------------------------------------------------
+
+  /** A theme's colors (unknown ids get the default theme), without its label. */
+  function theme(themeId) {
+    const p = P();
+    const chosen = p.themes[themeId] || p.themes[p.default_theme];
+    const colors = {};
+    for (const [k, v] of Object.entries(chosen)) if (k !== "label") colors[k] = v;
+    return colors;
+  }
+
+  const label = (entry, language) => entry.label[language] || entry.label.HEBREW;
+
+  // --- Local mode: answers without any server (persona.py offline_answer) ----------------------
+
+  /** Lowercase words separated by single spaces: punctuation and Hebrew vowel marks removed. */
+  function normalizeWords(text) {
+    return text.toLowerCase().replace(/[\u0591-\u05c7]/g, "").replace(/[^\p{L}\p{N}]+/gu, " ").trim().split(/\s+/).filter(Boolean).join(" ");
+  }
+
+  const containsWords = (norm, pattern) => ` ${norm} `.includes(` ${normalizeWords(pattern)} `);
+
+  /** now: { year, month (1-12), day, weekday (0 = Monday), hour, minute }. */
+  function formatDate(now, language) {
+    const off = P().offline;
+    const lang = off.date_format[language] ? language : "HEBREW";
+    return fill(off.date_format[lang], {
+      weekday: off.weekdays[lang][now.weekday], day: now.day, month: off.months[lang][now.month - 1], year: now.year,
+    });
+  }
+
+  /** The current time as offlineAnswer's `now`. */
+  function nowParts(date = new Date()) {
+    return { year: date.getFullYear(), month: date.getMonth() + 1, day: date.getDate(),
+      weekday: (date.getDay() + 6) % 7, hour: date.getHours(), minute: date.getMinutes() };
+  }
+
+  /**
+   * What the assistant says when no model can be reached: time, date or memory questions answered on
+   * the device, a repeat of an earlier answer to the very same question, a hello or thanks, or an honest
+   * "I'm in local mode". history: earlier messages, not including this one. Returns { text, emotion, kind }.
+   */
+  function offlineAnswer(text, language, now, notes = "", history = []) {
+    const off = P().offline;
+    const lang = off.date_format[language] ? language : "HEBREW";
+    const norm = normalizeWords(text);
+    const intent = (key) => {
+      const entry = off.intents.find((i) => i.key === key);
+      return entry.patterns.some((pattern) => containsWords(norm, pattern)) ? entry : null;
+    };
+    const reply = (entry, kind, values = {}) => ({ text: fill(entry.reply[lang], values), emotion: entry.emotion, kind });
+    const pad = (n) => String(n).padStart(2, "0");
+
+    let entry = intent("time");
+    if (entry) return reply(entry, "time", { time: `${pad(now.hour)}:${pad(now.minute)}` });
+    entry = intent("date");
+    if (entry) return reply(entry, "date", { date: formatDate(now, lang) });
+    entry = intent("memory");
+    if (entry) {
+      if (notes.trim()) return reply(entry, "memory", { notes: notes.trim() });
+      return { text: entry.empty[lang], emotion: entry.emotion, kind: "memory" };
+    }
+    if (norm) {
+      for (let i = history.length - 1; i >= 0; i--) {
+        const m = history[i];
+        if (m.role === "user" && !m.local && normalizeWords(m.text || "") === norm) {
+          const answer = history.slice(i + 1).find((a) => a.role === "assistant" && !a.local && !a.error);
+          if (answer) return reply(off.cached, "cached", { answer: answer.text.trim() });
+          break;
+        }
+      }
+    }
+    for (const key of ["greeting", "thanks"]) {
+      entry = intent(key);
+      if (entry) return reply(entry, key);
+    }
+    return reply(off.fallback, "fallback");
+  }
+
+  // --- Wake words ---------------------------------------------------------------------------
+
+  function wakePhrases(persona, name = "") {
+    const prof = profile(persona);
+    const phrases = [...prof.wake_words];
+    const custom = (name || "").trim();
+    if (custom && custom !== prof.default_name) phrases.push(`hey ${custom}`, `היי ${custom}`);
+    return phrases.map(normalizeWords);
+  }
+
+  function isWakePhrase(transcript, persona, name = "") {
+    const norm = normalizeWords(transcript);
+    return Boolean(norm) && wakePhrases(persona, name).some((phrase) => ` ${norm} `.includes(` ${phrase} `));
+  }
+
   window.FlomaCore = {
     MODELS, EMOTIONS, DEFAULT_SETTINGS, AiError,
     route, modelFor, detectSeriousMode, systemPrompt, buildPrompt, memoryNotes, summarizerPrompt,
     renderMemoryFile, parseMemoryFile, complete, summarizeMemory, verifyKey,
-    emotionImage, emotionMotion, avatarFor, chatLine, errorLine, typingStage, unavailableLine,
+    personas, profile, personaId, assistantName, nameAfterSwitch,
+    avatarImage, animated, greeting, emotionMotion, avatarFor, chatLine, errorLine, typingStage, unavailableLine,
+    theme, label, modelForChoice, modelChain, fallsBack, goesOffline,
+    normalizeWords, formatDate, nowParts, offlineAnswer, wakePhrases, isWakePhrase,
   };
 })();

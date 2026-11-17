@@ -6,14 +6,14 @@
  * Search widgets) are never intercepted or cached: the API key and chat traffic stay out of the
  * cache, and offline Toby answers with his own NETWORK line instead.
  *
- * Toby's persona file is imported so the avatar list comes from the same "emotions" as the page.
+ * The persona files are imported so the list of avatar pictures comes from the same profiles as the page.
  */
 "use strict";
 
-self.window = self; // toby_persona.js assigns window.FLOMA_PERSONA
-importScripts("../persona/toby_persona.js");
+self.window = self; // the persona files assign window.FLOMA_PLATFORM / FLOMA_PERSONAS
+importScripts("../persona/floma_platform.js", "../persona/personas.js");
 
-const CACHE = "floma-web-v1";
+const CACHE = "floma-web-v2";
 const AVATAR_DIR = "../app/src/main/res/drawable-nodpi/";
 const SHELL = [
   "./",
@@ -29,8 +29,11 @@ const SHELL = [
   "icons/maskable-512.png",
   "icons/apple-touch-icon.png",
   "icons/favicon-32.png",
-  "../persona/toby_persona.js",
-  ...self.FLOMA_PERSONA.emotions.map((e) => AVATAR_DIR + e.image),
+  "../persona/floma_platform.js",
+  "../persona/personas.js",
+  // Every persona's art: Toby's picture per emotion, the neutral assistant's logo.
+  ...[...new Set(Object.values(self.FLOMA_PERSONAS).flatMap((p) => [...Object.values(p.images || {}), p.logo]).filter(Boolean))]
+    .map((image) => AVATAR_DIR + image),
 ];
 
 self.addEventListener("install", (event) => {

@@ -17,9 +17,9 @@
 
   const STRINGS = {
     HEBREW: {
-      settings: "הגדרות", close: "סגירה", send: "שליחה", placeholder: "כתבו לטובי…",
+      settings: "הגדרות", close: "סגירה", send: "שליחה", placeholder: "כתבו ל{name}…",
       subtitle: "בדפדפן, בכל מכשיר", empty: "היי, אני טובי. על מה נדבר?",
-      sectionToby: "טובי", name: "שם", personality: "אישיות", humor: "רמת הומור", language: "שפה",
+      sectionToby: "שם וסגנון", name: "שם", personality: "אישיות", humor: "רמת הומור", language: "שפה",
       serious: "מצב רציני (בלי בדיחות)", instructions: "הוראות משלכם",
       pFriendly: "הומוריסטי וחברותי", pPlayful: "הומוריסטי מאוד", pProfessional: "רציני ומקצועי", pConcise: "רציני ותמציתי",
       sectionModel: "מודל (Gemini)", keySaved: "מפתח שמור בדפדפן הזה.", keyMissing: "אין מפתח שמור.",
@@ -41,6 +41,14 @@
       keyGet: "להשגת מפתח בחינם: aistudio.google.com", keySave: "שמירה והתחלה", keyLater: "אחר כך",
       keyChecking: "בודק את המפתח מול Google…", keyInvalid: "Google דחתה את המפתח. כדאי לוודא שהעתקתם את כולו.",
       keyOffline: "אי אפשר להגיע ל-Google כרגע. המפתח נשמר, ננסה אותו בהודעה הבאה.",
+      sectionAssistant: "העוזר", assistantHint: "Floma היא האפליקציה; העוזר הוא פרופיל שהיא טוענת. השיחה, הזיכרון וההגדרות נשארים כשמחליפים.",
+      personaNote: "אישיות, הומור ומצב ליצן שייכים לטובי. העוזר הניטרלי של Floma תמיד ענייני.",
+      sectionAppearance: "מראה", sectionVoice: "קול", voiceRate: "מהירות דיבור", voicePitch: "גובה קול", testVoice: "בדיקת קול",
+      testPhrase: "היי, ככה אני נשמע.", modelChoice: "בחירת מודל",
+      fallbackHint: "אם מודל לא עונה (זמן המתנה, תקלה או מכסה שנגמרה), Floma עוברת בשקט למודל השני. בלי חיבור בכלל היא עונה במצב מקומי.",
+      liveStart: "התחלת שיחה חיה", liveStop: "סיום השיחה החיה", liveListening: "שיחה חיה: מקשיב…",
+      liveSpeaking: "שיחה חיה: {name} מדבר…", liveHint: "שיחה חיה (הכפתור ליד המיקרופון): מדברים, {name} עונה בקול ומיד מקשיב שוב. מסיימים בכפתור או ב-Esc.",
+      speak: "הקראה", stopSpeak: "עצירת ההקראה", localMode: "מצב מקומי",
       micStart: "הכתבה", micStop: "הפסקת ההכתבה", listening: "מקשיב… דברו עכשיו",
       voicePermission: "כדי להכתיב צריך לאשר לאתר גישה למיקרופון.", voiceNoMatch: "לא הצלחתי לשמוע. נסו שוב.",
       voiceNetwork: "ההכתבה צריכה אינטרנט. כדאי לבדוק את החיבור ולנסות שוב.", voiceNoMic: "לא נמצא מיקרופון.",
@@ -58,9 +66,9 @@
       sources: "מקורות:",
     },
     ENGLISH: {
-      settings: "Settings", close: "Close", send: "Send", placeholder: "Message Toby…",
+      settings: "Settings", close: "Close", send: "Send", placeholder: "Message {name}…",
       subtitle: "Web app, on any device", empty: "Hi, I'm Toby. What's up?",
-      sectionToby: "Toby", name: "Name", personality: "Personality", humor: "Humor level", language: "Language",
+      sectionToby: "Name & style", name: "Name", personality: "Personality", humor: "Humor level", language: "Language",
       serious: "Serious mode (no jokes)", instructions: "Your own instructions",
       pFriendly: "Humorous and friendly", pPlayful: "Very humorous", pProfessional: "Serious and professional", pConcise: "Serious and concise",
       sectionModel: "Model (Gemini)", keySaved: "A key is saved in this browser.", keyMissing: "No key saved.",
@@ -82,6 +90,14 @@
       keyGet: "Get a free key at aistudio.google.com", keySave: "Save and start", keyLater: "Later",
       keyChecking: "Checking the key with Google…", keyInvalid: "Google rejected this key. Check that you copied all of it.",
       keyOffline: "Can't reach Google right now. The key was saved; it will be tried with your next message.",
+      sectionAssistant: "Assistant", assistantHint: "Floma is the app; the assistant is a profile it loads. Your chat, memory and settings stay when you switch.",
+      personaNote: "Personality, humor and the jester act belong to Toby. The neutral Floma assistant is always matter-of-fact.",
+      sectionAppearance: "Appearance", sectionVoice: "Voice", voiceRate: "Speaking speed", voicePitch: "Pitch", testVoice: "Test voice",
+      testPhrase: "Hi, this is how I sound.", modelChoice: "Model",
+      fallbackHint: "If a model doesn't answer (timeout, outage or used-up quota), Floma quietly switches to the other one. With no connection at all, it answers in local mode.",
+      liveStart: "Start a live conversation", liveStop: "End the live conversation", liveListening: "Live conversation: listening…",
+      liveSpeaking: "Live conversation: {name} is speaking…", liveHint: "Live conversation (the button next to the mic): you talk, {name} answers out loud and listens again right away. End it with the button or Esc.",
+      speak: "Read aloud", stopSpeak: "Stop reading", localMode: "Local mode",
       micStart: "Dictate a message", micStop: "Stop dictating", listening: "Listening… speak now",
       voicePermission: "Allow microphone access for this site to dictate.", voiceNoMatch: "I didn't catch that. Try again.",
       voiceNetwork: "Dictation needs the internet. Check the connection and try again.", voiceNoMic: "No microphone found.",
@@ -140,36 +156,78 @@
     document.documentElement.lang = hebrew ? "he" : "en";
     document.documentElement.dir = hebrew ? "rtl" : "ltr";
     document.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = t(el.dataset.i18n); });
-    document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => { el.placeholder = t(el.dataset.i18nPlaceholder); });
+    document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => { el.placeholder = t(el.dataset.i18nPlaceholder).replace("{name}", assistant()); });
     document.querySelectorAll("[data-i18n-label]").forEach((el) => { el.setAttribute("aria-label", t(el.dataset.i18nLabel)); });
     updateSubtitle();
   }
 
   /** The shared dark palette (persona file, "theme") as CSS variables; styles.css has the same fallbacks. */
   function applyTheme() {
-    const theme = (window.FLOMA_PERSONA && window.FLOMA_PERSONA.theme) || {};
+    const theme = Core.theme(state.settings.theme);
     for (const [name, value] of Object.entries(theme)) {
       document.documentElement.style.setProperty(`--${name.replace(/_/g, "-")}`, value);
     }
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.content = theme.background; // the installed app's title bar follows the theme
   }
+
+  const persona = () => Core.personaId(state.settings.persona);
+  const assistant = () => Core.assistantName(state.settings.assistantName, persona());
+  const lang = () => state.settings.language;
 
   function updateSubtitle() {
     $("subtitle").textContent = state.thinking
-      ? Core.chatLine("typing", state.settings.language, state.settings.assistantName)
+      ? Core.chatLine("typing", lang(), state.settings.assistantName, persona())
       : t("subtitle");
   }
 
-  /** Toby's art and body language for an emotion (both from the persona file), with a little hop. */
+  /** The assistant's art for an emotion: Toby moves with his mood; Floma's logo stays still. */
   function setEmotion(emotion) {
     const avatar = $("avatar");
-    const image = `${AVATAR_DIR}${Core.emotionImage(emotion)}`;
+    const image = `${AVATAR_DIR}${Core.avatarImage(emotion, persona())}`;
     if (!avatar.src.endsWith(image.replace("../", ""))) avatar.src = image;
-    avatar.dataset.motion = Core.emotionMotion(emotion);
+    avatar.dataset.motion = Core.animated(persona()) ? Core.emotionMotion(emotion) : "none";
     const wrap = $("avatarWrap");
     wrap.classList.remove("hop");
     void wrap.offsetWidth; // restart the animation
     wrap.classList.add("hop");
   }
+
+  const SPEAKER_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3Zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05A4.5 4.5 0 0 0 16.5 12ZM14 3.23v2.06a7 7 0 0 1 0 13.42v2.06a9 9 0 0 0 0-17.54Z"/></svg>';
+
+  /** Read this message aloud on demand (press again to stop). */
+  function speakButton(text) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "speak";
+    button.innerHTML = SPEAKER_ICON; // a fixed icon, never message text
+    button.setAttribute("aria-label", t("speak"));
+    button.title = t("speak");
+    button.addEventListener("click", () => {
+      if (Voice.speakingText === text) {
+        Voice.stopSpeaking();
+        markSpeaking(null);
+        return;
+      }
+      dictation.cancel();
+      markSpeaking(button);
+      Voice.speak(text, lang(), { ...voiceTuning(), onDone: () => markSpeaking(null) });
+    });
+    return button;
+  }
+
+  function markSpeaking(button) {
+    document.querySelectorAll(".speak.speaking").forEach((b) => {
+      b.classList.remove("speaking");
+      b.setAttribute("aria-label", t("speak"));
+    });
+    if (button) {
+      button.classList.add("speaking");
+      button.setAttribute("aria-label", t("stopSpeak"));
+    }
+  }
+
+  const voiceTuning = () => ({ rate: Number(state.settings.voiceRate) || 1, pitch: Number(state.settings.voicePitch) || 1 });
 
   function renderMessage(message) {
     const bubble = document.createElement("div");
@@ -201,6 +259,18 @@
       frame.srcdoc = `<base target="_blank">${message.searchWidget}`;
       bubble.append(frame);
     }
+    if (message.role === "assistant" && !message.error) {
+      const footer = document.createElement("div");
+      footer.className = "bubble-footer";
+      if (message.offline) {
+        const tag = document.createElement("span");
+        tag.className = "tag";
+        tag.textContent = `⚡ ${t("localMode")}`;
+        footer.append(tag);
+      }
+      footer.append(speakButton(message.text));
+      bubble.append(footer);
+    }
     if (message.action === "addKey") {
       const actions = document.createElement("div");
       actions.className = "actions";
@@ -221,7 +291,7 @@
     if (!state.messages.length) {
       const empty = document.createElement("p");
       empty.className = "empty";
-      empty.textContent = t("empty");
+      empty.textContent = Core.greeting(lang(), state.settings.assistantName, persona());
       chat.append(empty);
     }
     for (const message of state.messages) chat.append(renderMessage(message));
@@ -245,7 +315,7 @@
     const bubble = document.createElement("div");
     bubble.className = "typing-dots";
     bubble.setAttribute("role", "status");
-    bubble.setAttribute("aria-label", Core.chatLine("typing", state.settings.language, state.settings.assistantName));
+    bubble.setAttribute("aria-label", Core.chatLine("typing", lang(), state.settings.assistantName, persona()));
     for (let i = 0; i < 3; i++) bubble.append(document.createElement("span"));
     const caption = document.createElement("p");
     caption.className = "typing-caption";
@@ -258,7 +328,7 @@
     const caption = $("typingCaption");
     if (!caption) return;
     const stage = Core.typingStage(Date.now() - state.thinkingSince);
-    const text = stage === "typing" ? "" : Core.chatLine(stage, state.settings.language, state.settings.assistantName);
+    const text = stage === "typing" ? "" : Core.chatLine(stage, lang(), state.settings.assistantName, persona());
     if (caption.textContent !== text) {
       caption.textContent = text;
       caption.classList.toggle("shown", Boolean(text));
@@ -356,12 +426,40 @@
       setThinking(false);
       addMessage({ role: "assistant", text: reply.text, sources: reply.sources, searchWidget: reply.searchWidget });
       setEmotion(reply.emotion);
-      if (state.settings.speakReplies) Voice.speak(reply.text, state.settings.language);
+      say(reply.text);
       updateMemory();
     } catch (e) {
       setThinking(false);
       if (!(e instanceof Core.AiError)) console.error(e); // a bug: still answered kindly below
-      showError(e instanceof Core.AiError ? e.kind : "BAD_RESPONSE");
+      const kind = e instanceof Core.AiError ? e.kind : "BAD_RESPONSE";
+      if (Core.goesOffline(kind)) {
+        answerOffline(trimmed);
+      } else {
+        showError(kind);
+        setLive(false); // an error needs the user's attention
+      }
+    }
+  }
+
+  /**
+   * Local mode: no model could be reached (offline, timeouts, servers down), so the assistant answers
+   * from this browser: the time, the date, its notes, or an earlier answer to the same question.
+   */
+  function answerOffline(question) {
+    const earlier = state.messages.slice(0, -1); // without the question just asked
+    const answer = Core.offlineAnswer(question, lang(), Core.nowParts(), Memory.notes(), earlier);
+    addMessage({ role: "assistant", text: answer.text, local: true, offline: true });
+    setEmotion(answer.emotion);
+    say(answer.text);
+  }
+
+  /** Reads a reply aloud: always in a live conversation (then listens again), else per the setting. */
+  function say(text) {
+    if (live) {
+      setVoiceStatus("liveSpeaking", "listening");
+      Voice.speak(text, lang(), { ...voiceTuning(), onDone: () => { if (live) listen(); } });
+    } else if (state.settings.speakReplies) {
+      Voice.speak(text, lang(), voiceTuning());
     }
   }
 
@@ -390,10 +488,93 @@
 
   // --- Settings drawer ---
 
+  function fillPersonas() {
+    const picker = $("personaPicker");
+    picker.replaceChildren();
+    for (const [id, profile] of Object.entries(Core.personas())) {
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = `persona-card${id === persona() ? " selected" : ""}`;
+      card.setAttribute("role", "radio");
+      card.setAttribute("aria-checked", String(id === persona()));
+      const img = document.createElement("img");
+      img.src = `${AVATAR_DIR}${Core.avatarImage("HAPPY", id)}`;
+      img.alt = "";
+      const title = document.createElement("strong");
+      title.textContent = Core.label(profile, lang());
+      const description = document.createElement("small");
+      description.textContent = profile.description[lang()] || profile.description.HEBREW;
+      card.append(img, title, description);
+      card.addEventListener("click", () => switchPersona(id));
+      picker.append(card);
+    }
+  }
+
+  function switchPersona(id) {
+    if (id === persona()) return;
+    state.settings.assistantName = Core.nameAfterSwitch(state.settings.assistantName, persona(), id);
+    state.settings.persona = id;
+    save(STORE.settings, state.settings);
+    fillSettings();
+    renderChat();
+    setEmotion(Core.avatarFor("greeting"));
+  }
+
+  function fillThemes() {
+    const picker = $("themePicker");
+    picker.replaceChildren();
+    const themes = window.FLOMA_PLATFORM.themes;
+    const current = themes[state.settings.theme] ? state.settings.theme : window.FLOMA_PLATFORM.default_theme;
+    for (const [id, theme] of Object.entries(themes)) {
+      const swatch = document.createElement("button");
+      swatch.type = "button";
+      swatch.className = `swatch${id === current ? " selected" : ""}`;
+      swatch.setAttribute("role", "radio");
+      swatch.setAttribute("aria-checked", String(id === current));
+      swatch.style.setProperty("--swatch-bg", theme.background);
+      swatch.style.setProperty("--swatch-accent", theme.primary);
+      const dot = document.createElement("span");
+      dot.className = "swatch-dot";
+      const name = document.createElement("small");
+      name.textContent = Core.label(theme, lang());
+      swatch.append(dot, name);
+      swatch.addEventListener("click", () => {
+        state.settings.theme = id;
+        save(STORE.settings, state.settings);
+        applyTheme();
+        fillThemes();
+      });
+      picker.append(swatch);
+    }
+  }
+
+  function fillModels() {
+    const select = $("setModel");
+    const choices = window.FLOMA_PLATFORM.models.choices;
+    if (select.options.length !== choices.length || select.dataset.lang !== lang()) {
+      select.replaceChildren(...choices.map((c) => new Option(Core.label(c, lang()), c.key)));
+      select.dataset.lang = lang();
+    }
+    const current = choices.find((c) => c.key === state.settings.modelChoice) || choices[0];
+    select.value = current.key;
+    $("modelHint").textContent = current.hint[lang()] || current.hint.HEBREW;
+  }
+
   function fillSettings() {
     const s = state.settings;
-    $("assistantName").textContent = s.assistantName || "Toby";
+    $("assistantName").textContent = assistant();
+    document.title = assistant() === "Floma" ? "Floma" : `Floma - ${assistant()}`;
+    $("input").placeholder = t("placeholder").replace("{name}", assistant());
     $("setName").value = s.assistantName;
+    const hasCharacter = Core.animated(persona());
+    $("personaNote").hidden = hasCharacter;
+    $("setPersonality").disabled = $("setHumor").disabled = !hasCharacter;
+    fillPersonas();
+    fillThemes();
+    fillModels();
+    document.querySelectorAll('[data-i18n="liveHint"]').forEach((el) => {
+      el.textContent = t("liveHint").replace("{name}", assistant());
+    });
     $("setPersonality").value = s.personality;
     $("setHumor").value = s.humorLevel;
     $("setLanguage").value = s.language;
@@ -473,7 +654,7 @@
   function setVoiceStatus(key, kind) {
     const status = $("voiceStatus");
     status.hidden = !key;
-    status.textContent = key ? t(key) : "";
+    status.textContent = key ? t(key).replace("{name}", assistant()) : "";
     status.dataset.kind = kind || "";
   }
 
@@ -486,12 +667,32 @@
     input.style.overflowY = input.scrollHeight > input.clientHeight + 1 ? "auto" : "hidden";
   }
 
+  let live = false;
+  let heardInLive = "";
+  let quietRounds = 0;
+
   const dictation = Voice.createDictation({
-    onText(text) {
+    onText(text, final) {
       $("input").value = [textBeforeDictation.trim(), text].filter(Boolean).join(" ");
       autoGrow();
+      if (live && final) heardInLive = text;
     },
     onState(listening) {
+      if (live && !listening) {
+        // Live conversation: what was heard goes out right away; two silent rounds end it.
+        const heard = heardInLive.trim();
+        heardInLive = "";
+        if (heard) {
+          quietRounds = 0;
+          $("input").value = "";
+          autoGrow();
+          send(heard);
+        } else if (++quietRounds >= 2) {
+          setLive(false);
+        } else {
+          listen();
+        }
+      }
       const mic = $("mic");
       mic.classList.toggle("listening", listening);
       mic.setAttribute("aria-pressed", String(listening));
@@ -501,8 +702,38 @@
       else if ($("voiceStatus").dataset.kind === "listening") setVoiceStatus(null);
       if (!listening) $("input").focus();
     },
-    onError(key) { setVoiceStatus(key, "error"); },
+    onError(key) {
+      setLive(false); // a blocked mic or no speech service ends the live loop
+      setVoiceStatus(key, "error");
+    },
   });
+
+  function listen() {
+    if (!live || dictation.listening || state.thinking) return;
+    Voice.stopSpeaking();
+    textBeforeDictation = "";
+    if (dictation.start(lang())) setVoiceStatus("liveListening", "listening");
+  }
+
+  /** Live conversation on/off: the mic opens again each time the assistant has finished speaking. */
+  function setLive(on) {
+    if (live === on) return;
+    live = on;
+    quietRounds = 0;
+    heardInLive = "";
+    const button = $("live");
+    button.classList.toggle("on", on);
+    button.setAttribute("aria-pressed", String(on));
+    button.setAttribute("aria-label", t(on ? "liveStop" : "liveStart"));
+    button.title = t(on ? "liveStop" : "liveStart");
+    if (on) {
+      listen();
+    } else {
+      dictation.cancel();
+      Voice.stopSpeaking();
+      setVoiceStatus(null);
+    }
+  }
 
   function toggleDictation() {
     if (dictation.listening) {
@@ -516,6 +747,12 @@
 
   function fillVoiceSettings() {
     $("mic").hidden = !Voice.dictationSupported;
+    $("live").hidden = !(Voice.dictationSupported && Voice.speechSupported); // live needs both
+    $("setRate").value = state.settings.voiceRate || 1;
+    $("setPitch").value = state.settings.voicePitch || 1;
+    $("rateValue").textContent = `${Number($("setRate").value).toFixed(1)}×`;
+    $("pitchValue").textContent = `${Number($("setPitch").value).toFixed(1)}×`;
+    $("setRate").disabled = $("setPitch").disabled = $("testVoice").disabled = !Voice.speechSupported;
     $("setSpeak").checked = Boolean(state.settings.speakReplies);
     $("setSpeak").disabled = !Voice.speechSupported;
     $("speakHint").textContent = !Voice.speechSupported ? t("speakUnsupported")
@@ -605,7 +842,9 @@
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && !$("settings").hidden) setDrawer(false);
       else if (event.key === "Escape") {
+        setLive(false);
         Voice.stopSpeaking();
+        markSpeaking(null);
         if (dictation.listening) dictation.cancel();
       }
     });
@@ -618,6 +857,15 @@
     bindSetting("setInstructions", "customInstructions", (el) => el.value);
     bindSetting("setWebSearch", "webSearch", (el) => el.checked);
     bindSetting("setSpeak", "speakReplies", (el) => el.checked);
+    bindSetting("setModel", "modelChoice", (el) => el.value);
+    bindSetting("setRate", "voiceRate", (el) => Number(el.value));
+    bindSetting("setPitch", "voicePitch", (el) => Number(el.value));
+    $("setRate").addEventListener("input", () => { $("rateValue").textContent = `${Number($("setRate").value).toFixed(1)}×`; });
+    $("setPitch").addEventListener("input", () => { $("pitchValue").textContent = `${Number($("setPitch").value).toFixed(1)}×`; });
+    $("testVoice").addEventListener("click", () => Voice.speak(t("testPhrase"), lang(), {
+      rate: Number($("setRate").value), pitch: Number($("setPitch").value),
+    }));
+    $("live").addEventListener("click", () => setLive(!live));
     $("setSpeak").addEventListener("change", () => { if (!state.settings.speakReplies) Voice.stopSpeaking(); });
 
     $("changeKey").addEventListener("click", openKeyDialog);

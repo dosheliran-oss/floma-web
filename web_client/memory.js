@@ -128,7 +128,7 @@
   /** Same rule as Android and the desktop: unpushed local edits win, else the remote file wins. */
   function mergeRemote(local, remote, unpushed) {
     const merged = {};
-    for (const c of window.FLOMA_PERSONA.memory_categories) {
+    for (const c of window.FLOMA_PLATFORM.memory_categories) {
       const notes = unpushed.includes(c.key) || !(c.key in remote) ? local[c.key] : remote[c.key];
       if (notes && notes.trim()) merged[c.key] = notes.trim();
     }
@@ -170,7 +170,7 @@
     try {
       const repo = await api.resolveRepo(repository());
       const remote = {};
-      for (const c of window.FLOMA_PERSONA.memory_categories) {
+      for (const c of window.FLOMA_PLATFORM.memory_categories) {
         const file = await api.getFile(repo, c.file);
         if (file) remote[c.key] = Core.parseMemoryFile(file.content);
       }
@@ -199,7 +199,7 @@
       const today = new Date().toISOString().slice(0, 10);
       let pushed = 0;
       for (const [key, notes] of Object.entries(state.pending)) {
-        const c = window.FLOMA_PERSONA.memory_categories.find((x) => x.key === key);
+        const c = window.FLOMA_PLATFORM.memory_categories.find((x) => x.key === key);
         if (await api.putFile(repo, c.file, Core.renderMemoryFile(key, notes, today), `Floma (web): update ${c.file}`)) pushed++;
         delete state.pending[key];
         save();
