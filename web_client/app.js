@@ -13,6 +13,7 @@
   const Voice = window.FlomaVoice;
   const STORE = { key: "floma.apiKey", settings: "floma.settings", history: "floma.history" };
   const MAX_STORED = 200;
+  const KEEP_PICTURES = 30; // thumbnails kept in localStorage for the newest messages only
   const AVATAR_DIR = "../app/src/main/res/drawable-nodpi/";
 
   const STRINGS = {
@@ -41,6 +42,7 @@
       keyGet: "להשגת מפתח בחינם: aistudio.google.com", keySave: "שמירה והתחלה", keyLater: "אחר כך",
       keyChecking: "בודק את המפתח מול Google…", keyInvalid: "Google דחתה את המפתח. כדאי לוודא שהעתקתם את כולו.",
       keyOffline: "אי אפשר להגיע ל-Google כרגע. המפתח נשמר, ננסה אותו בהודעה הבאה.",
+      attach: "צירוף תמונה", removeImage: "הסרת התמונה", picture: "תמונה ששלחת",
       sectionAssistant: "העוזר", assistantHint: "Floma היא האפליקציה; העוזר הוא פרופיל שהיא טוענת. השיחה, הזיכרון וההגדרות נשארים כשמחליפים.",
       personaNote: "אישיות, הומור ומצב ליצן שייכים לטובי. העוזר הניטרלי של Floma תמיד ענייני.",
       sectionAppearance: "מראה", sectionVoice: "קול", voiceRate: "מהירות דיבור", voicePitch: "גובה קול", testVoice: "בדיקת קול",
@@ -90,6 +92,7 @@
       keyGet: "Get a free key at aistudio.google.com", keySave: "Save and start", keyLater: "Later",
       keyChecking: "Checking the key with Google…", keyInvalid: "Google rejected this key. Check that you copied all of it.",
       keyOffline: "Can't reach Google right now. The key was saved; it will be tried with your next message.",
+      attach: "Attach a picture", removeImage: "Remove the picture", picture: "Your picture",
       sectionAssistant: "Assistant", assistantHint: "Floma is the app; the assistant is a profile it loads. Your chat, memory and settings stay when you switch.",
       personaNote: "Personality, humor and the jester act belong to Toby. The neutral Floma assistant is always matter-of-fact.",
       sectionAppearance: "Appearance", sectionVoice: "Voice", voiceRate: "Speaking speed", voicePitch: "Pitch", testVoice: "Test voice",
@@ -234,6 +237,13 @@
     bubble.className = `bubble ${message.role === "user" ? "user" : "toby"}${message.local ? " local" : ""}${message.error ? " error" : ""}`;
     bubble.dir = "auto";
     bubble.textContent = message.text; // never innerHTML: replies are untrusted text
+    if (message.image && message.image.startsWith("data:image/")) {
+      const picture = document.createElement("img");
+      picture.className = "bubble-image";
+      picture.src = message.image; // a small JPEG thumbnail made in this browser
+      picture.alt = t("picture");
+      bubble.prepend(picture);
+    }
 
     if (message.sources && message.sources.length) {
       const list = document.createElement("ul");
@@ -352,7 +362,9 @@
   }
 
   function persist() {
-    save(STORE.history, state.messages.slice(-MAX_STORED));
+    const kept = state.messages.slice(-MAX_STORED);
+    const withPictures = kept.length - KEEP_PICTURES;
+    save(STORE.history, kept.map((m, i) => (m.image && i < withPictures ? { ...m, image: undefined } : m)));
     if (state.messages.length > MAX_STORED) state.messages = state.messages.slice(-MAX_STORED);
   }
 
@@ -390,11 +402,17 @@
   // --- Sending ---
 
   async function send(text) {
-    const trimmed = text.trim();
-    if (!trimmed || state.thinking) return;
+    if (state.thinking) return;
+    const image = state.pendingImage;
+    // A picture always goes to the model; with no text the question is "What's in this picture?".
+    const trimmed = image ? Core.imagePrompt(text, lang()) : text.trim();
+    if (!trimmed) return;
     Voice.stopSpeaking(); // a new message interrupts Toby
     dictation.cancel(); // and late dictation results must not refill the cleared field
-    const { route, seriousChange } = Core.route(trimmed, state.settings);
+    if (image) clearAttachment();
+    const routed = Core.route(trimmed, state.settings);
+    const seriousChange = routed.seriousChange;
+    const route = image ? { kind: "model", model: Core.MODELS.DEFAULT, webSearch: false } : routed.route;
 
     if (seriousChange) {
       state.settings.seriousMode = seriousChange === "ENTER";
@@ -411,7 +429,7 @@
       return;
     }
 
-    addMessage({ role: "user", text: trimmed });
+    addMessage(image ? { role: "user", text: trimmed, image: image.thumb } : { role: "user", text: trimmed });
     if (!state.apiKey) {
       showError("MISSING_KEY");
       return;
@@ -422,7 +440,8 @@
     const history = state.messages.filter((m) => !m.local).map((m) => ({ role: m.role, text: m.text }));
     try {
       // The shared notes come from the local copy, so a GitHub outage never delays or breaks a reply.
-      const reply = await Core.complete(state.apiKey, state.settings, history, route, Memory.notes());
+      const reply = await Core.complete(state.apiKey, state.settings, history, route, Memory.notes(),
+        image ? { mime: image.mime, data: image.data } : null);
       setThinking(false);
       addMessage({ role: "assistant", text: reply.text, sources: reply.sources, searchWidget: reply.searchWidget });
       setEmotion(reply.emotion);
@@ -433,7 +452,7 @@
       if (!(e instanceof Core.AiError)) console.error(e); // a bug: still answered kindly below
       const kind = e instanceof Core.AiError ? e.kind : "BAD_RESPONSE";
       if (Core.goesOffline(kind)) {
-        answerOffline(trimmed);
+        answerOffline(trimmed, Boolean(image));
       } else {
         showError(kind);
         setLive(false); // an error needs the user's attention
@@ -445,9 +464,9 @@
    * Local mode: no model could be reached (offline, timeouts, servers down), so the assistant answers
    * from this browser: the time, the date, its notes, or an earlier answer to the same question.
    */
-  function answerOffline(question) {
+  function answerOffline(question, hasImage = false) {
     const earlier = state.messages.slice(0, -1); // without the question just asked
-    const answer = Core.offlineAnswer(question, lang(), Core.nowParts(), Memory.notes(), earlier);
+    const answer = Core.offlineAnswer(question, lang(), Core.nowParts(), Memory.notes(), earlier, hasImage);
     addMessage({ role: "assistant", text: answer.text, local: true, offline: true });
     setEmotion(answer.emotion);
     say(answer.text);
@@ -760,6 +779,57 @@
         : t("speakHint");
   }
 
+  // --- Pictures: the native picker (camera on phones), paste, a removable preview ---
+
+  /**
+   * Shrinks a picture to the platform's limit and re-encodes it as JPEG in this browser (which also
+   * drops EXIF/GPS data). Resolves to { mime, data (base64), thumb (data URL) }.
+   */
+  async function prepareImage(file) {
+    const limits = window.FLOMA_PLATFORM.vision;
+    const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+    const draw = (side, quality) => {
+      const scale = Math.min(1, side / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL("image/jpeg", quality);
+    };
+    const full = draw(limits.max_side, limits.jpeg_quality / 100);
+    const data = full.slice(full.indexOf(",") + 1);
+    if (data.length * 0.75 > limits.max_bytes) throw new Error("image too large");
+    const thumb = draw(limits.thumb_side, 0.8);
+    bitmap.close();
+    return { mime: "image/jpeg", data, thumb };
+  }
+
+  async function attachFile(file) {
+    if (!file || !file.type.startsWith("image/")) return;
+    try {
+      state.pendingImage = await prepareImage(file);
+      showAttachment();
+      $("input").focus();
+    } catch (e) {
+      console.warn("Picture not usable", e);
+      addMessage({ role: "assistant", text: window.FLOMA_PLATFORM.vision.unreadable[lang()] || window.FLOMA_PLATFORM.vision.unreadable.HEBREW,
+        local: true, error: true });
+    }
+  }
+
+  function showAttachment() {
+    const image = state.pendingImage;
+    $("attachment").hidden = !image;
+    if (image) $("attachmentImage").src = image.thumb;
+    $("attachmentImage").alt = t("picture");
+  }
+
+  function clearAttachment() {
+    state.pendingImage = null;
+    $("imageInput").value = "";
+    showAttachment();
+  }
+
   // --- Installable web app (PWA) ---
 
   let installPrompt = null;
@@ -866,6 +936,16 @@
       rate: Number($("setRate").value), pitch: Number($("setPitch").value),
     }));
     $("live").addEventListener("click", () => setLive(!live));
+    $("attach").addEventListener("click", () => $("imageInput").click());
+    $("imageInput").addEventListener("change", () => attachFile($("imageInput").files[0]));
+    $("removeImage").addEventListener("click", () => { clearAttachment(); $("input").focus(); });
+    $("input").addEventListener("paste", (event) => {
+      const item = [...(event.clipboardData ? event.clipboardData.items : [])].find((i) => i.type.startsWith("image/"));
+      if (item) {
+        event.preventDefault();
+        attachFile(item.getAsFile());
+      }
+    });
     $("setSpeak").addEventListener("change", () => { if (!state.settings.speakReplies) Voice.stopSpeaking(); });
 
     $("changeKey").addEventListener("click", openKeyDialog);

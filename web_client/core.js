@@ -364,7 +364,14 @@
     return merged;
   }
 
-  function requestBody(prompt, history, model, webSearch) {
+  /** Puts a picture ({ mime, data: base64 }) before the newest user turn's text, as Gemini inline_data. */
+  function withImage(turns, image) {
+    const last = turns[turns.length - 1];
+    if (image && last && last.role === "user") last.parts.unshift({ inline_data: { mime_type: image.mime, data: image.data } });
+    return turns;
+  }
+
+  function requestBody(prompt, history, model, webSearch, image = null) {
     const generationConfig = {
       responseMimeType: "application/json",
       responseSchema: {
@@ -374,7 +381,7 @@
       },
     };
     if (model === MODELS.DEFAULT) generationConfig.thinkingConfig = { thinkingLevel: "low" };
-    const body = { systemInstruction: { parts: [{ text: prompt }] }, contents: contents(history), generationConfig };
+    const body = { systemInstruction: { parts: [{ text: prompt }] }, contents: withImage(contents(history), image), generationConfig };
     if (webSearch) body.tools = [{ google_search: {} }];
     return body;
   }
@@ -405,13 +412,13 @@
    * out, fails, is unreachable or out of quota, the next model in the chain is tried quietly. Key and
    * content problems (invalid key, refusal) are not retried. Returns the reply plus which model answered.
    */
-  async function complete(apiKey, settings, history, routeInfo, memory = "") {
+  async function complete(apiKey, settings, history, routeInfo, memory = "", image = null) {
     if (!apiKey) throw new AiError("MISSING_KEY");
     const chain = modelChain(modelForChoice(settings.modelChoice, routeInfo.model));
     let failure = null;
     for (const model of chain) {
       try {
-        const reply = await completeWith(apiKey, settings, history, model, routeInfo.webSearch, memory);
+        const reply = await completeWith(apiKey, settings, history, model, routeInfo.webSearch, memory, image);
         return Object.assign(reply, { model, fellBack: model !== chain[0] });
       } catch (e) {
         if (!(e instanceof AiError) || !fallsBack(e.kind)) throw e;
@@ -421,15 +428,15 @@
     throw failure;
   }
 
-  async function completeWith(apiKey, settings, history, model, webSearch, memory) {
+  async function completeWith(apiKey, settings, history, model, webSearch, memory, image) {
     if (webSearch) {
       try {
-        return parseResponse(await post(apiKey, model, requestBody(systemPrompt(settings, true, memory), history, model, true)));
+        return parseResponse(await post(apiKey, model, requestBody(systemPrompt(settings, true, memory), history, model, true, image)));
       } catch (e) {
         if (!(e instanceof AiError) || !["RATE_LIMITED", "QUOTA_EXCEEDED", "BAD_RESPONSE"].includes(e.kind)) throw e;
       }
     }
-    return parseResponse(await post(apiKey, model, requestBody(systemPrompt(settings, false, memory), history, model, false)));
+    return parseResponse(await post(apiKey, model, requestBody(systemPrompt(settings, false, memory), history, model, false, image)));
   }
 
   /**
@@ -595,10 +602,14 @@
    * the device, a repeat of an earlier answer to the very same question, a hello or thanks, or an honest
    * "I'm in local mode". history: earlier messages, not including this one. Returns { text, emotion, kind }.
    */
-  function offlineAnswer(text, language, now, notes = "", history = []) {
+  function offlineAnswer(text, language, now, notes = "", history = [], hasImage = false) {
     const off = P().offline;
     const lang = off.date_format[language] ? language : "HEBREW";
     const norm = normalizeWords(text);
+    if (hasImage) { // seeing a picture needs the model: say so instead of guessing
+      const vision = P().vision.offline;
+      return { text: vision.reply[lang], emotion: vision.emotion, kind: "image_offline" };
+    }
     const intent = (key) => {
       const entry = off.intents.find((i) => i.key === key);
       return entry.patterns.some((pattern) => containsWords(norm, pattern)) ? entry : null;
@@ -647,6 +658,12 @@
     return Boolean(norm) && wakePhrases(persona, name).some((phrase) => ` ${norm} `.includes(` ${phrase} `));
   }
 
+  /** The text sent with a picture: what the user wrote, or "What's in this picture?". */
+  function imagePrompt(text, language) {
+    const lines = P().vision.default_prompt;
+    return text.trim() || lines[language] || lines.HEBREW;
+  }
+
   window.FlomaCore = {
     MODELS, EMOTIONS, DEFAULT_SETTINGS, AiError,
     route, modelFor, detectSeriousMode, systemPrompt, buildPrompt, memoryNotes, summarizerPrompt,
@@ -654,6 +671,6 @@
     personas, profile, personaId, assistantName, nameAfterSwitch,
     avatarImage, animated, greeting, emotionMotion, avatarFor, chatLine, errorLine, typingStage, unavailableLine,
     theme, label, modelForChoice, modelChain, fallsBack, goesOffline,
-    normalizeWords, formatDate, nowParts, offlineAnswer, wakePhrases, isWakePhrase,
+    normalizeWords, formatDate, nowParts, offlineAnswer, wakePhrases, isWakePhrase, imagePrompt, withImage,
   };
 })();

@@ -482,3 +482,65 @@ button.danger { background: transparent; color: var(--error); border: 1px solid 
 .swatch.selected small { color: var(--text); font-weight: 600; }
 .drawer output { color: var(--muted); font-size: 0.85rem; }
 .drawer select:disabled, .drawer input:disabled { opacity: 0.5; }
+
+/* --- Pictures: the 📎 button, the preview above the text field, the picture in a bubble --- */
+.attach {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.attach:hover { background: var(--surface-variant); color: var(--text); }
+.attachment {
+  position: relative;
+  flex-basis: 100%;
+  display: flex;
+  animation: bubble-in 0.25s var(--ease-out) both;
+}
+.attachment[hidden] { display: none; }
+.attachment img {
+  max-width: 120px;
+  max-height: 120px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  object-fit: cover;
+}
+.remove-image {
+  position: absolute;
+  inset-block-start: -6px;
+  inset-inline-start: 106px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+.remove-image:hover { background: var(--error-container); color: var(--on-error-container); }
+.bubble-image {
+  display: block;
+  max-width: 100%;
+  max-height: 260px;
+  margin-block-end: 8px;
+  border-radius: 12px;
+  object-fit: contain;
+}
+
+/* Phones: four buttons next to the text field, so they get a little tighter and the field keeps room. */
+.composer textarea::placeholder { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 520px) {
+  .composer { gap: 4px; }
+  .composer .attach, .composer .live, .composer .mic { width: 36px; height: 36px; margin-block-end: 3px; }
+  .composer textarea { min-width: 120px; padding-inline: 12px; }
+  button.send { padding-inline: 14px; }
+}

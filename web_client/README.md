@@ -67,6 +67,16 @@ out of quota, Floma quietly asks the other model. If no model can be reached at 
 answers in **local mode** from this browser: the time, the date, what it remembers about you, or
 its earlier answer to the very same question. Such answers are marked "⚡ Local mode".
 
+## Pictures
+
+**📎** next to the text field opens the device's own picker (on a phone it also offers the camera);
+you can also paste a picture into the text field. The picture shows above the text field with a ✕
+to remove it before sending. Sent, it appears in your bubble right above your words (a picture alone
+asks "What's in this picture?"). The browser shrinks it to 1600 px and re-encodes it as JPEG, which also
+drops EXIF/GPS data, and only that copy goes to Gemini, next to your text. A small thumbnail stays in
+this browser's history for the newest 30 messages. Offline, the assistant says that pictures need an
+internet connection instead of guessing.
+
 ## Voice
 
 - **Dictation:** the 🎤 button next to the text field uses the browser's speech recognition (Web Speech

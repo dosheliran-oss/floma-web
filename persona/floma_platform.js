@@ -568,5 +568,33 @@ window.FLOMA_PLATFORM = {
       "HEBREW": "מצב מקומי",
       "ENGLISH": "Local mode"
     }
+  },
+  "vision": {
+    "mime_types": [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/heic",
+      "image/heif"
+    ],
+    "max_side": 1600,
+    "jpeg_quality": 85,
+    "max_bytes": 4000000,
+    "thumb_side": 320,
+    "default_prompt": {
+      "HEBREW": "מה רואים בתמונה?",
+      "ENGLISH": "What's in this picture?"
+    },
+    "offline": {
+      "emotion": "SAD",
+      "reply": {
+        "HEBREW": "קיבלתי את התמונה, אבל כדי להבין מה יש בה אני צריך חיבור לאינטרנט, וכרגע אין לי. שלחו אותה שוב כשהחיבור יחזור.",
+        "ENGLISH": "I got your picture, but understanding what's in it needs an internet connection, and I don't have one right now. Send it again once you're back online."
+      }
+    },
+    "unreadable": {
+      "HEBREW": "לא הצלחתי לפתוח את התמונה הזאת. אפשר לנסות קובץ JPG או PNG?",
+      "ENGLISH": "I couldn't open that picture. Could you try a JPG or PNG file?"
+    }
   }
 };
