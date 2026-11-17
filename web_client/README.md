@@ -77,6 +77,23 @@ drops EXIF/GPS data, and only that copy goes to Gemini, next to your text. A sma
 this browser's history for the newest 30 messages. Offline, the assistant says that pictures need an
 internet connection instead of guessing.
 
+## Documents
+
+The same **📎** also takes PDF and text files (TXT, Markdown, CSV, JSON, logs). The text is read in
+this browser: text files with the browser's own `File.text()` (UTF-8, with a Windows-Hebrew fallback);
+PDFs with Mozilla's **pdf.js**, since browsers don't let a page read a PDF's text. pdf.js is loaded
+only the first time a PDF is attached, pinned to version 3.11.174, checked with Subresource Integrity,
+and run with eval turned off (the fix for CVE-2024-4367 in that version). The file never leaves the
+browser.
+
+A chip above the text field shows the file's name, pages and length, with a ✕ to remove it. Sent,
+the chip appears above your question (a document alone asks for a short summary). The model gets the
+text wrapped in `<document>` tags, marked as material to read rather than instructions, followed by
+your question. A long document is cut to 60,000 characters, keeping its first 48,000 and last 12,000
+with a note where the middle was left out, so it never exceeds the budget or slows the chat.
+Follow-up questions keep the document as context for the newest three documents. Offline, the
+assistant says it needs the internet to answer about the file.
+
 ## Voice
 
 - **Dictation:** the 🎤 button next to the text field uses the browser's speech recognition (Web Speech

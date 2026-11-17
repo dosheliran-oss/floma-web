@@ -171,7 +171,7 @@
 
   /** Replaces {key} placeholders; the user's own text (name, notes, answer) is filled last. */
   function fill(template, values) {
-    const late = ["name", "notes", "answer"];
+    const late = ["name", "notes", "answer", "question", "text"];
     const keys = Object.keys(values).filter((k) => !late.includes(k)).concat(late.filter((k) => k in values));
     let out = template;
     for (const key of keys) out = out.split(`{${key}}`).join(String(values[key]));
@@ -602,13 +602,17 @@
    * the device, a repeat of an earlier answer to the very same question, a hello or thanks, or an honest
    * "I'm in local mode". history: earlier messages, not including this one. Returns { text, emotion, kind }.
    */
-  function offlineAnswer(text, language, now, notes = "", history = [], hasImage = false) {
+  function offlineAnswer(text, language, now, notes = "", history = [], hasImage = false, hasDocument = false) {
     const off = P().offline;
     const lang = off.date_format[language] ? language : "HEBREW";
     const norm = normalizeWords(text);
     if (hasImage) { // seeing a picture needs the model: say so instead of guessing
       const vision = P().vision.offline;
       return { text: vision.reply[lang], emotion: vision.emotion, kind: "image_offline" };
+    }
+    if (hasDocument) { // so does reading a document
+      const docs = P().documents.offline;
+      return { text: docs.reply[lang], emotion: docs.emotion, kind: "document_offline" };
     }
     const intent = (key) => {
       const entry = off.intents.find((i) => i.key === key);
@@ -664,6 +668,45 @@
     return text.trim() || lines[language] || lines.HEBREW;
   }
 
+  // --- Documents (persona.py document_context): lengths count Unicode code points everywhere ---
+
+  function cleanDocumentText(text) {
+    let out = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+    out = out.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f﻿]/g, ""); // control characters and byte-order marks
+    out = (out + "\n").replace(/[ \t]+\n/g, "\n");
+    return out.replace(/\n{3,}/g, "\n\n").trim();
+  }
+
+  /**
+   * The message sent to Gemini for a document: its text inside <document> tags (material, not
+   * instructions), then the question. Longer than max_chars: the beginning and the end are kept.
+   * Returns { prompt, chars, truncated, omitted, question }.
+   */
+  function documentContext(name, text, question, language, pages = 0) {
+    const d = P().documents;
+    let points = Array.from(cleanDocumentText(text));
+    const chars = points.length;
+    let omitted = 0;
+    let body = points.join("");
+    if (chars > d.max_chars) {
+      omitted = chars - d.head_chars - d.tail_chars;
+      const note = fill(d.omitted_note, { omitted });
+      body = `${points.slice(0, d.head_chars).join("").trimEnd()}\n\n${note}\n\n${points.slice(chars - d.tail_chars).join("").trimStart()}`;
+    }
+    points = null;
+    const asked = question.trim() || d.default_prompt[language] || d.default_prompt.HEBREW;
+    const safeName = Array.from(name.replace(/[<>"]/g, "").trim()).slice(0, 120).join("") || "document";
+    const prompt = fill(d.context_template, {
+      name: safeName, pages: pages || "", chars, truncated: omitted ? ' truncated="true"' : "", question: asked, text: body,
+    });
+    return { prompt, chars, truncated: omitted > 0, omitted, question: asked };
+  }
+
+  function documentLine(key, language) {
+    const lines = P().documents[key];
+    return lines[language] || lines.HEBREW;
+  }
+
   window.FlomaCore = {
     MODELS, EMOTIONS, DEFAULT_SETTINGS, AiError,
     route, modelFor, detectSeriousMode, systemPrompt, buildPrompt, memoryNotes, summarizerPrompt,
@@ -672,5 +715,6 @@
     avatarImage, animated, greeting, emotionMotion, avatarFor, chatLine, errorLine, typingStage, unavailableLine,
     theme, label, modelForChoice, modelChain, fallsBack, goesOffline,
     normalizeWords, formatDate, nowParts, offlineAnswer, wakePhrases, isWakePhrase, imagePrompt, withImage,
+    cleanDocumentText, documentContext, documentLine,
   };
 })();

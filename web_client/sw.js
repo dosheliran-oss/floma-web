@@ -22,6 +22,7 @@ const SHELL = [
   "core.js",
   "memory.js",
   "voice.js",
+  "documents.js",
   "app.js",
   "manifest.json",
   "icons/icon-192.png",

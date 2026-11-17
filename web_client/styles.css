@@ -544,3 +544,35 @@ button.danger { background: transparent; color: var(--error); border: 1px solid 
   .composer textarea { min-width: 120px; padding-inline: 12px; }
   button.send { padding-inline: 14px; }
 }
+
+/* --- Documents: a chip with the file's type, name and size --- */
+.doc-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-variant);
+  color: var(--text);
+}
+.doc-chip[hidden] { display: none; }
+.doc-chip strong { display: block; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.9rem; }
+.doc-chip small { color: var(--muted); font-size: 0.75rem; }
+.doc-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 46px;
+  border-radius: 6px;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.bubble .doc-chip { margin-block-end: 8px; background: color-mix(in srgb, var(--background) 25%, transparent); border-color: transparent; color: inherit; }
+.bubble .doc-chip small { color: inherit; opacity: 0.8; }
+.attachment.has-doc .remove-image { inset-inline-start: auto; inset-inline-end: -6px; }
+.attachment.has-doc { width: fit-content; max-width: 100%; }

@@ -11,8 +11,10 @@
   const Core = window.FlomaCore;
   const Memory = window.FlomaMemory;
   const Voice = window.FlomaVoice;
+  const Docs = window.FlomaDocuments;
   const STORE = { key: "floma.apiKey", settings: "floma.settings", history: "floma.history" };
   const MAX_STORED = 200;
+  const KEEP_DOCUMENTS = 3; // document text kept in localStorage for follow-up questions, newest only
   const KEEP_PICTURES = 30; // thumbnails kept in localStorage for the newest messages only
   const AVATAR_DIR = "../app/src/main/res/drawable-nodpi/";
 
@@ -42,7 +44,8 @@
       keyGet: "להשגת מפתח בחינם: aistudio.google.com", keySave: "שמירה והתחלה", keyLater: "אחר כך",
       keyChecking: "בודק את המפתח מול Google…", keyInvalid: "Google דחתה את המפתח. כדאי לוודא שהעתקתם את כולו.",
       keyOffline: "אי אפשר להגיע ל-Google כרגע. המפתח נשמר, ננסה אותו בהודעה הבאה.",
-      attach: "צירוף תמונה", removeImage: "הסרת התמונה", picture: "תמונה ששלחת",
+      attach: "צירוף תמונה או מסמך", removeImage: "הסרת הקובץ", picture: "תמונה ששלחת", reading: "קורא את הקובץ…",
+      docPages: "{pages} עמודים · {chars} תווים", docPage: "עמוד אחד · {chars} תווים", docChars: "{chars} תווים", docCut: " · קוצר לאורך המותר",
       sectionAssistant: "העוזר", assistantHint: "Floma היא האפליקציה; העוזר הוא פרופיל שהיא טוענת. השיחה, הזיכרון וההגדרות נשארים כשמחליפים.",
       personaNote: "אישיות, הומור ומצב ליצן שייכים לטובי. העוזר הניטרלי של Floma תמיד ענייני.",
       sectionAppearance: "מראה", sectionVoice: "קול", voiceRate: "מהירות דיבור", voicePitch: "גובה קול", testVoice: "בדיקת קול",
@@ -92,7 +95,8 @@
       keyGet: "Get a free key at aistudio.google.com", keySave: "Save and start", keyLater: "Later",
       keyChecking: "Checking the key with Google…", keyInvalid: "Google rejected this key. Check that you copied all of it.",
       keyOffline: "Can't reach Google right now. The key was saved; it will be tried with your next message.",
-      attach: "Attach a picture", removeImage: "Remove the picture", picture: "Your picture",
+      attach: "Attach a picture or document", removeImage: "Remove the file", picture: "Your picture", reading: "Reading the file…",
+      docPages: "{pages} pages · {chars} characters", docPage: "1 page · {chars} characters", docChars: "{chars} characters", docCut: " · shortened to fit",
       sectionAssistant: "Assistant", assistantHint: "Floma is the app; the assistant is a profile it loads. Your chat, memory and settings stay when you switch.",
       personaNote: "Personality, humor and the jester act belong to Toby. The neutral Floma assistant is always matter-of-fact.",
       sectionAppearance: "Appearance", sectionVoice: "Voice", voiceRate: "Speaking speed", voicePitch: "Pitch", testVoice: "Test voice",
@@ -237,6 +241,7 @@
     bubble.className = `bubble ${message.role === "user" ? "user" : "toby"}${message.local ? " local" : ""}${message.error ? " error" : ""}`;
     bubble.dir = "auto";
     bubble.textContent = message.text; // never innerHTML: replies are untrusted text
+    if (message.document) bubble.prepend(documentChip(message.document));
     if (message.image && message.image.startsWith("data:image/")) {
       const picture = document.createElement("img");
       picture.className = "bubble-image";
@@ -364,7 +369,12 @@
   function persist() {
     const kept = state.messages.slice(-MAX_STORED);
     const withPictures = kept.length - KEEP_PICTURES;
-    save(STORE.history, kept.map((m, i) => (m.image && i < withPictures ? { ...m, image: undefined } : m)));
+    const withDocs = new Set(kept.map((m, i) => (m.context ? i : -1)).filter((i) => i >= 0).slice(-KEEP_DOCUMENTS));
+    save(STORE.history, kept.map((m, i) => {
+      let out = m.image && i < withPictures ? { ...m, image: undefined } : m;
+      if (out.context && !withDocs.has(i)) out = { ...out, context: undefined };
+      return out;
+    }));
     if (state.messages.length > MAX_STORED) state.messages = state.messages.slice(-MAX_STORED);
   }
 
@@ -403,16 +413,20 @@
 
   async function send(text) {
     if (state.thinking) return;
+    const doc = state.pendingDocument;
+    // The document's text goes to the model as context; the bubble shows a chip and the question.
+    const docContext = doc ? Core.documentContext(doc.name, doc.text, text, lang(), doc.pages) : null;
+    if (docContext) text = docContext.question;
     const image = state.pendingImage;
     // A picture always goes to the model; with no text the question is "What's in this picture?".
     const trimmed = image ? Core.imagePrompt(text, lang()) : text.trim();
     if (!trimmed) return;
     Voice.stopSpeaking(); // a new message interrupts Toby
     dictation.cancel(); // and late dictation results must not refill the cleared field
-    if (image) clearAttachment();
+    if (image || doc) clearAttachment();
     const routed = Core.route(trimmed, state.settings);
     const seriousChange = routed.seriousChange;
-    const route = image ? { kind: "model", model: Core.MODELS.DEFAULT, webSearch: false } : routed.route;
+    const route = image || doc ? { kind: "model", model: Core.MODELS.DEFAULT, webSearch: false } : routed.route;
 
     if (seriousChange) {
       state.settings.seriousMode = seriousChange === "ENTER";
@@ -429,7 +443,13 @@
       return;
     }
 
-    addMessage(image ? { role: "user", text: trimmed, image: image.thumb } : { role: "user", text: trimmed });
+    const sent = { role: "user", text: trimmed };
+    if (image) sent.image = image.thumb;
+    if (doc) {
+      sent.document = { name: doc.name, pages: doc.pages, kind: doc.kind, chars: docContext.chars, truncated: docContext.truncated };
+      sent.context = docContext.prompt;
+    }
+    addMessage(sent);
     if (!state.apiKey) {
       showError("MISSING_KEY");
       return;
@@ -437,7 +457,8 @@
 
     setThinking(true);
     setEmotion(Core.avatarFor("thinking"));
-    const history = state.messages.filter((m) => !m.local).map((m) => ({ role: m.role, text: m.text }));
+    // A document's text rides with its message (and with follow-ups while it's among the newest ones).
+    const history = state.messages.filter((m) => !m.local).map((m) => ({ role: m.role, text: m.context || m.text }));
     try {
       // The shared notes come from the local copy, so a GitHub outage never delays or breaks a reply.
       const reply = await Core.complete(state.apiKey, state.settings, history, route, Memory.notes(),
@@ -452,7 +473,7 @@
       if (!(e instanceof Core.AiError)) console.error(e); // a bug: still answered kindly below
       const kind = e instanceof Core.AiError ? e.kind : "BAD_RESPONSE";
       if (Core.goesOffline(kind)) {
-        answerOffline(trimmed, Boolean(image));
+        answerOffline(trimmed, Boolean(image), Boolean(doc));
       } else {
         showError(kind);
         setLive(false); // an error needs the user's attention
@@ -464,9 +485,9 @@
    * Local mode: no model could be reached (offline, timeouts, servers down), so the assistant answers
    * from this browser: the time, the date, its notes, or an earlier answer to the same question.
    */
-  function answerOffline(question, hasImage = false) {
+  function answerOffline(question, hasImage = false, hasDocument = false) {
     const earlier = state.messages.slice(0, -1); // without the question just asked
-    const answer = Core.offlineAnswer(question, lang(), Core.nowParts(), Memory.notes(), earlier, hasImage);
+    const answer = Core.offlineAnswer(question, lang(), Core.nowParts(), Memory.notes(), earlier, hasImage, hasDocument);
     addMessage({ role: "assistant", text: answer.text, local: true, offline: true });
     setEmotion(answer.emotion);
     say(answer.text);
@@ -805,7 +826,13 @@
   }
 
   async function attachFile(file) {
-    if (!file || !file.type.startsWith("image/")) return;
+    if (!file) return;
+    if (Docs.isDocument(file)) {
+      attachDocument(file);
+      return;
+    }
+    if (!file.type.startsWith("image/")) return;
+    state.pendingDocument = null;
     try {
       state.pendingImage = await prepareImage(file);
       showAttachment();
@@ -817,15 +844,64 @@
     }
   }
 
+  async function attachDocument(file) {
+    state.pendingImage = null;
+    state.pendingDocument = null;
+    setVoiceStatus("reading", "listening");
+    try {
+      state.pendingDocument = await Docs.readDocument(file);
+      setVoiceStatus(null);
+      showAttachment();
+      $("input").focus();
+    } catch (e) {
+      setVoiceStatus(null);
+      if (!(e instanceof Docs.DocumentError)) console.warn("Document not usable", e);
+      const kind = e instanceof Docs.DocumentError ? e.kind : "unreadable";
+      addMessage({ role: "assistant", text: Core.documentLine(kind, lang()), local: true, error: true });
+      clearAttachment();
+    }
+  }
+
+  /** 📄 name, pages and size: the attached document (before sending, and in the sent bubble). */
+  function documentChip(doc) {
+    const chip = document.createElement("div");
+    chip.className = "doc-chip";
+    const icon = document.createElement("span");
+    icon.className = "doc-icon";
+    icon.textContent = doc.kind === "pdf" ? "PDF" : "TXT";
+    const texts = document.createElement("span");
+    const name = document.createElement("strong");
+    name.textContent = doc.name;
+    name.dir = "auto";
+    const meta = document.createElement("small");
+    const chars = Number(doc.chars).toLocaleString();
+    meta.textContent = (doc.pages === 1 ? t("docPage") : doc.pages ? t("docPages").replace("{pages}", doc.pages) : t("docChars")).replace("{chars}", chars)
+      + (doc.truncated ? t("docCut") : "");
+    texts.append(name, meta);
+    chip.append(icon, texts);
+    return chip;
+  }
+
   function showAttachment() {
     const image = state.pendingImage;
-    $("attachment").hidden = !image;
+    const doc = state.pendingDocument;
+    $("attachment").hidden = !image && !doc;
+    $("attachmentImage").hidden = !image;
     if (image) $("attachmentImage").src = image.thumb;
     $("attachmentImage").alt = t("picture");
+    const slot = $("attachmentDoc");
+    slot.hidden = !doc;
+    slot.replaceChildren();
+    if (doc) {
+      const preview = Core.documentContext(doc.name, doc.text, "", lang(), doc.pages);
+      slot.append(...documentChip({ ...doc, chars: preview.chars, truncated: preview.truncated }).childNodes);
+    }
+    $("attachment").classList.toggle("has-doc", Boolean(doc));
   }
 
   function clearAttachment() {
     state.pendingImage = null;
+    state.pendingDocument = null;
     $("imageInput").value = "";
     showAttachment();
   }
