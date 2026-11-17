@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0F1115">
+  <meta name="description" content="Chat with Toby, your Floma companion.">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Floma">
+  <title>Floma</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="avatar-wrap" id="avatarWrap">
+        <img class="avatar" id="avatar" alt="" src="../app/src/main/res/drawable-nodpi/toby_idle.png" data-motion="breathe">
+      </div>
+      <div class="title">
+        <h1 id="assistantName">Toby</h1>
+        <span class="subtitle" id="subtitle"></span>
+      </div>
+      <button class="icon-button" id="openSettings" type="button" aria-controls="settings" aria-expanded="false">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.4 7.4 0 0 0-1.7-1L15 3.5h-4l-.4 2.5a7.4 7.4 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a7.6 7.6 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7.4 7.4 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7.4 7.4 0 0 0 1.7-1l2.4 1 2-3.4-2-1.6ZM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z" transform="translate(-1 0)"/></svg>
+        <span class="visually-hidden" data-i18n="settings"></span>
+      </button>
+    </header>
+
+    <p class="offline-banner" id="offlineBanner" role="status" hidden></p>
+    <main class="chat" id="chat" aria-live="polite"></main>
+
+    <form class="composer" id="composer">
+      <p class="voice-status" id="voiceStatus" role="status" hidden></p>
+      <textarea id="input" rows="1" dir="auto" data-i18n-placeholder="placeholder" autocomplete="off"></textarea>
+      <button class="mic" id="mic" type="button" aria-pressed="false" data-i18n-label="micStart" hidden><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg></button>
+      <button class="send" id="send" type="submit" data-i18n="send"></button>
+    </form>
+  </div>
+
+  <div class="scrim" id="scrim" hidden></div>
+  <aside class="drawer" id="settings" aria-labelledby="settingsTitle" hidden>
+    <div class="drawer-head">
+      <h2 id="settingsTitle" data-i18n="settings"></h2>
+      <button class="icon-button" id="closeSettings" type="button" data-i18n-label="close">✕</button>
+    </div>
+
+    <section>
+      <h3 data-i18n="sectionToby"></h3>
+      <label><span data-i18n="name"></span><input id="setName" type="text" maxlength="40" dir="auto"></label>
+      <label><span data-i18n="personality"></span>
+        <select id="setPersonality">
+          <option value="FRIENDLY" data-i18n="pFriendly"></option>
+          <option value="PLAYFUL" data-i18n="pPlayful"></option>
+          <option value="PROFESSIONAL" data-i18n="pProfessional"></option>
+          <option value="CONCISE" data-i18n="pConcise"></option>
+        </select>
+      </label>
+      <label><span data-i18n="humor"></span><input id="setHumor" type="range" min="0" max="1" step="0.05"></label>
+      <label><span data-i18n="language"></span>
+        <select id="setLanguage"><option value="HEBREW">עברית</option><option value="ENGLISH">English</option></select>
+      </label>
+      <label class="row"><input id="setSerious" type="checkbox"><span data-i18n="serious"></span></label>
+      <label class="row"><input id="setSpeak" type="checkbox"><span data-i18n="speakReplies"></span></label>
+      <p class="hint" id="speakHint"></p>
+      <label><span data-i18n="instructions"></span><textarea id="setInstructions" rows="3" dir="auto"></textarea></label>
+    </section>
+
+    <section>
+      <h3 data-i18n="sectionModel"></h3>
+      <p class="hint" id="keyStatus"></p>
+      <div class="buttons">
+        <button type="button" id="changeKey" data-i18n="changeKey"></button>
+        <button type="button" id="removeKey" class="danger" data-i18n="removeKey"></button>
+      </div>
+    </section>
+
+    <section>
+      <h3 data-i18n="sectionApp"></h3>
+      <p class="hint" id="installStatus"></p>
+      <button type="button" id="installApp" data-i18n="installApp" hidden></button>
+    </section>
+
+    <section>
+      <h3 data-i18n="sectionMemory"></h3>
+      <p class="hint" data-i18n="memoryHint"></p>
+      <button type="button" id="clearChat" class="danger" data-i18n="clearChat"></button>
+    </section>
+
+    <section>
+      <h3 data-i18n="sectionExtensions"></h3>
+      <label class="row"><input id="setWebSearch" type="checkbox"><span data-i18n="extSearch"></span></label>
+      <p class="ext off"><span data-i18n="extPc"></span><small data-i18n="needsApps"></small></p>
+      <p class="ext off"><span data-i18n="extPhone"></span><small data-i18n="needsAndroid"></small></p>
+    </section>
+
+    <section>
+      <h3 data-i18n="extGithub"></h3>
+      <p class="hint" data-i18n="githubHint"></p>
+      <p class="hint" id="githubStatus"></p>
+      <label><span data-i18n="githubToken"></span><input id="githubToken" type="password" autocomplete="off" spellcheck="false" dir="ltr"></label>
+      <label><span data-i18n="githubRepo"></span><input id="githubRepo" type="text" dir="ltr" spellcheck="false"></label>
+      <div class="buttons">
+        <button type="button" id="githubSave" data-i18n="githubSave"></button>
+        <button type="button" id="githubRemove" class="danger" data-i18n="githubRemove"></button>
+      </div>
+    </section>
+  </aside>
+
+  <dialog class="key-dialog" id="keyDialog">
+    <form method="dialog" id="keyForm">
+      <h2 data-i18n="keyTitle"></h2>
+      <p data-i18n="keyBody"></p>
+      <p class="hint" data-i18n="keyStorage"></p>
+      <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" data-i18n="keyGet"></a>
+      <input id="keyInput" type="password" autocomplete="off" spellcheck="false" dir="ltr" placeholder="AIza…">
+      <p class="error" id="keyError" role="alert"></p>
+      <div class="buttons">
+        <button type="submit" id="keySave" value="save" data-i18n="keySave"></button>
+        <button type="button" id="keyLater" data-i18n="keyLater"></button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Toby's persona, shared with Android and the desktop app (one file for all three). -->
+  <script src="../persona/toby_persona.js"></script>
+  <script src="core.js"></script>
+  <script src="memory.js"></script>
+  <script src="voice.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
