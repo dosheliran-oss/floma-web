@@ -25,8 +25,8 @@
   const RECENT_WINDOW = 20;
 
   const DEFAULT_SETTINGS = {
-    persona: "toby", // the assistant profile (personas.js): "toby" | "floma"
-    assistantName: "Toby",
+    persona: "floma", // the assistant profile (personas.js): Floma by default, "toby" is the add-on
+    assistantName: "",
     theme: "midnight", // floma_platform.js "themes"
     modelChoice: "AUTO", // AUTO | FLASH | LITE
     voiceRate: 1,
@@ -146,7 +146,7 @@
     if (!window.FLOMA_PLATFORM) throw new Error("persona/floma_platform.js is not loaded");
     return window.FLOMA_PLATFORM;
   };
-  const DEFAULT_PERSONA = "toby";
+  const DEFAULT_PERSONA = "floma"; // Floma, the neutral assistant, is the default; Toby is an add-on
 
   function personas() {
     if (!window.FLOMA_PERSONAS) throw new Error("persona/personas.js is not loaded");
@@ -161,7 +161,13 @@
 
   function personaId(persona) { return persona in personas() ? persona : DEFAULT_PERSONA; }
 
-  function assistantName(name, persona) { return (name || "").trim() || profile(persona).default_name; }
+  /** The user's name for the assistant, or the persona's; another persona's default name follows the active one. */
+  function assistantName(name, persona) {
+    const trimmed = (name || "").trim();
+    const active = profile(persona).default_name;
+    const defaults = Object.values(personas()).map((p) => p.default_name);
+    return !trimmed || (trimmed !== active && defaults.includes(trimmed)) ? active : trimmed;
+  }
 
   /** Switching persona: a name that was the old persona's default follows the new one; a chosen name stays. */
   function nameAfterSwitch(name, oldPersona, newPersona) {
@@ -187,7 +193,7 @@
   function buildPrompt({ platform, name, personality, humor, language, serious, webSearch, memory = "", custom = "", persona = DEFAULT_PERSONA }) {
     const p = P();
     const prof = profile(persona);
-    const who = name.trim() || prof.default_name;
+    const who = assistantName(name, persona);
     const where = p.platforms[platform];
     const [kill1, kill2] = p.kill_phrases;
     const percent = humorPercent(humor);

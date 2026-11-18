@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#0F1115">
-  <meta name="description" content="Chat with Toby, your Floma companion.">
+  <meta name="description" content="Floma, your AI assistant: chat in the browser, with Toby as an optional companion.">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -19,13 +19,15 @@
 <body>
   <div class="app">
     <header class="topbar">
+      <button class="icon-button" id="openSessions" type="button" aria-controls="sessions" aria-expanded="false" data-i18n-label="chats"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z"/></svg></button>
       <div class="avatar-wrap" id="avatarWrap">
-        <img class="avatar" id="avatar" alt="" src="../app/src/main/res/drawable-nodpi/toby_idle.png" data-motion="breathe">
+        <img class="avatar" id="avatar" alt="" src="../app/src/main/res/drawable-nodpi/floma_logo.png" data-motion="none">
       </div>
       <div class="title">
-        <h1 id="assistantName">Toby</h1>
+        <h1 id="assistantName">Floma</h1>
         <span class="subtitle"><span class="brand">Floma</span> · <span id="subtitle"></span></span>
       </div>
+      <button class="icon-button" id="newChat" type="button" data-i18n-label="newChat"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75L3 17.25ZM20.7 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83Z"/></svg></button>
       <button class="icon-button" id="openSettings" type="button" aria-controls="settings" aria-expanded="false">
         <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.4 7.4 0 0 0-1.7-1L15 3.5h-4l-.4 2.5a7.4 7.4 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a7.6 7.6 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7.4 7.4 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7.4 7.4 0 0 0 1.7-1l2.4 1 2-3.4-2-1.6ZM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z" transform="translate(-1 0)"/></svg>
         <span class="visually-hidden" data-i18n="settings"></span>
@@ -52,6 +54,16 @@
   </div>
 
   <div class="scrim" id="scrim" hidden></div>
+  <!-- Chats: one session per conversation, newest first. -->
+  <aside class="sessions" id="sessions" aria-labelledby="sessionsTitle" hidden>
+    <div class="drawer-head">
+      <h2 id="sessionsTitle" data-i18n="chats"></h2>
+      <button class="icon-button" id="closeSessions" type="button" data-i18n-label="close">✕</button>
+    </div>
+    <button type="button" class="new-chat" id="sessionsNewChat" data-i18n="newChat"></button>
+    <p class="hint" id="ephemeralHint" hidden></p>
+    <ul class="session-list" id="sessionList"></ul>
+  </aside>
   <aside class="drawer" id="settings" aria-labelledby="settingsTitle" hidden>
     <div class="drawer-head">
       <h2 id="settingsTitle"><span class="brand">Floma</span> <span data-i18n="settings"></span></h2>
@@ -61,7 +73,11 @@
     <section>
       <h3 data-i18n="sectionAssistant"></h3>
       <p class="hint" data-i18n="assistantHint"></p>
-      <div class="persona-picker" id="personaPicker" role="radiogroup" data-i18n-label="sectionAssistant"></div>
+      <label class="toby-addon">
+        <img id="tobyAddonArt" alt="" src="../app/src/main/res/drawable-nodpi/toby_happy.png">
+        <span><strong data-i18n="tobyAddon"></strong><small id="tobyAddonDesc"></small></span>
+        <input id="setToby" type="checkbox" role="switch">
+      </label>
     </section>
 
     <section>

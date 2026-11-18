@@ -39,17 +39,18 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
+/* The chat fills the whole window on every screen: no phone-width column on desktop monitors.
+   100vh first for older browsers, then 100dvh (the visible height on phones, without the URL bar). */
+html, body { overflow: hidden; }
 .app {
   display: grid;
   grid-template-rows: auto auto 1fr auto;
+  width: 100%;
+  height: 100vh;
   height: 100dvh;
-  max-width: 760px;
-  margin: 0 auto;
+  min-width: 0;
   /* Installed on a phone, the page runs edge to edge: keep clear of the notch and home bar. */
   padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
-}
-@media (min-width: 820px) {
-  .app { border-inline: 1px solid var(--border); background: color-mix(in srgb, var(--surface) 35%, var(--background)); }
 }
 
 /* --- Top bar --- */
@@ -157,7 +158,13 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .bubble.local { border: 1px dashed var(--border); }
 .bubble.user.local { border-color: var(--on-user-bubble); }
-.bubble.error { background: var(--error-container); color: var(--on-error-container); border: 0; }
+/* Notices (no key yet, a picture that wouldn't open): calm, in the assistant's colors, never a red alarm. */
+.bubble.notice {
+  background: var(--surface-variant);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-inline-start: 3px solid var(--primary);
+}
 
 /* New messages rise and fade in; the user's grow from their corner, Toby's from his side. */
 .bubble.enter { animation: bubble-in 0.28s var(--ease-out) both; transform-origin: bottom left; }
@@ -436,25 +443,6 @@ button.danger { background: transparent; color: var(--error); border: 1px solid 
 
 /* Settings: persona cards and theme swatches. */
 .drawer h2 { display: flex; gap: 6px; align-items: baseline; }
-.persona-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-block: 10px; }
-.persona-card {
-  display: grid;
-  justify-items: center;
-  gap: 4px;
-  padding: 12px 8px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: var(--surface-variant);
-  color: var(--text);
-  text-align: center;
-  cursor: pointer;
-  transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.1s ease;
-}
-.persona-card:hover { border-color: var(--primary); }
-.persona-card:active { transform: scale(0.98); }
-.persona-card.selected { border: 2px solid var(--primary); background: color-mix(in srgb, var(--primary) 14%, var(--surface-variant)); }
-.persona-card img { width: 56px; height: 56px; object-fit: contain; }
-.persona-card small { color: var(--muted); font-size: 0.75rem; line-height: 1.3; }
 .theme-picker { display: flex; flex-wrap: wrap; gap: 10px; margin-block: 10px; }
 .swatch {
   display: grid;
@@ -576,3 +564,99 @@ button.danger { background: transparent; color: var(--error); border: 1px solid 
 .bubble .doc-chip small { color: inherit; opacity: 0.8; }
 .attachment.has-doc .remove-image { inset-inline-start: auto; inset-inline-end: -6px; }
 .attachment.has-doc { width: fit-content; max-width: 100%; }
+
+/* --- Wide screens: bubbles keep a readable line length inside the full-width chat --- */
+@media (min-width: 1024px) {
+  .bubble { max-width: min(78%, 880px); }
+  .chat { padding: 20px clamp(16px, 4vw, 56px); }
+  .composer { padding-inline: clamp(16px, 4vw, 56px); }
+}
+
+/* --- Toby add-on switch (Settings > Assistant) --- */
+.drawer label.toby-addon {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface-variant);
+  cursor: pointer;
+}
+.toby-addon img { width: 52px; height: 52px; object-fit: contain; flex: none; }
+.toby-addon > span { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.toby-addon small { color: var(--muted); font-size: 0.78rem; line-height: 1.3; }
+.toby-addon input { width: 20px; height: 20px; flex: none; accent-color: var(--primary); }
+.toby-addon:has(input:checked) { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, var(--surface-variant)); }
+
+/* --- Chats: a drawer on phones and narrow windows (inline-start, like Settings), a fixed column on
+   wide screens. The column ignores the [hidden] toggle and the chat moves over to make room. --- */
+.sessions {
+  position: fixed;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: min(300px, 86vw);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: max(12px, env(safe-area-inset-top)) 12px 16px;
+  background: var(--surface);
+  border-inline-end: 1px solid var(--border);
+  animation: drawer-in 0.24s var(--ease-out) both;
+  z-index: 2;
+}
+[dir="rtl"] .sessions { animation-name: drawer-in-rtl; }
+.sessions[hidden] { display: none; }
+.sessions h2 { margin: 0; font-size: 1.1rem; }
+.scrim { z-index: 1; }
+.drawer { z-index: 3; }
+.new-chat {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: transparent;
+  font-weight: 600;
+  text-align: start;
+  cursor: pointer;
+}
+.new-chat::before { content: "+ "; color: var(--primary); }
+.new-chat:hover { background: var(--surface-variant); }
+.session-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; display: grid; gap: 2px; align-content: start; flex: 1; }
+.session { display: flex; align-items: center; border-radius: 10px; }
+.session:hover, .session.active { background: var(--surface-variant); }
+.session.active { box-shadow: inset 3px 0 0 var(--primary); }
+[dir="rtl"] .session.active { box-shadow: inset -3px 0 0 var(--primary); }
+.session-open {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  text-align: start;
+  cursor: pointer;
+}
+.session-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.92rem; }
+.session-open small { color: var(--muted); font-size: 0.75rem; }
+.session-delete {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  margin-inline-end: 4px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  opacity: 0;
+}
+.session:hover .session-delete, .session-delete:focus-visible, .session.active .session-delete { opacity: 1; }
+.session-delete:hover { background: var(--background); color: var(--text); }
+@media (hover: none) { .session-delete { opacity: 1; } }
+
+@media (min-width: 1024px) {
+  .sessions, .sessions[hidden] { display: flex; width: 280px; animation: none; }
+  .app { padding-inline-start: 280px; }
+  #openSessions, #closeSessions { display: none; }
+}

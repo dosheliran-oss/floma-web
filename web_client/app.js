@@ -1,9 +1,15 @@
 /*
  * Floma web client - UI: chat screen, settings drawer, first-launch key dialog.
  *
- * Storage (this browser only): the Gemini key, settings and the last messages live in
+ * Storage (this browser only): the Gemini key, settings and the chat sessions live in
  * localStorage. The key is never written into the HTML or any file in the repository; it is
  * sent only to Google, in the x-goog-api-key header.
+ *
+ * Chat sessions: "floma.sessions" is the index (newest first), each chat's messages are in
+ * "floma.chat.<id>". With Floma (the default) chats stay until deleted (the oldest beyond
+ * MAX_SESSIONS go). With Toby on, a chat is ephemeral: when the user moves on (New chat, another
+ * chat, next start) Toby distills its facts into the GitHub memory and the chat is then removed
+ * from this browser. Until the facts are safely on GitHub, the chat stays.
  */
 (function () {
   "use strict";
@@ -12,8 +18,14 @@
   const Memory = window.FlomaMemory;
   const Voice = window.FlomaVoice;
   const Docs = window.FlomaDocuments;
-  const STORE = { key: "floma.apiKey", settings: "floma.settings", history: "floma.history" };
-  const MAX_STORED = 200;
+  const STORE = {
+    key: "floma.apiKey", settings: "floma.settings", sessions: "floma.sessions", active: "floma.activeSession",
+    chat: (id) => `floma.chat.${id}`,
+    legacyHistory: "floma.history", // the single infinite chat before sessions (migrated once)
+  };
+  const MAX_STORED = 200; // messages per chat
+  const MAX_SESSIONS = 30; // chats kept in this browser (Floma); the oldest beyond this are dropped
+  const KEY_PROBLEMS = ["MISSING_KEY", "INVALID_KEY"];
   const KEEP_DOCUMENTS = 3; // document text kept in localStorage for follow-up questions, newest only
   const KEEP_PICTURES = 30; // thumbnails kept in localStorage for the newest messages only
   const AVATAR_DIR = "../app/src/main/res/drawable-nodpi/";
@@ -27,8 +39,14 @@
       pFriendly: "הומוריסטי וחברותי", pPlayful: "הומוריסטי מאוד", pProfessional: "רציני ומקצועי", pConcise: "רציני ותמציתי",
       sectionModel: "מודל (Gemini)", keySaved: "מפתח שמור בדפדפן הזה.", keyMissing: "אין מפתח שמור.",
       changeKey: "החלפת מפתח", removeKey: "מחיקת מפתח", addKey: "הוספת מפתח",
-      sectionMemory: "זיכרון", memoryHint: "ההודעות האחרונות נשמרות בדפדפן הזה בלבד.", clearChat: "מחיקת השיחה",
-      confirmClear: "למחוק את כל השיחה מהדפדפן הזה?", confirmRemoveKey: "למחוק את המפתח מהדפדפן הזה?",
+      sectionMemory: "זיכרון", memoryHint: "השיחות נשמרות בדפדפן הזה בלבד.", clearChat: "מחיקת כל השיחות",
+      confirmClear: "למחוק את כל השיחות מהדפדפן הזה?", confirmRemoveKey: "למחוק את המפתח מהדפדפן הזה?",
+      chats: "שיחות", newChat: "שיחה חדשה", untitled: "שיחה חדשה", deleteChat: "מחיקת השיחה",
+      confirmDeleteChat: "למחוק את השיחה הזו?", noChats: "עוד אין שיחות קודמות.",
+      ephemeralOn: "טובי פעיל: כשעוברים לשיחה אחרת, הוא שומר את מה שלמד בזיכרון ב-GitHub ומוחק את השיחה מהדפדפן.",
+      ephemeralNoGithub: "טובי פעיל, אבל הזיכרון ב-GitHub לא מחובר, אז השיחות נשארות כאן. אפשר לחבר אותו בהגדרות ← תוספים.",
+      notSaved: "ממתינה לשמירה בזיכרון",
+      tobyAddon: "טובי (תוסף ליצן)", keyNotice: "כדי לענות על הכול אני צריך מפתח Gemini. בינתיים אני עונה במצב מקומי.",
       sectionExtensions: "תוספים", extSearch: "חיפוש באינטרנט (Google Search)",
       extPc: "המחשב (Toby PC companion)", extPhone: "פעולות בטלפון ואנשי קשר", extGithub: "זיכרון משותף (GitHub)",
       needsAndroid: "זמין רק באפליקציית האנדרואיד", needsApps: "זמין באפליקציית המחשב ובאפליקציית האנדרואיד",
@@ -46,7 +64,7 @@
       keyOffline: "אי אפשר להגיע ל-Google כרגע. המפתח נשמר, ננסה אותו בהודעה הבאה.",
       attach: "צירוף תמונה או מסמך", removeImage: "הסרת הקובץ", picture: "תמונה ששלחת", reading: "קורא את הקובץ…",
       docPages: "{pages} עמודים · {chars} תווים", docPage: "עמוד אחד · {chars} תווים", docChars: "{chars} תווים", docCut: " · קוצר לאורך המותר",
-      sectionAssistant: "העוזר", assistantHint: "Floma היא האפליקציה; העוזר הוא פרופיל שהיא טוענת. השיחה, הזיכרון וההגדרות נשארים כשמחליפים.",
+      sectionAssistant: "העוזר", assistantHint: "Floma היא העוזרת שלך: רגועה, מדויקת, בלי דמות. הפעילו את טובי בשביל הליצן השנון עם הדמות המונפשת.",
       personaNote: "אישיות, הומור ומצב ליצן שייכים לטובי. העוזר הניטרלי של Floma תמיד ענייני.",
       sectionAppearance: "מראה", sectionVoice: "קול", voiceRate: "מהירות דיבור", voicePitch: "גובה קול", testVoice: "בדיקת קול",
       testPhrase: "היי, ככה אני נשמע.", modelChoice: "בחירת מודל",
@@ -78,8 +96,14 @@
       pFriendly: "Humorous and friendly", pPlayful: "Very humorous", pProfessional: "Serious and professional", pConcise: "Serious and concise",
       sectionModel: "Model (Gemini)", keySaved: "A key is saved in this browser.", keyMissing: "No key saved.",
       changeKey: "Change key", removeKey: "Remove key", addKey: "Add key",
-      sectionMemory: "Memory", memoryHint: "Recent messages are kept in this browser only.", clearChat: "Clear chat",
-      confirmClear: "Delete the whole chat from this browser?", confirmRemoveKey: "Remove the key from this browser?",
+      sectionMemory: "Memory", memoryHint: "Chats are kept in this browser only.", clearChat: "Delete all chats",
+      confirmClear: "Delete all chats from this browser?", confirmRemoveKey: "Remove the key from this browser?",
+      chats: "Chats", newChat: "New chat", untitled: "New chat", deleteChat: "Delete chat",
+      confirmDeleteChat: "Delete this chat?", noChats: "No earlier chats yet.",
+      ephemeralOn: "Toby is on: when you move to another chat, he saves what he learned to your GitHub memory and clears the chat from this browser.",
+      ephemeralNoGithub: "Toby is on, but GitHub memory isn't connected, so chats stay here. Connect it in Settings > Extensions.",
+      notSaved: "Waiting to be saved to memory",
+      tobyAddon: "Toby (jester add-on)", keyNotice: "To answer everything I need a Gemini key. Until then I'm answering in local mode.",
       sectionExtensions: "Extensions", extSearch: "Web search (Google Search)",
       extPc: "PC (Toby PC companion)", extPhone: "Phone actions and contacts", extGithub: "Shared memory (GitHub)",
       needsAndroid: "Only in the Android app", needsApps: "In the desktop and Android apps",
@@ -97,7 +121,7 @@
       keyOffline: "Can't reach Google right now. The key was saved; it will be tried with your next message.",
       attach: "Attach a picture or document", removeImage: "Remove the file", picture: "Your picture", reading: "Reading the file…",
       docPages: "{pages} pages · {chars} characters", docPage: "1 page · {chars} characters", docChars: "{chars} characters", docCut: " · shortened to fit",
-      sectionAssistant: "Assistant", assistantHint: "Floma is the app; the assistant is a profile it loads. Your chat, memory and settings stay when you switch.",
+      sectionAssistant: "Assistant", assistantHint: "Floma is your assistant: calm, precise, no character act. Turn on Toby for the witty jester with his animated art.",
       personaNote: "Personality, humor and the jester act belong to Toby. The neutral Floma assistant is always matter-of-fact.",
       sectionAppearance: "Appearance", sectionVoice: "Voice", voiceRate: "Speaking speed", voicePitch: "Pitch", testVoice: "Test voice",
       testPhrase: "Hi, this is how I sound.", modelChoice: "Model",
@@ -145,8 +169,11 @@
   const state = {
     apiKey: load(STORE.key, null),
     settings: Object.assign({}, Core.DEFAULT_SETTINGS, load(STORE.settings, {})),
-    // { role: "user" | "assistant", text, local?, error?, sources?, searchWidget?, action? }
-    messages: load(STORE.history, []),
+    // [{ id, title, created, updated, memoryTs, unsaved? }], newest first; memoryTs: newest message in the notes
+    sessions: [],
+    sessionId: null,
+    // The open chat: { role: "user" | "assistant", text, ts, local?, notice?, offline?, reason?, sources?, action? }
+    messages: [],
     thinking: false,
     thinkingSince: 0,
   };
@@ -238,7 +265,9 @@
 
   function renderMessage(message) {
     const bubble = document.createElement("div");
-    bubble.className = `bubble ${message.role === "user" ? "user" : "toby"}${message.local ? " local" : ""}${message.error ? " error" : ""}`;
+    // Error bubbles saved before the graceful fallback render as calm notices too.
+    const notice = Boolean(message.notice || message.error);
+    bubble.className = `bubble ${message.role === "user" ? "user" : "toby"}${message.local ? " local" : ""}${notice ? " notice" : ""}`;
     bubble.dir = "auto";
     bubble.textContent = message.text; // never innerHTML: replies are untrusted text
     if (message.document) bubble.prepend(documentChip(message.document));
@@ -274,13 +303,14 @@
       frame.srcdoc = `<base target="_blank">${message.searchWidget}`;
       bubble.append(frame);
     }
-    if (message.role === "assistant" && !message.error) {
+    if (message.role === "assistant" && !notice) {
       const footer = document.createElement("div");
       footer.className = "bubble-footer";
       if (message.offline) {
         const tag = document.createElement("span");
         tag.className = "tag";
         tag.textContent = `⚡ ${t("localMode")}`;
+        if (message.reason) tag.title = Core.errorLine(message.reason, lang())[0]; // why, without a red bubble
         footer.append(tag);
       }
       footer.append(speakButton(message.text));
@@ -366,16 +396,193 @@
     updateSubtitle();
   }
 
+  /** Saves the open chat (pictures and document text only for the newest messages) and its index entry. */
   function persist() {
     const kept = state.messages.slice(-MAX_STORED);
     const withPictures = kept.length - KEEP_PICTURES;
     const withDocs = new Set(kept.map((m, i) => (m.context ? i : -1)).filter((i) => i >= 0).slice(-KEEP_DOCUMENTS));
-    save(STORE.history, kept.map((m, i) => {
+    save(STORE.chat(state.sessionId), kept.map((m, i) => {
       let out = m.image && i < withPictures ? { ...m, image: undefined } : m;
       if (out.context && !withDocs.has(i)) out = { ...out, context: undefined };
       return out;
     }));
     if (state.messages.length > MAX_STORED) state.messages = state.messages.slice(-MAX_STORED);
+    touchSession();
+  }
+
+  // --- Chat sessions ---
+
+  const newSessionId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  const sessionEntry = (id) => state.sessions.find((x) => x.id === id);
+  const saveSessions = () => save(STORE.sessions, state.sessions);
+
+  /** A chat's name: the start of its first message. */
+  function sessionTitle(messages) {
+    const first = messages.find((m) => m.role === "user" && m.text && m.text.trim());
+    if (!first) return "";
+    const text = first.text.trim().replace(/\s+/g, " ");
+    return text.length > 48 ? `${text.slice(0, 47)}…` : text;
+  }
+
+  /** The open chat joins the list with its first message and moves to the top with every new one. */
+  function touchSession() {
+    if (!state.messages.length) return;
+    let entry = sessionEntry(state.sessionId);
+    if (!entry) entry = { id: state.sessionId, title: "", created: Date.now(), updated: 0, memoryTs: 0 };
+    entry.title = sessionTitle(state.messages) || entry.title;
+    entry.updated = Date.now();
+    state.sessions = [entry, ...state.sessions.filter((x) => x.id !== entry.id)];
+    for (const dropped of state.sessions.slice(MAX_SESSIONS)) save(STORE.chat(dropped.id), null);
+    state.sessions = state.sessions.slice(0, MAX_SESSIONS);
+    saveSessions();
+    renderSessions();
+  }
+
+  /** Startup: the session index, the chat that was open, and the old single chat moved into a session. */
+  function loadSessions() {
+    state.sessions = (load(STORE.sessions, []) || []).filter((x) => x && x.id);
+    const legacy = load(STORE.legacyHistory, null);
+    if (Array.isArray(legacy) && legacy.length) {
+      const id = newSessionId();
+      save(STORE.chat(id), legacy);
+      const last = legacy[legacy.length - 1];
+      state.sessions.unshift({ id, title: sessionTitle(legacy), created: (legacy[0] && legacy[0].ts) || Date.now(),
+        updated: (last && last.ts) || Date.now(), memoryTs: 0 });
+      saveSessions();
+      save(STORE.active, id);
+    }
+    save(STORE.legacyHistory, null);
+    const active = load(STORE.active, null);
+    const known = Boolean(sessionEntry(active));
+    state.sessionId = known ? active : newSessionId();
+    state.messages = known ? load(STORE.chat(active), []) : [];
+    save(STORE.active, state.sessionId);
+  }
+
+  /** Opens a chat (id) or a fresh one (null); the chat left behind is retired if Toby is on. */
+  function openSession(id) {
+    const leaving = state.sessionId;
+    if (state.thinking || (id && id === leaving) || (!id && !state.messages.length)) {
+      setSessions(false);
+      $("input").focus();
+      return;
+    }
+    Voice.stopSpeaking();
+    setLive(false);
+    clearAttachment();
+    state.sessionId = id || newSessionId();
+    state.messages = id ? load(STORE.chat(id), []) : [];
+    save(STORE.active, state.sessionId);
+    renderChat();
+    renderSessions();
+    setEmotion(Core.avatarFor(state.messages.length ? "greeting" : "default"));
+    setSessions(false);
+    $("input").focus();
+    retireSession(leaving);
+  }
+
+  function deleteSession(id) {
+    save(STORE.chat(id), null);
+    state.sessions = state.sessions.filter((x) => x.id !== id);
+    saveSessions();
+    if (id === state.sessionId) {
+      state.sessionId = newSessionId();
+      state.messages = [];
+      save(STORE.active, state.sessionId);
+      renderChat();
+      setEmotion(Core.avatarFor("default"));
+    }
+    renderSessions();
+  }
+
+  const tobyOn = () => persona() === "toby";
+  function summarizer() {
+    const key = state.apiKey;
+    const name = assistant();
+    return (summary, sections, conversation) => Core.summarizeMemory(key, name, summary, sections, conversation);
+  }
+
+  /**
+   * Ephemeral memory (Toby only): a chat the user left is distilled into the GitHub notes, and once
+   * they are safely pushed, the chat is removed from this browser. Without GitHub, offline, or with
+   * Gemini failing, the chat stays (marked) and is retried on the next start or the next switch.
+   */
+  async function retireSession(id) {
+    const entry = sessionEntry(id);
+    if (!entry || id === state.sessionId || !tobyOn() || !Memory.hasToken()) return;
+    const saved = await Memory.distill(load(STORE.chat(id), []), summarizer(), entry.memoryTs || 0);
+    if (id === state.sessionId || !sessionEntry(id)) return; // reopened or deleted meanwhile
+    if (saved === true) {
+      deleteSession(id);
+    } else {
+      sessionEntry(id).unsaved = true;
+      saveSessions();
+      renderSessions();
+    }
+    fillSettings();
+  }
+
+  /** Toby on (at startup, or just switched on): retire every chat that isn't open, oldest first. */
+  async function sweepSessions() {
+    if (!tobyOn() || !Memory.hasToken()) return;
+    for (const entry of state.sessions.slice().reverse()) {
+      if (entry.id !== state.sessionId) await retireSession(entry.id);
+    }
+  }
+
+  function renderSessions() {
+    const list = $("sessionList");
+    list.replaceChildren();
+    const hint = $("ephemeralHint");
+    hint.hidden = !tobyOn();
+    hint.textContent = t(Memory.hasToken() ? "ephemeralOn" : "ephemeralNoGithub");
+    if (!state.sessions.length) {
+      const none = document.createElement("li");
+      none.className = "hint";
+      none.textContent = t("noChats");
+      list.append(none);
+    }
+    const locale = lang() === "ENGLISH" ? "en" : "he";
+    const today = new Date().toDateString();
+    for (const entry of state.sessions) {
+      const item = document.createElement("li");
+      item.className = `session${entry.id === state.sessionId ? " active" : ""}`;
+      const open = document.createElement("button");
+      open.type = "button";
+      open.className = "session-open";
+      if (entry.id === state.sessionId) open.setAttribute("aria-current", "true");
+      const title = document.createElement("span");
+      title.className = "session-title";
+      title.dir = "auto";
+      title.textContent = entry.title || t("untitled"); // never innerHTML: titles are what the user typed
+      const when = document.createElement("small");
+      const updated = new Date(entry.updated);
+      when.textContent = updated.toLocaleString(locale, updated.toDateString() === today
+        ? { hour: "2-digit", minute: "2-digit" } : { day: "numeric", month: "short" });
+      if (entry.unsaved && tobyOn()) when.textContent += ` · ${t("notSaved")}`;
+      open.append(title, when);
+      open.addEventListener("click", () => openSession(entry.id));
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "session-delete";
+      remove.textContent = "✕";
+      remove.setAttribute("aria-label", t("deleteChat"));
+      remove.title = t("deleteChat");
+      remove.addEventListener("click", () => { if (confirm(t("confirmDeleteChat"))) deleteSession(entry.id); });
+      item.append(open, remove);
+      list.append(item);
+    }
+  }
+
+  /** The chats list: a drawer on phones and narrow windows, a fixed column on wide screens (styles.css). */
+  const DOCKED = window.matchMedia("(min-width: 1024px)");
+  function setSessions(open) {
+    const wasOpen = !$("sessions").hidden && !DOCKED.matches;
+    $("sessions").hidden = !open;
+    $("scrim").hidden = !open || DOCKED.matches;
+    $("openSessions").setAttribute("aria-expanded", String(open));
+    if (open && !DOCKED.matches) $("closeSessions").focus();
+    else if (wasOpen) $("openSessions").focus();
   }
 
   /** Appends one bubble with an entry animation, keeping the typing indicator last. */
@@ -399,14 +606,25 @@
     scrollToEnd();
   }
 
-  /** Toby explains a failed request in his own words (persona file), never as a raw error. */
-  function showError(kind) {
-    const [text, emotion] = Core.errorLine(kind, state.settings.language);
-    addMessage({
-      role: "assistant", text, local: true, error: true,
-      action: kind === "INVALID_KEY" || kind === "MISSING_KEY" ? "addKey" : undefined,
-    });
-    setEmotion(emotion);
+  /**
+   * A failed request, handled without error bubbles. A missing or rejected key: one calm note with an
+   * "Add key" button (not repeated while it's still the latest note) and the key dialog, and the
+   * question is still answered in local mode. Anything else (Google down, timeouts, quota, a refusal,
+   * a garbled reply): the assistant answers in local mode, the reason only in the tag's tooltip.
+   */
+  function handleFailure(kind, question, hasImage, hasDocument) {
+    if (KEY_PROBLEMS.includes(kind)) {
+      const lastNote = [...state.messages].reverse().find((m) => m.role === "assistant");
+      if (!(lastNote && lastNote.action === "addKey") && !(lastNote && lastNote.offline && lastNote.reason === kind)) {
+        const text = kind === "MISSING_KEY" ? t("keyNotice") : Core.errorLine(kind, lang())[0];
+        addMessage({ role: "assistant", text, local: true, notice: true, action: "addKey" });
+      }
+      answerOffline(question, hasImage, hasDocument, kind);
+      setLive(false); // the key dialog needs the user's attention
+      openKeyDialog(kind === "INVALID_KEY" ? t("keyInvalid") : "");
+      return;
+    }
+    answerOffline(question, hasImage, hasDocument, kind);
   }
 
   // --- Sending ---
@@ -451,7 +669,7 @@
     }
     addMessage(sent);
     if (!state.apiKey) {
-      showError("MISSING_KEY");
+      handleFailure("MISSING_KEY", trimmed, Boolean(image), Boolean(doc));
       return;
     }
 
@@ -471,24 +689,19 @@
     } catch (e) {
       setThinking(false);
       if (!(e instanceof Core.AiError)) console.error(e); // a bug: still answered kindly below
-      const kind = e instanceof Core.AiError ? e.kind : "BAD_RESPONSE";
-      if (Core.goesOffline(kind)) {
-        answerOffline(trimmed, Boolean(image), Boolean(doc));
-      } else {
-        showError(kind);
-        setLive(false); // an error needs the user's attention
-      }
+      handleFailure(e instanceof Core.AiError ? e.kind : "BAD_RESPONSE", trimmed, Boolean(image), Boolean(doc));
     }
   }
 
   /**
-   * Local mode: no model could be reached (offline, timeouts, servers down), so the assistant answers
-   * from this browser: the time, the date, its notes, or an earlier answer to the same question.
+   * Local mode: no model answered (offline, timeouts, servers down, quota, no key), so the assistant
+   * answers from this browser: the time, the date, its notes, or an earlier answer to the same question.
+   * [reason]: the failure, shown only as the "local mode" tag's tooltip.
    */
-  function answerOffline(question, hasImage = false, hasDocument = false) {
-    const earlier = state.messages.slice(0, -1); // without the question just asked
+  function answerOffline(question, hasImage = false, hasDocument = false, reason = "NETWORK") {
+    const earlier = state.messages.filter((m) => !m.notice).slice(0, -1); // without the question just asked
     const answer = Core.offlineAnswer(question, lang(), Core.nowParts(), Memory.notes(), earlier, hasImage, hasDocument);
-    addMessage({ role: "assistant", text: answer.text, local: true, offline: true });
+    addMessage({ role: "assistant", text: answer.text, local: true, offline: true, reason });
     setEmotion(answer.emotion);
     say(answer.text);
   }
@@ -505,15 +718,21 @@
 
   // --- Shared memory (background; failures only show in Settings) ---
 
-  /** After a reply: pull what the other devices learned, then fold older messages into notes. */
+  /** After a reply: pull what the other devices learned, then fold this chat's older messages into notes. */
   function updateMemory() {
-    const key = state.apiKey;
-    const name = state.settings.assistantName || "Toby";
+    const id = state.sessionId;
     const messages = state.messages.slice();
+    const entry = sessionEntry(id);
     Memory.pull()
-      .then(() => Memory.fold(messages, (summary, sections, conversation) =>
-        Core.summarizeMemory(key, name, summary, sections, conversation)))
-      .then(fillSettings);
+      .then(() => Memory.fold(messages, summarizer(), entry ? entry.memoryTs || 0 : 0))
+      .then((covered) => {
+        const current = sessionEntry(id);
+        if (typeof covered === "number" && current) {
+          current.memoryTs = Math.max(current.memoryTs || 0, covered);
+          saveSessions();
+        }
+        fillSettings();
+      });
   }
 
   function memoryStatusText() {
@@ -528,26 +747,13 @@
 
   // --- Settings drawer ---
 
+  /** Floma is the assistant by default; Toby, the jester, is an add-on switched on here. */
   function fillPersonas() {
-    const picker = $("personaPicker");
-    picker.replaceChildren();
-    for (const [id, profile] of Object.entries(Core.personas())) {
-      const card = document.createElement("button");
-      card.type = "button";
-      card.className = `persona-card${id === persona() ? " selected" : ""}`;
-      card.setAttribute("role", "radio");
-      card.setAttribute("aria-checked", String(id === persona()));
-      const img = document.createElement("img");
-      img.src = `${AVATAR_DIR}${Core.avatarImage("HAPPY", id)}`;
-      img.alt = "";
-      const title = document.createElement("strong");
-      title.textContent = Core.label(profile, lang());
-      const description = document.createElement("small");
-      description.textContent = profile.description[lang()] || profile.description.HEBREW;
-      card.append(img, title, description);
-      card.addEventListener("click", () => switchPersona(id));
-      picker.append(card);
-    }
+    const on = tobyOn();
+    $("setToby").checked = on;
+    const profile = Core.profile(on ? "toby" : "floma");
+    $("tobyAddonDesc").textContent = profile.description[lang()] || profile.description.HEBREW;
+    $("tobyAddonArt").src = `${AVATAR_DIR}${Core.avatarImage("HAPPY", "toby")}`;
   }
 
   function switchPersona(id) {
@@ -557,7 +763,9 @@
     save(STORE.settings, state.settings);
     fillSettings();
     renderChat();
+    renderSessions();
     setEmotion(Core.avatarFor("greeting"));
+    sweepSessions(); // Toby just switched on: his chats are ephemeral, the earlier ones go to GitHub memory
   }
 
   function fillThemes() {
@@ -655,9 +863,9 @@
 
   // --- Key dialog ---
 
-  function openKeyDialog() {
+  function openKeyDialog(message = "") {
     $("keyInput").value = "";
-    $("keyError").textContent = "";
+    $("keyError").textContent = typeof message === "string" ? message : ""; // (also bound as a click handler)
     $("keySave").disabled = false;
     if (!$("keyDialog").open) $("keyDialog").showModal();
     $("keyInput").focus();
@@ -954,12 +1162,14 @@
   // --- Wiring ---
 
   function init() {
+    loadSessions();
     setupPwa();
     applyTheme();
     applyLanguage();
     fillSettings();
     renderChat();
-    const lastToby = [...state.messages].reverse().find((m) => m.role === "assistant" && !m.error);
+    renderSessions();
+    const lastToby = [...state.messages].reverse().find((m) => m.role === "assistant" && !m.error && !m.notice);
     setEmotion(Core.avatarFor(lastToby ? "greeting" : "default"));
     $("avatar").addEventListener("error", () => { $("avatar").style.visibility = "hidden"; });
 
@@ -984,9 +1194,19 @@
 
     $("openSettings").addEventListener("click", () => setDrawer(true));
     $("closeSettings").addEventListener("click", () => setDrawer(false));
-    $("scrim").addEventListener("click", () => setDrawer(false));
+    $("scrim").addEventListener("click", () => {
+      if (!$("settings").hidden) setDrawer(false);
+      else setSessions(false);
+    });
+    $("openSessions").addEventListener("click", () => setSessions(true));
+    $("closeSessions").addEventListener("click", () => setSessions(false));
+    $("newChat").addEventListener("click", () => openSession(null));
+    $("sessionsNewChat").addEventListener("click", () => openSession(null));
+    DOCKED.addEventListener("change", () => setSessions(false)); // widening docks the list: no drawer, no scrim
+    $("setToby").addEventListener("change", () => switchPersona($("setToby").checked ? "toby" : "floma"));
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && !$("settings").hidden) setDrawer(false);
+      else if (event.key === "Escape" && !$("sessions").hidden && !DOCKED.matches) setSessions(false);
       else if (event.key === "Escape") {
         setLive(false);
         Voice.stopSpeaking();
@@ -1033,11 +1253,15 @@
     });
     $("clearChat").addEventListener("click", () => {
       if (!confirm(t("confirmClear"))) return;
-      state.messages = [];
       Voice.stopSpeaking();
-      persist();
+      for (const entry of state.sessions) save(STORE.chat(entry.id), null);
+      save(STORE.chat(state.sessionId), null);
+      state.sessions = [];
+      saveSessions();
+      state.messages = [];
       Memory.forgetLocal(); // like Android: the local notes go too (GitHub keeps its files)
       renderChat();
+      renderSessions();
       setEmotion(Core.avatarFor("default"));
     });
 
@@ -1048,11 +1272,13 @@
       state.settings.githubRepo = $("githubRepo").value.trim() || Memory.DEFAULT_REPOSITORY;
       save(STORE.settings, state.settings);
       fillSettings();
-      Memory.syncNow().then(fillSettings);
+      renderSessions(); // the ephemeral hint follows the connection
+      Memory.syncNow().then(fillSettings).then(sweepSessions);
     });
     $("githubRemove").addEventListener("click", () => {
       Memory.setToken(null);
       fillSettings();
+      renderSessions();
     });
 
     $("keyForm").addEventListener("submit", submitKey);
@@ -1060,7 +1286,7 @@
 
     // Notes the phone or the PC added since last time (throttled; harmless offline).
     Memory.setRepository(() => state.settings.githubRepo || Memory.DEFAULT_REPOSITORY);
-    Memory.pull().then(fillSettings);
+    Memory.pull().then(fillSettings).then(sweepSessions); // Toby: chats left last time go to GitHub memory
 
     // First launch (or the key was removed): ask for it before anything else.
     if (!state.apiKey) openKeyDialog();

@@ -56,16 +56,35 @@ On the first launch it asks for your own Gemini API key from
 
 ## Floma and its assistants
 
-Floma is the app; the assistant is a profile it loads. **⚙ Settings → Assistant** switches between
-**Toby** (the jester, animated) and the neutral **Floma** assistant (calm, no jokes, a still logo).
-A default name follows the switch, a name you chose stays. **Appearance** has five color themes
+The app opens as **Floma**, a calm, neutral assistant with a still logo. **Toby**, the jester with
+animated art, is an add-on: switch him on in **⚙ Settings → Assistant → Toby (jester add-on)**. A
+default name follows the switch, a name you chose stays. **Appearance** has five color themes
 (Midnight, Ocean, Sunset, Forest, Jester), the same as on Android and the desktop. **Model** chooses
 which Gemini model answers first: Automatic, Flash or Flash-Lite.
 
+## Chats
+
+Each conversation is its own chat. **✎ New chat** (top bar) starts a fresh one, and the **Chats**
+list holds the earlier ones, newest first, named after their first message. On a wide screen the list
+is a column beside the chat; on a phone or a narrow window it's a drawer behind the ☰ button. ✕ deletes
+a chat. The page fills the whole window on a desktop monitor; long replies keep a readable line
+length.
+
+- **With Floma**, chats stay in this browser until you delete them (the newest 30 are kept).
+- **With Toby on**, chats are ephemeral: when you move on (New chat, another chat, or the next start),
+  Toby distills what he learned from the chat into your GitHub memory (Settings → Shared memory) and
+  then removes the chat from this browser, so the browser's storage doesn't grow. A chat is removed
+  only once its facts are safely on GitHub. Offline, with GitHub not connected, or with Gemini
+  failing, it stays (marked "waiting to be saved") and is retried later.
+- Chats saved by an older version (one long chat) are moved into the list as one chat.
+
 **When Gemini is slow or down:** if the first model times out (30 s), fails, can't be reached or is
-out of quota, Floma quietly asks the other model. If no model can be reached at all, the assistant
-answers in **local mode** from this browser: the time, the date, what it remembers about you, or
-its earlier answer to the very same question. Such answers are marked "⚡ Local mode".
+out of quota, Floma quietly asks the other model. If no model answers (offline, Google's servers
+down, the day's quota used up, a garbled or refused reply), the assistant answers in **local mode**
+from this browser: the time, the date, what it remembers about you, or its earlier answer to the very
+same question. Such answers are marked "⚡ Local mode"; hovering the tag shows why. No red error
+bubbles. Without a key (or with one Google rejected), one calm note with an **Add key** button
+appears, the key dialog opens, and the question is still answered in local mode.
 
 ## Pictures
 
@@ -129,9 +148,8 @@ The palette, Toby's emotions (art and motion), the waiting lines and the error l
 shared persona file, so the page matches the Android and desktop apps. New messages rise and fade in,
 the chat scrolls smoothly, and while Gemini works a "Toby is typing" bubble shows three bouncing dots.
 After 2.5 s a quiet line says he's still thinking, and after 12 s that Gemini is slow. Requests stop
-after 60 s. A failed request is explained by Toby in his own words, with a matching expression.
-For example, he says when today's quota is used up, which is different from "slow down for a minute".
-With the system's *reduce motion* setting on, nothing animates. On phones the layout keeps clear of
+after 60 s. A failed request never shows a raw or red error: the assistant answers in local mode
+(see above). With the system's *reduce motion* setting on, nothing animates. On phones the layout keeps clear of
 the notch and the home bar, and the settings panel takes the full width.
 
 ## The API key

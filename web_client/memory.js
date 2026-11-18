@@ -213,10 +213,15 @@
     }
   }
 
-  async function foldNow(messages, summarize) {
+  /**
+   * Folds a chat's older messages into the notes. [since]: the newest message of this chat already in
+   * the notes (each chat session keeps its own); defaults to the newest overall. Resolves to the ts of
+   * the newest message folded, or false when nothing was folded.
+   */
+  async function foldNow(messages, summarize, since = state.coveredTs) {
     const chat = messages.filter((m) => !m.local && m.ts);
     const older = chat.length > RECENT_WINDOW ? chat.slice(0, chat.length - RECENT_WINDOW) : [];
-    const batch = older.filter((m) => m.ts > state.coveredTs);
+    const batch = older.filter((m) => m.ts > since);
     if (batch.length < MEMORY_BATCH) return false;
     await pullNow(true); // build on what the other devices learned
     const previous = { ...state.sections };
@@ -229,13 +234,44 @@
     if (!result.summary.trim()) return false;
     const sections = Object.keys(result.sections).length ? result.sections : previous;
     for (const [key, notes] of Object.entries(sections)) if (previous[key] !== notes) state.pending[key] = notes;
-    Object.assign(state, { summary: result.summary, sections, coveredTs: batch[batch.length - 1].ts });
+    const covered = batch[batch.length - 1].ts;
+    Object.assign(state, { summary: result.summary, sections, coveredTs: Math.max(state.coveredTs, covered) });
     save();
     await pushNow();
-    return true;
+    return covered;
+  }
+
+  /**
+   * Ephemeral memory (Toby): folds everything in a session that isn't in the notes yet into the notes
+   * (not only the older messages), then pushes them to GitHub. True only when the facts are safely
+   * on GitHub (or there was nothing new to learn), so the caller may then clear the session from this
+   * browser; false keeps it (not set up, offline, GitHub or Gemini failing). [since] as in foldNow.
+   */
+  async function distillNow(messages, summarize, since = state.coveredTs) {
+    if (!available()) return false;
+    const fresh = messages.filter((m) => !m.local && m.ts && m.ts > since);
+    if (fresh.length >= 2) {
+      await pullNow(true);
+      if (state.lastError) return false; // GitHub can't be reached: keep the session
+      const previous = { ...state.sections };
+      let result;
+      try {
+        result = await summarize(state.summary || null, previous, fresh.map((m) => ({ role: m.role, text: m.text })));
+      } catch (e) {
+        return false; // Gemini down / no key
+      }
+      if (!result.summary.trim()) return false;
+      const sections = Object.keys(result.sections).length ? result.sections : previous;
+      for (const [key, notes] of Object.entries(sections)) if (previous[key] !== notes) state.pending[key] = notes;
+      Object.assign(state, { summary: result.summary, sections, coveredTs: Math.max(state.coveredTs, fresh[fresh.length - 1].ts) });
+      save();
+    }
+    await pushNow();
+    return Object.keys(state.pending).length === 0 && !state.lastError;
   }
 
   window.FlomaMemory = {
+    distill: (messages, summarize, since) => serial(() => distillNow(messages, summarize, since)),
     DEFAULT_REPOSITORY,
     setRepository(fn) { repository = fn; },
     /** What goes inside the prompt's <memory> block (always the local copy). */
@@ -246,7 +282,7 @@
     setToken(value) { write(STORE.token, value ? value.trim() : null); },
     pull: (force = false) => serial(() => pullNow(force)),
     push: () => serial(pushNow),
-    fold: (messages, summarize) => serial(() => foldNow(messages, summarize)),
+    fold: (messages, summarize, since) => serial(() => foldNow(messages, summarize, since)),
     syncNow: () => serial(async () => { state.nextAttempt = 0; await pullNow(true); await pushNow(); }),
     forgetLocal() { Object.assign(state, { summary: "", sections: {}, pending: {}, coveredTs: 0 }); save(); },
     _mergeRemote: mergeRemote,

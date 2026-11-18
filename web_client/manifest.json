@@ -1,8 +1,8 @@
 {
   "id": "./index.html",
-  "name": "Floma - Toby",
+  "name": "Floma",
   "short_name": "Floma",
-  "description": "Chat with Toby, your Floma companion, in his own window. The same Toby as on your phone and PC.",
+  "description": "Floma, your AI assistant, in its own window. The same assistant as on your phone and PC, with Toby as an optional companion.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
