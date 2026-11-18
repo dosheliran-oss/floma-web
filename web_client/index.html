@@ -128,6 +128,19 @@
     </section>
 
     <section>
+      <h3 data-i18n="sectionFirebase"></h3>
+      <p class="hint" data-i18n="firebaseHint"></p>
+      <p class="hint" id="firebaseStatus"></p>
+      <label><span data-i18n="firebaseUrl"></span><input id="firebaseUrl" type="url" dir="ltr" spellcheck="false" placeholder="https://….firebaseio.com"></label>
+      <label><span data-i18n="firebaseSecret"></span><input id="firebaseSecret" type="password" autocomplete="off" spellcheck="false" dir="ltr"></label>
+      <p class="error" id="firebaseProblem" role="alert"></p>
+      <div class="buttons">
+        <button type="button" id="firebaseSave" data-i18n="firebaseSave"></button>
+        <button type="button" id="firebaseRemove" class="danger" data-i18n="firebaseRemove"></button>
+      </div>
+    </section>
+
+    <section>
       <h3 data-i18n="sectionApp"></h3>
       <p class="hint" id="installStatus"></p>
       <button type="button" id="installApp" data-i18n="installApp" hidden></button>
@@ -146,17 +159,6 @@
       <p class="ext off"><span data-i18n="extPhone"></span><small data-i18n="needsAndroid"></small></p>
     </section>
 
-    <section>
-      <h3 data-i18n="extGithub"></h3>
-      <p class="hint" data-i18n="githubHint"></p>
-      <p class="hint" id="githubStatus"></p>
-      <label><span data-i18n="githubToken"></span><input id="githubToken" type="password" autocomplete="off" spellcheck="false" dir="ltr"></label>
-      <label><span data-i18n="githubRepo"></span><input id="githubRepo" type="text" dir="ltr" spellcheck="false"></label>
-      <div class="buttons">
-        <button type="button" id="githubSave" data-i18n="githubSave"></button>
-        <button type="button" id="githubRemove" class="danger" data-i18n="githubRemove"></button>
-      </div>
-    </section>
   </aside>
 
   <dialog class="key-dialog" id="keyDialog">

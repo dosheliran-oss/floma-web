@@ -6,10 +6,15 @@
  * sent only to Google, in the x-goog-api-key header.
  *
  * Chat sessions: "floma.sessions" is the index (newest first), each chat's messages are in
- * "floma.chat.<id>". With Floma (the default) chats stay until deleted (the oldest beyond
- * MAX_SESSIONS go). With Toby on, a chat is ephemeral: when the user moves on (New chat, another
- * chat, next start) Toby distills its facts into the GitHub memory and the chat is then removed
- * from this browser. Until the facts are safely on GitHub, the chat stays.
+ * "floma.chat.<id>". Every chat belongs to one assistant ("floma" or "toby"): the sidebar lists only
+ * the current assistant's chats and each assistant has its own open chat ("floma.activeSession" =
+ * {persona: id}), so Floma's and Toby's conversations never mix. Chats from before the separation are
+ * Floma's.
+ *
+ * A chat that ends (New chat, another chat or assistant, the next start) is summarized into facts:
+ * they go into the local notes and, when it's connected, to the user's Firebase memory (memory.js).
+ * Only each assistant's KEEP_SESSIONS newest chats are kept in this browser; an older chat is deleted
+ * once its facts are in the notes, and beyond HARD_CAP even if they couldn't be extracted.
  */
 (function () {
   "use strict";
@@ -24,7 +29,8 @@
     legacyHistory: "floma.history", // the single infinite chat before sessions (migrated once)
   };
   const MAX_STORED = 200; // messages per chat
-  const MAX_SESSIONS = 30; // chats kept in this browser (Floma); the oldest beyond this are dropped
+  const KEEP_SESSIONS = 3; // chats kept per assistant once older ones are memorized
+  const HARD_CAP = 10; // chats per assistant even when their facts couldn't be extracted yet
   const KEY_PROBLEMS = ["MISSING_KEY", "INVALID_KEY"];
   const KEEP_DOCUMENTS = 3; // document text kept in localStorage for follow-up questions, newest only
   const KEEP_PICTURES = 30; // thumbnails kept in localStorage for the newest messages only
@@ -43,19 +49,19 @@
       confirmClear: "למחוק את כל השיחות מהדפדפן הזה?", confirmRemoveKey: "למחוק את המפתח מהדפדפן הזה?",
       chats: "שיחות", newChat: "שיחה חדשה", untitled: "שיחה חדשה", deleteChat: "מחיקת השיחה",
       confirmDeleteChat: "למחוק את השיחה הזו?", noChats: "עוד אין שיחות קודמות.",
-      ephemeralOn: "טובי פעיל: כשעוברים לשיחה אחרת, הוא שומר את מה שלמד בזיכרון ב-GitHub ומוחק את השיחה מהדפדפן.",
-      ephemeralNoGithub: "טובי פעיל, אבל הזיכרון ב-GitHub לא מחובר, אז השיחות נשארות כאן. אפשר לחבר אותו בהגדרות ← תוספים.",
+      chatsKept: "רק 3 השיחות האחרונות של {name} נשמרות בדפדפן. לפני שמוחקים שיחה ישנה, העובדות ממנה נשמרות בזיכרון (וב-Firebase כשהוא מחובר).",
       notSaved: "ממתינה לשמירה בזיכרון",
       tobyAddon: "טובי (תוסף ליצן)", keyNotice: "כדי לענות על הכול אני צריך מפתח Gemini. בינתיים אני עונה במצב מקומי.",
       sectionExtensions: "תוספים", extSearch: "חיפוש באינטרנט (Google Search)",
-      extPc: "המחשב (Toby PC companion)", extPhone: "פעולות בטלפון ואנשי קשר", extGithub: "זיכרון משותף (GitHub)",
+      extPc: "המחשב (Toby PC companion)", extPhone: "פעולות בטלפון ואנשי קשר",
       needsAndroid: "זמין רק באפליקציית האנדרואיד", needsApps: "זמין באפליקציית המחשב ובאפליקציית האנדרואיד",
-      githubHint: "אותו מאגר זיכרון כמו בטלפון ובמחשב, כדי שטובי יזכור אותך בכל מקום. הטוקן נשמר רק בדפדפן הזה (localStorage), לא מוצפן.",
-      githubToken: "טוקן GitHub (Contents: read & write)", githubRepo: "מאגר הזיכרון",
-      githubSave: "שמירה וסנכרון", githubRemove: "ניתוק",
-      githubOff: "לא מחובר: טובי זוכר רק את מה שנאמר בדפדפן הזה.", githubWaiting: "מחובר, ממתין לסנכרון הראשון.",
-      githubSynced: "סונכרן לאחרונה ב-{time}.", githubError: "הסנכרון נכשל ({error}). טובי ממשיך עם העותק המקומי וינסה שוב.",
-      githubPending: " {count} קבצים ממתינים להעלאה.", githubTokenSaved: "טוקן שמור. אפשר להדביק חדש כדי להחליף.",
+      sectionFirebase: "זיכרון משותף (Firebase)",
+      firebaseHint: "אותו זיכרון כמו בטלפון ובמחשב. רק עובדות קצרות נשמרות שם, לא השיחות. הסוד נשמר רק בדפדפן הזה (localStorage), לא מוצפן.",
+      firebaseUrl: "כתובת מסד הנתונים", firebaseSecret: "סוד מסד הנתונים (Database secret)",
+      firebaseSave: "שמירה וסנכרון", firebaseRemove: "ניתוק", firebaseBadUrl: "זו לא כתובת של Firebase Realtime Database.",
+      firebaseOff: "לא מחובר: הזיכרון נשמר רק בדפדפן הזה.", firebaseWaiting: "מחובר, ממתין לסנכרון הראשון.",
+      firebaseSynced: "סונכרן לאחרונה ב-{time}.", firebaseError: "הסנכרון נכשל ({error}). הזיכרון המקומי ממשיך לעבוד וננסה שוב.",
+      firebasePending: " {count} נושאים ממתינים להעלאה.", firebaseSecretSaved: "סוד שמור. אפשר להדביק חדש כדי להחליף.",
       keyTitle: "נחבר את טובי ל-Gemini",
       keyBody: "כדי לדבר, טובי צריך מפתח API משלכם מ-Google AI Studio. יצירת מפתח היא בחינם.",
       keyStorage: "המפתח נשמר רק בדפדפן הזה (localStorage), לא בקובץ ה-HTML, ונשלח רק ל-Google. במחשב משותף כדאי למחוק אותו בסוף.",
@@ -100,19 +106,19 @@
       confirmClear: "Delete all chats from this browser?", confirmRemoveKey: "Remove the key from this browser?",
       chats: "Chats", newChat: "New chat", untitled: "New chat", deleteChat: "Delete chat",
       confirmDeleteChat: "Delete this chat?", noChats: "No earlier chats yet.",
-      ephemeralOn: "Toby is on: when you move to another chat, he saves what he learned to your GitHub memory and clears the chat from this browser.",
-      ephemeralNoGithub: "Toby is on, but GitHub memory isn't connected, so chats stay here. Connect it in Settings > Extensions.",
+      chatsKept: "Only {name}'s 3 most recent chats stay in this browser. Before an older chat is deleted, its facts are saved to memory (and to Firebase when it's connected).",
       notSaved: "Waiting to be saved to memory",
       tobyAddon: "Toby (jester add-on)", keyNotice: "To answer everything I need a Gemini key. Until then I'm answering in local mode.",
       sectionExtensions: "Extensions", extSearch: "Web search (Google Search)",
-      extPc: "PC (Toby PC companion)", extPhone: "Phone actions and contacts", extGithub: "Shared memory (GitHub)",
+      extPc: "PC (Toby PC companion)", extPhone: "Phone actions and contacts",
       needsAndroid: "Only in the Android app", needsApps: "In the desktop and Android apps",
-      githubHint: "The same memory repository as the phone and the PC, so Toby remembers you everywhere. The token is stored only in this browser (localStorage), unencrypted.",
-      githubToken: "GitHub token (Contents: read & write)", githubRepo: "Memory repository",
-      githubSave: "Save and sync", githubRemove: "Disconnect",
-      githubOff: "Not connected: Toby only remembers what was said in this browser.", githubWaiting: "Connected, waiting for the first sync.",
-      githubSynced: "Last synced at {time}.", githubError: "Sync failed ({error}). Toby keeps using the local copy and will retry.",
-      githubPending: " {count} file(s) waiting to upload.", githubTokenSaved: "A token is saved. Paste a new one to replace it.",
+      sectionFirebase: "Shared memory (Firebase)",
+      firebaseHint: "The same memory as on the phone and the PC. Only short facts are stored there, never the chats. The secret is stored only in this browser (localStorage), unencrypted.",
+      firebaseUrl: "Database URL", firebaseSecret: "Database secret",
+      firebaseSave: "Save and sync", firebaseRemove: "Disconnect", firebaseBadUrl: "That isn't a Firebase Realtime Database URL.",
+      firebaseOff: "Not connected: the memory stays in this browser only.", firebaseWaiting: "Connected, waiting for the first sync.",
+      firebaseSynced: "Last synced at {time}.", firebaseError: "Sync failed ({error}). The local memory keeps working; it will retry.",
+      firebasePending: " {count} topic(s) waiting to upload.", firebaseSecretSaved: "A secret is saved. Paste a new one to replace it.",
       keyTitle: "Connect Toby to Gemini",
       keyBody: "Toby needs your own Google AI Studio API key to chat. Creating one is free.",
       keyStorage: "The key is stored only in this browser (localStorage), never in the HTML file, and is sent only to Google. On a shared computer, remove it when you're done.",
@@ -415,6 +421,12 @@
   const newSessionId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
   const sessionEntry = (id) => state.sessions.find((x) => x.id === id);
   const saveSessions = () => save(STORE.sessions, state.sessions);
+  /** The current assistant's chats, newest first (never the other assistant's). */
+  const mySessions = () => state.sessions.filter((x) => x.persona === persona());
+  /** Each assistant's open chat: {floma: id, toby: id}. */
+  let openChats = {};
+  const saveOpenChats = () => save(STORE.active, openChats);
+  const isOpenSomewhere = (id) => Object.values(openChats).includes(id);
 
   /** A chat's name: the start of its first message. */
   function sessionTitle(messages) {
@@ -428,39 +440,51 @@
   function touchSession() {
     if (!state.messages.length) return;
     let entry = sessionEntry(state.sessionId);
-    if (!entry) entry = { id: state.sessionId, title: "", created: Date.now(), updated: 0, memoryTs: 0 };
+    if (!entry) entry = { id: state.sessionId, title: "", created: Date.now(), updated: 0, memoryTs: 0, persona: persona() };
     entry.title = sessionTitle(state.messages) || entry.title;
     entry.updated = Date.now();
+    delete entry.memorized; // new messages: something new to memorize when it ends
+    delete entry.unsaved;
     state.sessions = [entry, ...state.sessions.filter((x) => x.id !== entry.id)];
-    for (const dropped of state.sessions.slice(MAX_SESSIONS)) save(STORE.chat(dropped.id), null);
-    state.sessions = state.sessions.slice(0, MAX_SESSIONS);
     saveSessions();
     renderSessions();
   }
 
-  /** Startup: the session index, the chat that was open, and the old single chat moved into a session. */
+  /** Startup: the session index, each assistant's open chat, and the old single chat moved into a session. */
   function loadSessions() {
     state.sessions = (load(STORE.sessions, []) || []).filter((x) => x && x.id);
+    for (const entry of state.sessions) if (!entry.persona) entry.persona = "floma"; // from before the separation
     const legacy = load(STORE.legacyHistory, null);
     if (Array.isArray(legacy) && legacy.length) {
       const id = newSessionId();
       save(STORE.chat(id), legacy);
       const last = legacy[legacy.length - 1];
       state.sessions.unshift({ id, title: sessionTitle(legacy), created: (legacy[0] && legacy[0].ts) || Date.now(),
-        updated: (last && last.ts) || Date.now(), memoryTs: 0 });
+        updated: (last && last.ts) || Date.now(), memoryTs: 0, persona: "floma" });
       saveSessions();
-      save(STORE.active, id);
+      save(STORE.active, { floma: id });
     }
     save(STORE.legacyHistory, null);
-    const active = load(STORE.active, null);
-    const known = Boolean(sessionEntry(active));
-    state.sessionId = known ? active : newSessionId();
-    state.messages = known ? load(STORE.chat(active), []) : [];
-    save(STORE.active, state.sessionId);
+    const stored = load(STORE.active, null);
+    // Before the separation this was one id (Floma's).
+    openChats = stored && typeof stored === "object" ? stored : { floma: stored || "" };
+    showPersonaChats();
   }
 
-  /** Opens a chat (id) or a fresh one (null); the chat left behind is retired if Toby is on. */
+  /** The current assistant's open chat (else its newest, else a new one) becomes the chat on screen. */
+  function showPersonaChats() {
+    const mine = mySessions();
+    let id = openChats[persona()];
+    if (!mine.some((x) => x.id === id)) id = mine.length ? mine[0].id : newSessionId();
+    openChats[persona()] = id;
+    state.sessionId = id;
+    state.messages = sessionEntry(id) ? load(STORE.chat(id), []) : [];
+    saveOpenChats();
+  }
+
+  /** Opens one of this assistant's chats (id) or a fresh one (null); the chat left behind is memorized. */
   function openSession(id) {
+    if (id && !mySessions().some((x) => x.id === id)) return; // another assistant's chat
     const leaving = state.sessionId;
     if (state.thinking || (id && id === leaving) || (!id && !state.messages.length)) {
       setSessions(false);
@@ -472,7 +496,8 @@
     clearAttachment();
     state.sessionId = id || newSessionId();
     state.messages = id ? load(STORE.chat(id), []) : [];
-    save(STORE.active, state.sessionId);
+    openChats[persona()] = state.sessionId;
+    saveOpenChats();
     renderChat();
     renderSessions();
     setEmotion(Core.avatarFor(state.messages.length ? "greeting" : "default"));
@@ -485,17 +510,28 @@
     save(STORE.chat(id), null);
     state.sessions = state.sessions.filter((x) => x.id !== id);
     saveSessions();
+    for (const [who, open] of Object.entries(openChats)) if (open === id) openChats[who] = newSessionId();
+    saveOpenChats();
     if (id === state.sessionId) {
-      state.sessionId = newSessionId();
+      state.sessionId = openChats[persona()];
       state.messages = [];
-      save(STORE.active, state.sessionId);
       renderChat();
       setEmotion(Core.avatarFor("default"));
     }
     renderSessions();
   }
 
-  const tobyOn = () => persona() === "toby";
+  /**
+   * Retention for one assistant: its KEEP_SESSIONS newest chats stay; an older one is deleted once its
+   * facts are in the notes ("memorized"), and beyond HARD_CAP even if not. Open chats are never deleted.
+   */
+  function pruneSessions(who) {
+    state.sessions.filter((x) => x.persona === who).forEach((entry, position) => {
+      if (position < KEEP_SESSIONS || isOpenSomewhere(entry.id)) return;
+      if (entry.memorized || position >= HARD_CAP) deleteSession(entry.id);
+    });
+  }
+
   function summarizer() {
     const key = state.apiKey;
     const name = assistant();
@@ -503,40 +539,46 @@
   }
 
   /**
-   * Ephemeral memory (Toby only): a chat the user left is distilled into the GitHub notes, and once
-   * they are safely pushed, the chat is removed from this browser. Without GitHub, offline, or with
-   * Gemini failing, the chat stays (marked) and is retried on the next start or the next switch.
+   * A chat that ended (the user moved to another chat or assistant): its facts are extracted into the
+   * notes (and Firebase when connected). Once they're in, it's "memorized" and only the newest few chats
+   * are kept. If the model can't summarize right now (no key, offline), it stays, marked, for later.
    */
   async function retireSession(id) {
     const entry = sessionEntry(id);
-    if (!entry || id === state.sessionId || !tobyOn() || !Memory.hasToken()) return;
-    const saved = await Memory.distill(load(STORE.chat(id), []), summarizer(), entry.memoryTs || 0);
-    if (id === state.sessionId || !sessionEntry(id)) return; // reopened or deleted meanwhile
-    if (saved === true) {
-      deleteSession(id);
-    } else {
-      sessionEntry(id).unsaved = true;
-      saveSessions();
-      renderSessions();
+    if (!entry || id === state.sessionId || entry.memorized) return;
+    const messages = load(STORE.chat(id), []);
+    const saved = await Memory.distill(messages, summarizer(), entry.memoryTs || 0);
+    const now = sessionEntry(id);
+    if (!now) return; // deleted meanwhile
+    if (saved === true && id !== state.sessionId) {
+      now.memorized = true;
+      now.memoryTs = Math.max(now.memoryTs || 0, ...messages.map((m) => m.ts || 0));
+      delete now.unsaved;
+    } else if (saved !== true) {
+      now.unsaved = true;
     }
+    saveSessions();
+    pruneSessions(now.persona);
+    renderSessions();
     fillSettings();
   }
 
-  /** Toby on (at startup, or just switched on): retire every chat that isn't open, oldest first. */
+  /** At startup: every chat that isn't open (either assistant's) is memorized, then each list is trimmed. */
   async function sweepSessions() {
-    if (!tobyOn() || !Memory.hasToken()) return;
     for (const entry of state.sessions.slice().reverse()) {
       if (entry.id !== state.sessionId) await retireSession(entry.id);
     }
+    for (const who of new Set(state.sessions.map((x) => x.persona))) pruneSessions(who);
+    renderSessions();
   }
 
   function renderSessions() {
     const list = $("sessionList");
     list.replaceChildren();
     const hint = $("ephemeralHint");
-    hint.hidden = !tobyOn();
-    hint.textContent = t(Memory.hasToken() ? "ephemeralOn" : "ephemeralNoGithub");
-    if (!state.sessions.length) {
+    hint.hidden = false;
+    hint.textContent = t("chatsKept").replace("{name}", assistant());
+    if (!mySessions().length) {
       const none = document.createElement("li");
       none.className = "hint";
       none.textContent = t("noChats");
@@ -544,7 +586,7 @@
     }
     const locale = lang() === "ENGLISH" ? "en" : "he";
     const today = new Date().toDateString();
-    for (const entry of state.sessions) {
+    for (const entry of mySessions()) {
       const item = document.createElement("li");
       item.className = `session${entry.id === state.sessionId ? " active" : ""}`;
       const open = document.createElement("button");
@@ -559,7 +601,7 @@
       const updated = new Date(entry.updated);
       when.textContent = updated.toLocaleString(locale, updated.toDateString() === today
         ? { hour: "2-digit", minute: "2-digit" } : { day: "numeric", month: "short" });
-      if (entry.unsaved && tobyOn()) when.textContent += ` · ${t("notSaved")}`;
+      if (entry.unsaved) when.textContent += ` · ${t("notSaved")}`;
       open.append(title, when);
       open.addEventListener("click", () => openSession(entry.id));
       const remove = document.createElement("button");
@@ -737,11 +779,11 @@
 
   function memoryStatusText() {
     const status = Memory.status();
-    if (!status.configured) return t("githubOff");
-    let text = status.lastError ? t("githubError").replace("{error}", status.lastError)
-      : status.lastSync ? t("githubSynced").replace("{time}", new Date(status.lastSync).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
-        : t("githubWaiting");
-    if (status.pending) text += t("githubPending").replace("{count}", status.pending);
+    if (!status.configured) return t("firebaseOff");
+    let text = status.lastError ? t("firebaseError").replace("{error}", status.lastError)
+      : status.lastSync ? t("firebaseSynced").replace("{time}", new Date(status.lastSync).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
+        : t("firebaseWaiting");
+    if (status.pending) text += t("firebasePending").replace("{count}", status.pending);
     return text;
   }
 
@@ -749,7 +791,7 @@
 
   /** Floma is the assistant by default; Toby, the jester, is an add-on switched on here. */
   function fillPersonas() {
-    const on = tobyOn();
+    const on = persona() === "toby";
     $("setToby").checked = on;
     const profile = Core.profile(on ? "toby" : "floma");
     $("tobyAddonDesc").textContent = profile.description[lang()] || profile.description.HEBREW;
@@ -757,15 +799,20 @@
   }
 
   function switchPersona(id) {
-    if (id === persona()) return;
+    if (id === persona() || state.thinking) return;
+    const leavingChat = state.sessionId;
+    Voice.stopSpeaking();
+    setLive(false);
+    clearAttachment();
     state.settings.assistantName = Core.nameAfterSwitch(state.settings.assistantName, persona(), id);
     state.settings.persona = id;
     save(STORE.settings, state.settings);
+    showPersonaChats(); // Floma's and Toby's chats are separate lists
     fillSettings();
     renderChat();
     renderSessions();
     setEmotion(Core.avatarFor("greeting"));
-    sweepSessions(); // Toby just switched on: his chats are ephemeral, the earlier ones go to GitHub memory
+    retireSession(leavingChat); // the other assistant's chat ended for now: memorize it
   }
 
   function fillThemes() {
@@ -832,10 +879,10 @@
     $("keyStatus").textContent = t(state.apiKey ? "keySaved" : "keyMissing");
     $("removeKey").disabled = !state.apiKey;
     $("changeKey").textContent = t(state.apiKey ? "changeKey" : "addKey");
-    $("githubStatus").textContent = memoryStatusText();
-    $("githubToken").placeholder = Memory.hasToken() ? t("githubTokenSaved") : "github_pat_…";
-    if (document.activeElement !== $("githubRepo")) $("githubRepo").value = s.githubRepo || Memory.DEFAULT_REPOSITORY;
-    $("githubRemove").disabled = !Memory.hasToken();
+    $("firebaseStatus").textContent = memoryStatusText();
+    $("firebaseSecret").placeholder = Memory.hasSecret() ? t("firebaseSecretSaved") : "";
+    if (document.activeElement !== $("firebaseUrl")) $("firebaseUrl").value = s.firebaseUrl || "";
+    $("firebaseRemove").disabled = !Memory.hasSecret() && !s.firebaseUrl;
     if ($("installStatus")) fillInstall();
     fillVoiceSettings();
     $("offlineBanner").textContent = t("offline");
@@ -1254,39 +1301,48 @@
     $("clearChat").addEventListener("click", () => {
       if (!confirm(t("confirmClear"))) return;
       Voice.stopSpeaking();
-      for (const entry of state.sessions) save(STORE.chat(entry.id), null);
+      for (const entry of state.sessions) save(STORE.chat(entry.id), null); // both assistants' chats
       save(STORE.chat(state.sessionId), null);
       state.sessions = [];
       saveSessions();
+      openChats = {};
+      showPersonaChats();
       state.messages = [];
-      Memory.forgetLocal(); // like Android: the local notes go too (GitHub keeps its files)
+      Memory.forgetLocal(); // like Android: the local notes go too (what's in Firebase stays)
       renderChat();
       renderSessions();
       setEmotion(Core.avatarFor("default"));
     });
 
-    $("githubSave").addEventListener("click", () => {
-      const token = $("githubToken").value.trim();
-      if (token) Memory.setToken(token);
-      $("githubToken").value = "";
-      state.settings.githubRepo = $("githubRepo").value.trim() || Memory.DEFAULT_REPOSITORY;
+    $("firebaseSave").addEventListener("click", () => {
+      const url = Memory.normalizeDbUrl($("firebaseUrl").value);
+      if (!url) {
+        $("firebaseProblem").textContent = t("firebaseBadUrl");
+        return;
+      }
+      $("firebaseProblem").textContent = "";
+      const secretValue = $("firebaseSecret").value.trim();
+      if (secretValue) Memory.setSecret(secretValue);
+      $("firebaseSecret").value = "";
+      state.settings.firebaseUrl = url;
       save(STORE.settings, state.settings);
       fillSettings();
-      renderSessions(); // the ephemeral hint follows the connection
-      Memory.syncNow().then(fillSettings).then(sweepSessions);
+      Memory.syncNow().then(fillSettings); // the first sync also uploads what this browser knows
     });
-    $("githubRemove").addEventListener("click", () => {
-      Memory.setToken(null);
+    $("firebaseRemove").addEventListener("click", () => {
+      Memory.setSecret(null);
+      delete state.settings.firebaseUrl;
+      save(STORE.settings, state.settings);
+      $("firebaseProblem").textContent = "";
       fillSettings();
-      renderSessions();
     });
 
     $("keyForm").addEventListener("submit", submitKey);
     $("keyLater").addEventListener("click", () => $("keyDialog").close());
 
     // Notes the phone or the PC added since last time (throttled; harmless offline).
-    Memory.setRepository(() => state.settings.githubRepo || Memory.DEFAULT_REPOSITORY);
-    Memory.pull().then(fillSettings).then(sweepSessions); // Toby: chats left last time go to GitHub memory
+    Memory.setDatabaseUrl(() => state.settings.firebaseUrl);
+    Memory.pull().then(fillSettings).then(sweepSessions); // chats left last time are memorized
 
     // First launch (or the key was removed): ask for it before anything else.
     if (!state.apiKey) openKeyDialog();

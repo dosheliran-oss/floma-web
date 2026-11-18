@@ -257,17 +257,37 @@
     return `${fill(p.summarizer, { name })}\n${p.memory_categories.map((c) => `- ${c.key}: ${c.description}`).join("\n")}`;
   }
 
-  function renderMemoryFile(key, notes, date) {
-    const p = P();
-    const c = p.memory_categories.find((x) => x.key === key);
-    return fill(p.memory_file, { title: c.title, description: c.description, date, notes: notes.trim() });
+  /** One bullet line as a fact: the "- " / "* " / "• " bullet and surrounding spaces dropped. */
+  function fact(line) {
+    const trimmed = line.trim();
+    for (const bullet of ["- ", "* ", "\u2022 "]) if (trimmed.startsWith(bullet)) return trimmed.slice(bullet.length).trim();
+    return trimmed;
   }
 
-  function parseMemoryFile(content) {
-    const lines = content.replace(/\r\n/g, "\n").split("\n");
-    while (lines.length && (!lines[0].trim() || lines[0].startsWith("# ") ||
-        (lines[0].startsWith("_Toby's notes") && lines[0].trimEnd().endsWith("_")))) lines.shift();
-    return lines.join("\n").trim();
+  /**
+   * One category as stored in the Firebase memory (memory_sync.root/<key>): the facts only, plus when
+   * and where they were last written. Never conversation text (same as persona.py and MemoryFiles.kt).
+   */
+  function memoryNode(key, notes, updatedAt, device) {
+    const facts = notes.replace(/\r\n/g, "\n").split("\n").map(fact).filter(Boolean);
+    return { facts: facts.slice(0, P().memory_sync.max_facts), updated_at: Math.trunc(updatedAt), device };
+  }
+
+  /** A category's notes ("- fact" lines) from a Firebase node; anything unreadable reads as empty. */
+  function notesFromNode(node) {
+    let facts = node && typeof node === "object" && !Array.isArray(node) ? node.facts : null;
+    if (typeof facts === "string") facts = facts.split("\n");
+    if (facts && typeof facts === "object" && !Array.isArray(facts)) { // an array with gaps, keyed by index
+      facts = Object.keys(facts).sort((a, b) => (/^\d+$/.test(a) ? +a : 0) - (/^\d+$/.test(b) ? +b : 0)).map((k) => facts[k]);
+    }
+    if (!Array.isArray(facts)) return "";
+    // Strings and whole numbers only (not booleans or floats: they print differently on each platform).
+    return facts
+      .filter((f) => typeof f === "string" || Number.isInteger(f))
+      .map((f) => fact(String(f)))
+      .filter(Boolean)
+      .map((f) => `- ${f}`)
+      .join("\n");
   }
 
   // --- Gemini client (AIService.kt) -------------------------------------------------------------
@@ -716,7 +736,7 @@
   window.FlomaCore = {
     MODELS, EMOTIONS, DEFAULT_SETTINGS, AiError,
     route, modelFor, detectSeriousMode, systemPrompt, buildPrompt, memoryNotes, summarizerPrompt,
-    renderMemoryFile, parseMemoryFile, complete, summarizeMemory, verifyKey,
+    memoryNode, notesFromNode, complete, summarizeMemory, verifyKey,
     personas, profile, personaId, assistantName, nameAfterSwitch,
     avatarImage, animated, greeting, emotionMotion, avatarFor, chatLine, errorLine, typingStage, unavailableLine,
     theme, label, modelForChoice, modelChain, fallsBack, goesOffline,

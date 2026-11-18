@@ -54,7 +54,7 @@ window.FLOMA_PLATFORM = {
   },
   "ecosystem": [
     "Floma is one assistant across the user's devices: the Android app (a floating animated assistant on the phone), the desktop app on their Windows PC, and a web version in the browser. You are the same {name} on all of them, not separate bots, and you talk about yourself that way.",
-    "If the user connected their private GitHub memory repository, your long-term notes are shared between these devices, so something they told you on the phone can come up on the PC. Syncing can lag a little, and the chat history itself stays on each device.",
+    "If the user connected their private Firebase memory, your long-term notes are shared between these devices, so something they told you on the phone can come up on the PC. Syncing can lag a little, and the chat history itself stays on each device.",
     "When the user asks for something this device can't do but another Floma device can, say which device can do it, in a few words. Never pretend to have done something on another device."
   ],
   "companion": [
@@ -118,46 +118,43 @@ window.FLOMA_PLATFORM = {
   "memory_section": "[{title}]",
   "memory_max_chars": 6000,
   "custom_intro": "The user wrote these preferences in the app settings. Follow them unless they conflict with the reply format above:",
-  "summarizer": "You maintain the long-term memory of {name}, a personal assistant character who lives on the user's devices (phone, PC and browser). You will receive {name}'s current notes about the user and a newer stretch of conversation between them. Return updated notes that merge the two.\n\nKeep what will still be useful in future conversations: facts the user shared about themselves (name, family and friends, work or studies, routines, places), their likes, dislikes and preferences (including how they like {name} to talk to them), and ongoing plans or topics they may come back to. Drop small talk, one-off requests that are already resolved, and anything {name} said that the user didn't confirm. When newer information contradicts an older note, keep the newer one.\n\nWrite short bullet points (\"- ...\"), most important first, staying under about 200 words in total so the notes stay compact. Write the notes in English, but keep names and other proper nouns exactly as the user wrote them. If the conversation adds nothing worth remembering, return the current notes unchanged.\n\nAlso return \"sections\": the same knowledge sorted into topics, each the complete, up-to-date bullet list for that topic. These are saved as separate files the user can read, so they may be more detailed than the summary (up to about 150 words each). Merge the current sections with the new conversation the same way: keep what still holds, update what changed, and drop what is no longer true. Put each fact in the single best topic. Return an empty string for a topic with nothing to remember. The topics:",
+  "summarizer": "You maintain the long-term memory of {name}, a personal assistant character who lives on the user's devices (phone, PC and browser). You will receive {name}'s current notes about the user and a newer stretch of conversation between them. Return updated notes that merge the two.\n\nKeep what will still be useful in future conversations: facts the user shared about themselves (name, family and friends, work or studies, routines, places), their likes, dislikes and preferences (including how they like {name} to talk to them), and ongoing plans or topics they may come back to. Drop small talk, one-off requests that are already resolved, and anything {name} said that the user didn't confirm. When newer information contradicts an older note, keep the newer one.\n\nWrite short bullet points (\"- ...\"), most important first, staying under about 200 words in total so the notes stay compact. Write the notes in English, but keep names and other proper nouns exactly as the user wrote them. If the conversation adds nothing worth remembering, return the current notes unchanged.\n\nAlso return \"sections\": the same knowledge sorted into topics, each the complete, up-to-date bullet list for that topic. These are saved as separate topics in the user's own cloud memory, so they may be more detailed than the summary (up to about 150 words each). Merge the current sections with the new conversation the same way: keep what still holds, update what changed, and drop what is no longer true. Put each fact in the single best topic. Return an empty string for a topic with nothing to remember. The topics:",
   "memory_categories": [
     {
       "key": "preferences",
-      "file": "Preferences.md",
       "title": "Preferences",
       "description": "likes, dislikes, habits, and how the user wants Toby to talk to them"
     },
     {
       "key": "schedules",
-      "file": "Schedules.md",
       "title": "Schedules",
       "description": "routines, appointments, dates, deadlines and recurring plans"
     },
     {
       "key": "people",
-      "file": "People.md",
       "title": "People",
       "description": "family, friends, colleagues and pets, with what matters about them"
     },
     {
       "key": "lists",
-      "file": "Lists.md",
       "title": "Lists",
       "description": "shopping lists, to-dos, wish lists and other lists the user keeps"
     },
     {
       "key": "jokes",
-      "file": "Jokes.md",
       "title": "Jokes",
       "description": "jokes and running gags the user enjoyed or told, and humor they dislike"
     },
     {
       "key": "notes",
-      "file": "Notes.md",
       "title": "Notes",
       "description": "anything else worth remembering: work, studies, places, ongoing topics"
     }
   ],
-  "memory_file": "# {title}\n\n_Toby's notes about {description}. Updated by Floma on {date}._\n\n{notes}\n",
+  "memory_sync": {
+    "root": "floma/memory",
+    "max_facts": 60
+  },
   "avatar": {
     "default": "IDLE",
     "greeting": "HAPPY",

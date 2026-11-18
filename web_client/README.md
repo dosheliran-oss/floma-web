@@ -30,7 +30,7 @@ needs the internet to answer.
   `localhost` works only on the same computer.
 - **Offline:** the service worker (`sw.js`) keeps a copy of the page, the persona and Toby's
   pictures. When offline, the chat and its history open and a notice says Toby will answer once the
-  connection is back. Gemini and GitHub requests are never cached.
+  connection is back. Gemini and Firebase requests are never cached.
 - **Updates:** the app always fetches fresh files when online, so a new version shows up on the
   next start.
 
@@ -49,7 +49,7 @@ On the first launch it asks for your own Gemini API key from
 | Chat with Toby (persona, humor dial, serious mode, Hebrew/English) | ✅ | ✅ |
 | Web search (Google Search grounding, sources) | ✅ | ✅ |
 | PC companion, phone actions, contacts | ❌ Toby says he's in the browser and which Floma app can do it | ✅ |
-| Long-term memory shared through GitHub (Settings → Shared memory) | ✅ | ✅ |
+| Long-term memory shared through Firebase (Settings → Shared memory) | ✅ | ✅ |
 | SambaNova backup | ❌ | ✅ |
 | Dictation and Toby's voice | ✅ (Web Speech API) | ✅ |
 | Floating avatar over other apps | ❌ | ✅ |
@@ -70,12 +70,13 @@ is a column beside the chat; on a phone or a narrow window it's a drawer behind 
 a chat. The page fills the whole window on a desktop monitor; long replies keep a readable line
 length.
 
-- **With Floma**, chats stay in this browser until you delete them (the newest 30 are kept).
-- **With Toby on**, chats are ephemeral: when you move on (New chat, another chat, or the next start),
-  Toby distills what he learned from the chat into your GitHub memory (Settings → Shared memory) and
-  then removes the chat from this browser, so the browser's storage doesn't grow. A chat is removed
-  only once its facts are safely on GitHub. Offline, with GitHub not connected, or with Gemini
-  failing, it stays (marked "waiting to be saved") and is retried later.
+- Every chat belongs to one assistant: **Floma's and Toby's chats are separate lists**, each with its
+  own open chat, and switching the assistant switches the list. When a chat ends (New chat, another
+  chat or assistant, the next start), Gemini summarizes it into facts. They go into the device's notes and, when
+  Firebase is connected, to the shared memory. Only each assistant's **3 most recent chats** stay on
+  the device: an older chat is deleted once its facts are in the notes. If they couldn't be extracted
+  yet (no key, offline), it waits, and beyond 10 chats the oldest go anyway.
+- A chat whose facts couldn't be extracted yet is marked "waiting to be saved".
 - Chats saved by an older version (one long chat) are moved into the list as one chat.
 
 **When Gemini is slow or down:** if the first model times out (30 s), fails, can't be reached or is
@@ -164,8 +165,10 @@ the notch and the home bar, and the settings panel takes the full width.
 Nothing is copied: the page loads the shared [`persona/floma_platform.js`](../persona/floma_platform.js) and
 [`persona/personas.js`](../persona/personas.js),
 and `node persona-tests/check_web.js` proves the prompt is identical to Android's and the desktop's
-(see [persona-tests/](../persona-tests/README.md)). `memory.js` syncs the same GitHub memory
-repository as the other apps; its GitHub token stays in this browser's `localStorage`.
+(see [persona-tests/](../persona-tests/README.md)). `memory.js` syncs the same Firebase memory as
+the other apps (Settings → Shared memory, next to the Gemini key). The database secret stays in this
+browser's `localStorage`, unencrypted (so on a shared computer, disconnect it when you're done), and
+is sent only to a `…firebaseio.com` / `…firebasedatabase.app` URL.
 
 The rest of `core.js` is a port of the Android chat core:
 

@@ -1,25 +1,26 @@
 /*
- * Floma web client - Toby's semantic memory, shared with the phone and the PC.
+ * Floma web client - the assistant's semantic memory, shared with the phone and the PC.
  *
- * Same repository, file format and merge rule as Android (RemoteMemory.kt) and the desktop app
- * (memory_sync.py): one Markdown file per category in the user's private GitHub memory repo.
- * The local copy in localStorage is the fallback cache: when GitHub is offline, rate-limited or not
- * set up, Toby keeps using it and the chat never sees an error. Failures back off (5, 10, 20, 40
- * minutes, then hourly); changes that couldn't be pushed stay queued.
+ * Same Firebase Realtime Database, node format and merge rule as Android (RemoteMemory.kt) and the
+ * desktop app (memory_sync.py): under memory_sync.root ("floma/memory"), one small JSON node per
+ * category, {"facts": [...], "updated_at": <ms>, "device": "web"} (Core.memoryNode). Only extracted
+ * facts go there, never the conversation. It's reached through the REST API with the database URL
+ * and secret from Settings.
+ * The local copy in localStorage is the fallback cache: when Firebase is offline, rate-limited or
+ * not set up, the assistant keeps using it and the chat never sees an error. Failures back off (5, 10,
+ * 20, 40 minutes, then hourly); changes that couldn't be pushed stay queued.
  */
 (function () {
   "use strict";
 
   const Core = window.FlomaCore;
-  const API = "https://api.github.com";
-  const DEFAULT_REPOSITORY = "Toby-Semantic-Memory";
+  const DEVICE = "web";
   const PULL_INTERVAL_MS = 10 * 60 * 1000;
   const RECENT_WINDOW = 20;
   const MEMORY_BATCH = 10;
   const RETRYABLE = ["NETWORK", "SERVER", "RATE_LIMITED"];
-  const CODE_MARKERS = ["settings.gradle.kts", "settings.gradle", "build.gradle.kts", "build.gradle", "gradlew", "app",
-    "src", "package.json", "pom.xml", "cargo.toml", "go.mod", "pyproject.toml", "setup.py", "requirements.txt", ".github"];
-  const STORE = { cache: "floma.memory", token: "floma.githubToken" };
+  const DB_HOSTS = [".firebaseio.com", ".firebasedatabase.app"];
+  const STORE = { cache: "floma.memory", secret: "floma.firebaseSecret" };
 
   class SyncError extends Error {
     constructor(kind, detail) {
@@ -46,86 +47,76 @@
     } catch (e) { /* storage blocked: keep going in memory */ }
   }
 
-  // UTF-8 safe base64 (GitHub's contents API).
-  const toBase64 = (text) => btoa(String.fromCharCode(...new TextEncoder().encode(text)));
-  const fromBase64 = (b64) => new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\s/g, "")), (c) => c.charCodeAt(0)));
+  /**
+   * The database URL as https://<name>.firebaseio.com (or ...firebasedatabase.app), without a trailing
+   * slash or ".json"; null for anything else, so the secret is never sent elsewhere (memory_sync.py).
+   */
+  function normalizeDbUrl(url) {
+    let text = String(url || "").trim().replace(/\/+$/, "");
+    if (text.endsWith(".json")) text = text.slice(0, -5).replace(/\/+$/, "");
+    let parsed;
+    try {
+      parsed = new URL(text);
+    } catch (e) {
+      return null;
+    }
+    const host = parsed.hostname.toLowerCase();
+    if (parsed.protocol !== "https:" || !DB_HOSTS.some((h) => host.endsWith(h)) || parsed.pathname.replace(/\//g, "")
+        || parsed.search || parsed.hash) return null;
+    return `https://${host}`;
+  }
 
-  // --- GitHub client (same calls as GitHubSyncService.kt) ---
+  // --- Firebase Realtime Database client (REST; same calls as memory_sync.py / FirebaseMemoryService.kt) ---
 
-  function client(token) {
-    async function call(method, path, body, okStatuses = []) {
+  function client(url, secret) {
+    const base = normalizeDbUrl(url);
+    if (!base) throw new SyncError("BAD_URL");
+    const root = window.FLOMA_PLATFORM.memory_sync.root;
+    async function call(method, body) {
+      // The legacy database secret goes in the auth parameter (the REST API's way for it).
+      const address = `${base}/${root}.json?auth=${encodeURIComponent(secret)}`;
       let response;
       try {
-        response = await fetch(API + path, {
+        response = await fetch(address, {
           method,
-          headers: {
-            Accept: "application/vnd.github+json",
-            Authorization: `Bearer ${token}`,
-            "X-GitHub-Api-Version": "2022-11-28",
-            ...(body ? { "Content-Type": "application/json" } : {}),
-          },
+          headers: body ? { "Content-Type": "application/json" } : {},
           body: body ? JSON.stringify(body) : undefined,
           cache: "no-store",
         });
       } catch (e) {
-        throw new SyncError("NETWORK", e.message);
+        throw new SyncError("NETWORK"); // never the URL: it holds the secret
       }
       const text = await response.text();
-      if (response.ok || okStatuses.includes(response.status)) return { status: response.status, text };
-      const s = response.status;
-      const kind = s === 401 ? "AUTH"
-        : s === 429 || (s === 403 && response.headers.get("x-ratelimit-remaining") === "0") ? "RATE_LIMITED"
-          : s === 403 ? "FORBIDDEN" : s === 404 ? "REPO_NOT_FOUND" : s >= 500 ? "SERVER" : "UNKNOWN";
-      throw new SyncError(kind, `HTTP ${s}`);
+      if (!response.ok) {
+        const s = response.status;
+        throw new SyncError(s === 401 || s === 403 ? "AUTH" : s === 404 ? "NOT_FOUND" : s === 429 ? "RATE_LIMITED"
+          : s >= 500 || s === 423 ? "SERVER" : "UNKNOWN", `HTTP ${s}`);
+      }
+      try {
+        return text ? JSON.parse(text) : null;
+      } catch (e) {
+        throw new SyncError("UNKNOWN", "not JSON");
+      }
     }
-    const encode = (path) => path.split("/").map(encodeURIComponent).join("/");
-    const api = {
-      async login() {
-        return JSON.parse((await call("GET", "/user")).text).login || "";
+    return {
+      async getMemory() {
+        const data = await call("GET");
+        return data && typeof data === "object" && !Array.isArray(data) ? data : {};
       },
-      async resolveRepo(repository) {
-        const parts = repository.trim().replace(/^https:\/\/github\.com\//, "").split("/").filter(Boolean);
-        if (parts.length === 1) return `${await api.login()}/${parts[0]}`;
-        if (parts.length === 2) return parts.join("/");
-        throw new SyncError("REPO_NOT_FOUND", `Bad repository name: ${repository}`);
-      },
-      async ensureRepo(repo) {
-        if ((await call("GET", `/repos/${repo}`, null, [404])).status !== 404) return false;
-        const [owner, name] = repo.split("/");
-        if (owner.toLowerCase() !== (await api.login()).toLowerCase()) throw new SyncError("REPO_NOT_FOUND");
-        const created = await call("POST", "/user/repos", {
-          name, private: true, auto_init: true, description: "Toby's semantic memory, synced by the Floma app.",
-        }, [404, 422]);
-        if (created.status === 404 || created.status === 422) throw new SyncError("REPO_NOT_FOUND");
-        return true;
-      },
-      async looksLikeCode(repo) {
-        const res = await call("GET", `/repos/${repo}/contents/`, null, [404]);
-        if (res.status === 404) return false;
-        return JSON.parse(res.text).some((e) => CODE_MARKERS.includes(String(e.name || "").toLowerCase()));
-      },
-      async getFile(repo, path) {
-        const res = await call("GET", `/repos/${repo}/contents/${encode(path)}`, null, [404]);
-        if (res.status === 404) return null;
-        const json = JSON.parse(res.text);
-        return { sha: json.sha, content: fromBase64(json.content || "") };
-      },
-      async putFile(repo, path, content, message) {
-        for (let attempt = 0; attempt < 2; attempt++) {
-          const current = await api.getFile(repo, path);
-          if (current && current.content === content) return false;
-          const body = { message, content: toBase64(content) };
-          if (current) body.sha = current.sha;
-          const res = await call("PUT", `/repos/${repo}/contents/${encode(path)}`, body, attempt === 0 ? [409, 422] : []);
-          if (res.status >= 200 && res.status < 300) return true;
-        }
-        throw new SyncError("UNKNOWN", `Couldn't update ${path}`);
+      async putCategories(nodes) {
+        await call("PATCH", nodes);
       },
     };
-    return api;
   }
 
-  /** Same rule as Android and the desktop: unpushed local edits win, else the remote file wins. */
+  /** A category's notes from both sides on first connect: the database's lines, then this device's others. */
+  function unionNotes(remote, local) {
+    const lines = (text) => (text || "").split("\n").map((l) => l.trim()).filter(Boolean);
+    const seen = new Set(lines(remote));
+    return [...lines(remote), ...lines(local).filter((l) => !seen.has(l))].join("\n");
+  }
+
+  /** Same rule as Android and the desktop: unpushed local edits win, else the remote node wins. */
   function mergeRemote(local, remote, unpushed) {
     const merged = {};
     for (const c of window.FLOMA_PLATFORM.memory_categories) {
@@ -142,11 +133,12 @@
     lastError: null, lastSync: 0,
   }, read(STORE.cache, {}));
   let busy = Promise.resolve(); // one sync job at a time
-  let repository = () => DEFAULT_REPOSITORY;
+  let dbUrl = () => null;
 
   const save = () => write(STORE.cache, state);
-  const token = () => read(STORE.token, null);
+  const secret = () => read(STORE.secret, null);
   const serial = (job) => (busy = busy.then(job, job).catch(() => {}));
+  const configured = () => Boolean(normalizeDbUrl(dbUrl()) && (secret() || "").trim());
 
   function failed(error) {
     state.failures += 1;
@@ -160,19 +152,18 @@
   }
 
   function available() {
-    const t = token();
-    return t && Date.now() >= state.nextAttempt ? client(t) : null;
+    return configured() && Date.now() >= state.nextAttempt ? client(dbUrl(), secret().trim()) : null;
   }
 
-  async function pullNow(force) {
+  /** The pull itself: { remote: the categories that exist remotely, changed } or null if nothing was pulled. */
+  async function pullOnce(force) {
     const api = available();
-    if (!api || (!force && Date.now() - state.lastPull < PULL_INTERVAL_MS)) return false;
+    if (!api || (!force && Date.now() - state.lastPull < PULL_INTERVAL_MS)) return null;
     try {
-      const repo = await api.resolveRepo(repository());
+      const nodes = await api.getMemory();
       const remote = {};
       for (const c of window.FLOMA_PLATFORM.memory_categories) {
-        const file = await api.getFile(repo, c.file);
-        if (file) remote[c.key] = Core.parseMemoryFile(file.content);
+        if (c.key in nodes) remote[c.key] = Core.notesFromNode(nodes[c.key]);
       }
       const merged = mergeRemote(state.sections, remote, Object.keys(state.pending));
       const changed = JSON.stringify(merged) !== JSON.stringify(state.sections);
@@ -180,37 +171,57 @@
       state.lastPull = Date.now();
       succeeded();
       save();
-      return changed;
+      return { remote: Object.keys(remote), changed };
     } catch (e) {
       failed(e);
-      return false;
+      return null;
     }
   }
 
+  async function pullNow(force) {
+    const pulled = await pullOnce(force);
+    return Boolean(pulled && pulled.changed);
+  }
+
   async function pushNow() {
-    if (!Object.keys(state.pending).length) return 0;
+    const pending = { ...state.pending };
+    if (!Object.keys(pending).length) return 0;
     const api = available();
     if (!api) return 0;
+    const now = Date.now();
+    const nodes = {};
+    for (const [key, notes] of Object.entries(pending)) nodes[key] = Core.memoryNode(key, notes, now, DEVICE);
     try {
-      const repo = await api.resolveRepo(repository());
-      if (!(await api.ensureRepo(repo)) && (await api.looksLikeCode(repo))) {
-        throw new SyncError("NOT_MEMORY_REPO", `${repo} looks like a code repository`);
-      }
-      const today = new Date().toISOString().slice(0, 10);
-      let pushed = 0;
-      for (const [key, notes] of Object.entries(state.pending)) {
-        const c = window.FLOMA_PLATFORM.memory_categories.find((x) => x.key === key);
-        if (await api.putFile(repo, c.file, Core.renderMemoryFile(key, notes, today), `Floma (web): update ${c.file}`)) pushed++;
-        delete state.pending[key];
-        save();
-      }
-      succeeded();
-      save();
-      return pushed;
+      await api.putCategories(nodes);
     } catch (e) {
       failed(e);
       return 0;
     }
+    for (const [key, notes] of Object.entries(pending)) {
+      if (state.pending[key] === notes) delete state.pending[key]; // unless re-queued with newer notes
+    }
+    succeeded();
+    save();
+    return Object.keys(nodes).length;
+  }
+
+  /** Summarizes [batch] into the notes and queues the changed categories; false if the model failed. */
+  async function summarizeIntoNotes(batch, summarize) {
+    await pullNow(true); // build on what the other devices learned
+    const previous = { ...state.sections };
+    let result;
+    try {
+      result = await summarize(state.summary || null, previous, batch.map((m) => ({ role: m.role, text: m.text })));
+    } catch (e) {
+      return false; // no model right now: retried later
+    }
+    if (!result.summary.trim()) return false;
+    const sections = Object.keys(result.sections).length ? result.sections : previous;
+    // Queued for Firebase only when it's set up; before that the notes stay local (the first connect merges them).
+    if (configured()) for (const [key, notes] of Object.entries(sections)) if (previous[key] !== notes) state.pending[key] = notes;
+    Object.assign(state, { summary: result.summary, sections, coveredTs: Math.max(state.coveredTs, batch[batch.length - 1].ts) });
+    save();
+    return true;
   }
 
   /**
@@ -223,67 +234,64 @@
     const older = chat.length > RECENT_WINDOW ? chat.slice(0, chat.length - RECENT_WINDOW) : [];
     const batch = older.filter((m) => m.ts > since);
     if (batch.length < MEMORY_BATCH) return false;
-    await pullNow(true); // build on what the other devices learned
-    const previous = { ...state.sections };
-    let result;
-    try {
-      result = await summarize(state.summary || null, previous, batch.map((m) => ({ role: m.role, text: m.text })));
-    } catch (e) {
-      return false; // Gemini down / no key: retried after the next reply
-    }
-    if (!result.summary.trim()) return false;
-    const sections = Object.keys(result.sections).length ? result.sections : previous;
-    for (const [key, notes] of Object.entries(sections)) if (previous[key] !== notes) state.pending[key] = notes;
-    const covered = batch[batch.length - 1].ts;
-    Object.assign(state, { summary: result.summary, sections, coveredTs: Math.max(state.coveredTs, covered) });
-    save();
+    if (!(await summarizeIntoNotes(batch, summarize))) return false;
     await pushNow();
-    return covered;
+    return batch[batch.length - 1].ts;
   }
 
   /**
-   * Ephemeral memory (Toby): folds everything in a session that isn't in the notes yet into the notes
-   * (not only the older messages), then pushes them to GitHub. True only when the facts are safely
-   * on GitHub (or there was nothing new to learn), so the caller may then clear the session from this
-   * browser; false keeps it (not set up, offline, GitHub or Gemini failing). [since] as in foldNow.
+   * A chat that ended: everything in it that isn't in the notes yet (not only the older messages) is
+   * summarized into facts, saved in the local notes and queued for Firebase (pushed now when it can
+   * be). True once the facts are safe in the notes (or there was nothing new to learn), so the chat
+   * may be deleted later; false if the model couldn't summarize it (no key, offline). [since] as in foldNow.
    */
   async function distillNow(messages, summarize, since = state.coveredTs) {
-    if (!available()) return false;
     const fresh = messages.filter((m) => !m.local && m.ts && m.ts > since);
-    if (fresh.length >= 2) {
-      await pullNow(true);
-      if (state.lastError) return false; // GitHub can't be reached: keep the session
-      const previous = { ...state.sections };
-      let result;
-      try {
-        result = await summarize(state.summary || null, previous, fresh.map((m) => ({ role: m.role, text: m.text })));
-      } catch (e) {
-        return false; // Gemini down / no key
+    if (fresh.length >= 2 && !(await summarizeIntoNotes(fresh, summarize))) return false;
+    await pushNow();
+    return true;
+  }
+
+  /**
+   * New credentials: skip the backoff and merge both sides. A category only this browser has is uploaded;
+   * one on both sides keeps the database's facts plus this browser's others (nothing is overwritten).
+   */
+  async function syncNowJob() {
+    state.nextAttempt = 0;
+    const before = { ...state.sections };
+    const pulled = await pullOnce(true);
+    if (pulled) {
+      for (const [key, notes] of Object.entries(before)) {
+        if (key in state.pending || !notes.trim()) continue;
+        if (!pulled.remote.includes(key)) {
+          state.pending[key] = notes; // only this browser has it: upload
+          continue;
+        }
+        const merged = unionNotes(state.sections[key], notes);
+        if (merged !== (state.sections[key] || "")) {
+          state.sections[key] = merged;
+          state.pending[key] = merged;
+        }
       }
-      if (!result.summary.trim()) return false;
-      const sections = Object.keys(result.sections).length ? result.sections : previous;
-      for (const [key, notes] of Object.entries(sections)) if (previous[key] !== notes) state.pending[key] = notes;
-      Object.assign(state, { summary: result.summary, sections, coveredTs: Math.max(state.coveredTs, fresh[fresh.length - 1].ts) });
       save();
     }
     await pushNow();
-    return Object.keys(state.pending).length === 0 && !state.lastError;
   }
 
   window.FlomaMemory = {
-    distill: (messages, summarize, since) => serial(() => distillNow(messages, summarize, since)),
-    DEFAULT_REPOSITORY,
-    setRepository(fn) { repository = fn; },
+    normalizeDbUrl,
+    setDatabaseUrl(fn) { dbUrl = fn; },
     /** What goes inside the prompt's <memory> block (always the local copy). */
     notes: () => Core.memoryNotes(state.sections, state.summary),
-    status: () => ({ configured: !!token(), lastSync: state.lastSync, lastError: state.lastError,
+    status: () => ({ configured: configured(), lastSync: state.lastSync, lastError: state.lastError,
       pending: Object.keys(state.pending).length }),
-    hasToken: () => !!token(),
-    setToken(value) { write(STORE.token, value ? value.trim() : null); },
+    hasSecret: () => !!secret(),
+    setSecret(value) { write(STORE.secret, value ? value.trim() : null); },
     pull: (force = false) => serial(() => pullNow(force)),
     push: () => serial(pushNow),
     fold: (messages, summarize, since) => serial(() => foldNow(messages, summarize, since)),
-    syncNow: () => serial(async () => { state.nextAttempt = 0; await pullNow(true); await pushNow(); }),
+    distill: (messages, summarize, since) => serial(() => distillNow(messages, summarize, since)),
+    syncNow: () => serial(syncNowJob),
     forgetLocal() { Object.assign(state, { summary: "", sections: {}, pending: {}, coveredTs: 0 }); save(); },
     _mergeRemote: mergeRemote,
   };
