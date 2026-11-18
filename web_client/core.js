@@ -733,6 +733,36 @@
     return lines[language] || lines.HEBREW;
   }
 
+  // --- Cloud voice (ElevenLabs): the same request on every platform (persona/floma_platform.js) ---
+
+  function validVoiceId(voiceId) {
+    return Boolean(voiceId) && new RegExp(P().cloud_voice.voice_id_pattern).test(String(voiceId).trim());
+  }
+
+  /** What is read aloud: links dropped, whitespace collapsed, at most max_chars code points. */
+  function speechText(text) {
+    const limit = P().cloud_voice.max_chars;
+    const clean = String(text).replace(/https?:\/\/[^ \t\r\n\f\v]+/g, "").replace(/[ \t\r\n\f\v]+/g, " ").replace(/^ +| +$/g, "");
+    const points = Array.from(clean);
+    if (points.length <= limit) return clean;
+    const cut = points.slice(0, limit);
+    let end = -1;
+    for (let i = cut.length - 1; i >= 0; i--) if (".!?…".includes(cut[i])) { end = i; break; }
+    if (end >= Math.floor(limit / 2)) return cut.slice(0, end + 1).join("");
+    const space = cut.lastIndexOf(" ");
+    return (space > 0 ? cut.slice(0, space) : cut).join("").replace(/^ +| +$/g, "");
+  }
+
+  /** The ElevenLabs request ({url, language, body}; the output format is added by the caller), or null. */
+  function cloudVoiceRequest(text, voiceId) {
+    const c = P().cloud_voice;
+    const spoken = speechText(text);
+    if (!spoken) return null;
+    const language = /[\u0590-\u05ff]/.test(spoken) ? "HEBREW" : "ENGLISH";
+    const voice = validVoiceId(voiceId) ? String(voiceId).trim() : c.default_voice_id;
+    return { url: c.endpoint.replace("{voice_id}", voice), language, body: { text: spoken, model_id: c.models[language] } };
+  }
+
   window.FlomaCore = {
     MODELS, EMOTIONS, DEFAULT_SETTINGS, AiError,
     route, modelFor, detectSeriousMode, systemPrompt, buildPrompt, memoryNotes, summarizerPrompt,
@@ -741,6 +771,6 @@
     avatarImage, animated, greeting, emotionMotion, avatarFor, chatLine, errorLine, typingStage, unavailableLine,
     theme, label, modelForChoice, modelChain, fallsBack, goesOffline,
     normalizeWords, formatDate, nowParts, offlineAnswer, wakePhrases, isWakePhrase, imagePrompt, withImage,
-    cleanDocumentText, documentContext, documentLine,
+    cleanDocumentText, documentContext, documentLine, validVoiceId, speechText, cloudVoiceRequest,
   };
 })();

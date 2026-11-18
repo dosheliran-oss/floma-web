@@ -39,8 +39,9 @@ needs the internet to answer.
 Double-click `index.html` (or drag it into Chrome). Everything works except installing and the
 offline copy, because Chrome doesn't run service workers on `file://` pages.
 
-On the first launch it asks for your own Gemini API key from
-[Google AI Studio](https://aistudio.google.com/app/apikey).
+No key is asked for at startup. Your own Gemini API key from
+[Google AI Studio](https://aistudio.google.com/app/apikey) is optional (⚙ Settings → Model → Add key);
+without it the assistant answers in local mode.
 
 ## What works here
 
@@ -84,8 +85,8 @@ out of quota, Floma quietly asks the other model. If no model answers (offline, 
 down, the day's quota used up, a garbled or refused reply), the assistant answers in **local mode**
 from this browser: the time, the date, what it remembers about you, or its earlier answer to the very
 same question. Such answers are marked "⚡ Local mode"; hovering the tag shows why. No red error
-bubbles. Without a key (or with one Google rejected), one calm note with an **Add key** button
-appears, the key dialog opens, and the question is still answered in local mode.
+bubbles. Without a key (or with one Google rejected), one calm note per chat with an **Add key**
+button appears and the question is answered in local mode. No dialog pops up; the key is optional.
 
 ## Pictures
 
@@ -132,6 +133,11 @@ assistant says it needs the internet to answer about the file.
   long replies are split so Chrome doesn't cut them off. He stops at once when you type, press the
   mic, send a message, press Esc or turn the setting off. If the system has no voice for the
   language, the setting says so.
+- **ElevenLabs voice (optional):** ⚙ Settings → Voice → ElevenLabs API key and Voice ID. Replies (the
+  🔊 button, live conversation, automatic reading) are then fetched from ElevenLabs as MP3 and played;
+  if that fails (offline, quota, rejected key, autoplay blocked) the browser's voice reads the reply
+  instead, and Settings shows why. The key is stored only in this browser's `localStorage`,
+  unencrypted, and sent only to `api.elevenlabs.io`.
 
 ## When the browser can't do it
 
@@ -202,7 +208,7 @@ in their browser.
 
 ```powershell
 node web_client\check_pwa.js                         # manifest, icons, service worker, page wiring
-node web_client\check_voice.js                       # dictation, read-aloud, interruptions (fake speech APIs)
+node web_client\check_voice.js                       # dictation, read-aloud, interruptions, ElevenLabs + fallback (fakes)
 python -m unittest web_client\test_serve.py          # serve.py only serves the web app's folders
 ```
 

@@ -113,6 +113,16 @@
       <label><span><span data-i18n="voicePitch"></span> <output id="pitchValue"></output></span><input id="setPitch" type="range" min="0.5" max="2" step="0.1"></label>
       <div class="buttons"><button type="button" id="testVoice" data-i18n="testVoice"></button></div>
       <p class="hint" data-i18n="liveHint"></p>
+      <h4 data-i18n="elevenTitle"></h4>
+      <p class="hint" data-i18n="elevenHint"></p>
+      <p class="hint" id="elevenStatus"></p>
+      <label><span data-i18n="elevenKey"></span><input id="elevenKey" type="password" autocomplete="off" spellcheck="false" dir="ltr"></label>
+      <label><span data-i18n="elevenVoice"></span><input id="elevenVoice" type="text" autocomplete="off" spellcheck="false" dir="ltr" data-i18n-placeholder="elevenVoicePlaceholder"></label>
+      <p class="error" id="elevenProblem" role="alert"></p>
+      <div class="buttons">
+        <button type="button" id="elevenSave" data-i18n="elevenSave"></button>
+        <button type="button" id="elevenRemove" class="danger" data-i18n="elevenRemove"></button>
+      </div>
     </section>
 
     <section>

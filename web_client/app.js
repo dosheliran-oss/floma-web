@@ -24,7 +24,7 @@
   const Voice = window.FlomaVoice;
   const Docs = window.FlomaDocuments;
   const STORE = {
-    key: "floma.apiKey", settings: "floma.settings", sessions: "floma.sessions", active: "floma.activeSession",
+    key: "floma.apiKey", elevenKey: "floma.elevenLabsKey", settings: "floma.settings", sessions: "floma.sessions", active: "floma.activeSession",
     chat: (id) => `floma.chat.${id}`,
     legacyHistory: "floma.history", // the single infinite chat before sessions (migrated once)
   };
@@ -43,7 +43,7 @@
       sectionToby: "שם וסגנון", name: "שם", personality: "אישיות", humor: "רמת הומור", language: "שפה",
       serious: "מצב רציני (בלי בדיחות)", instructions: "הוראות משלכם",
       pFriendly: "הומוריסטי וחברותי", pPlayful: "הומוריסטי מאוד", pProfessional: "רציני ומקצועי", pConcise: "רציני ותמציתי",
-      sectionModel: "מודל (Gemini)", keySaved: "מפתח שמור בדפדפן הזה.", keyMissing: "אין מפתח שמור.",
+      sectionModel: "מודל (Gemini)", keySaved: "מפתח שמור בדפדפן הזה.", keyMissing: "אין מפתח: עונה במצב מקומי. המפתח אופציונלי.",
       changeKey: "החלפת מפתח", removeKey: "מחיקת מפתח", addKey: "הוספת מפתח",
       sectionMemory: "זיכרון", memoryHint: "השיחות נשמרות בדפדפן הזה בלבד.", clearChat: "מחיקת כל השיחות",
       confirmClear: "למחוק את כל השיחות מהדפדפן הזה?", confirmRemoveKey: "למחוק את המפתח מהדפדפן הזה?",
@@ -51,7 +51,8 @@
       confirmDeleteChat: "למחוק את השיחה הזו?", noChats: "עוד אין שיחות קודמות.",
       chatsKept: "רק 3 השיחות האחרונות של {name} נשמרות בדפדפן. לפני שמוחקים שיחה ישנה, העובדות ממנה נשמרות בזיכרון (וב-Firebase כשהוא מחובר).",
       notSaved: "ממתינה לשמירה בזיכרון",
-      tobyAddon: "טובי (תוסף ליצן)", keyNotice: "כדי לענות על הכול אני צריך מפתח Gemini. בינתיים אני עונה במצב מקומי.",
+      tobyAddon: "טובי (תוסף ליצן)",
+      elevenTitle: "קול ElevenLabs (אופציונלי)", elevenHint: "הקראת התשובות בקול שעיצבתם ב-ElevenLabs. בלי מפתח, או כשאין גישה, הקול של הדפדפן מקריא. המפתח נשמר רק בדפדפן הזה (localStorage), לא מוצפן.", elevenKey: "מפתח API של ElevenLabs", elevenKeySaved: "מפתח שמור", elevenVoice: "מזהה קול (Voice ID)", elevenVoicePlaceholder: "ריק = קול ברירת המחדל", elevenSave: "שמירה", elevenRemove: "הסרה", elevenBadVoice: "זה לא נראה כמו מזהה קול (אותיות וספרות, מעמוד הקול ב-ElevenLabs).", elevenNoKey: "צריך להזין מפתח.", elevenOff: "כבוי: הקול של הדפדפן מקריא את התשובות.", elevenOn: "פעיל: התשובות מוקראות בקול ה-ElevenLabs שלכם.", elevenErrAUTH: "ElevenLabs דחה את המפתח. משתמש בקול של הדפדפן.", elevenErrBAD_VOICE: "ElevenLabs לא מכיר את מזהה הקול. משתמש בקול של הדפדפן.", elevenErrQUOTA: "נגמרו התווים בחשבון ElevenLabs. משתמש בקול של הדפדפן.", elevenErrRATE_LIMITED: "ElevenLabs עמוס. משתמש בקול של הדפדפן לכמה דקות.", elevenErrSERVER: "ElevenLabs עמוס. משתמש בקול של הדפדפן לכמה דקות.", elevenErrNETWORK: "אין גישה ל-ElevenLabs (אין אינטרנט?). משתמש בקול של הדפדפן.", elevenErrUNKNOWN: "ElevenLabs לא ענה כצפוי. משתמש בקול של הדפדפן.",
       sectionExtensions: "תוספים", extSearch: "חיפוש באינטרנט (Google Search)",
       extPc: "המחשב (Toby PC companion)", extPhone: "פעולות בטלפון ואנשי קשר",
       needsAndroid: "זמין רק באפליקציית האנדרואיד", needsApps: "זמין באפליקציית המחשב ובאפליקציית האנדרואיד",
@@ -62,8 +63,8 @@
       firebaseOff: "לא מחובר: הזיכרון נשמר רק בדפדפן הזה.", firebaseWaiting: "מחובר, ממתין לסנכרון הראשון.",
       firebaseSynced: "סונכרן לאחרונה ב-{time}.", firebaseError: "הסנכרון נכשל ({error}). הזיכרון המקומי ממשיך לעבוד וננסה שוב.",
       firebasePending: " {count} נושאים ממתינים להעלאה.", firebaseSecretSaved: "סוד שמור. אפשר להדביק חדש כדי להחליף.",
-      keyTitle: "נחבר את טובי ל-Gemini",
-      keyBody: "כדי לדבר, טובי צריך מפתח API משלכם מ-Google AI Studio. יצירת מפתח היא בחינם.",
+      keyTitle: "חיבור ל-Gemini (אופציונלי)",
+      keyBody: "עם מפתח API משלכם מ-Google AI Studio העוזר עונה על הכול. בלי מפתח הוא עונה במצב מקומי. יצירת מפתח היא בחינם.",
       keyStorage: "המפתח נשמר רק בדפדפן הזה (localStorage), לא בקובץ ה-HTML, ונשלח רק ל-Google. במחשב משותף כדאי למחוק אותו בסוף.",
       keyGet: "להשגת מפתח בחינם: aistudio.google.com", keySave: "שמירה והתחלה", keyLater: "אחר כך",
       keyChecking: "בודק את המפתח מול Google…", keyInvalid: "Google דחתה את המפתח. כדאי לוודא שהעתקתם את כולו.",
@@ -100,7 +101,7 @@
       sectionToby: "Name & style", name: "Name", personality: "Personality", humor: "Humor level", language: "Language",
       serious: "Serious mode (no jokes)", instructions: "Your own instructions",
       pFriendly: "Humorous and friendly", pPlayful: "Very humorous", pProfessional: "Serious and professional", pConcise: "Serious and concise",
-      sectionModel: "Model (Gemini)", keySaved: "A key is saved in this browser.", keyMissing: "No key saved.",
+      sectionModel: "Model (Gemini)", keySaved: "A key is saved in this browser.", keyMissing: "No key: answering in local mode. The key is optional.",
       changeKey: "Change key", removeKey: "Remove key", addKey: "Add key",
       sectionMemory: "Memory", memoryHint: "Chats are kept in this browser only.", clearChat: "Delete all chats",
       confirmClear: "Delete all chats from this browser?", confirmRemoveKey: "Remove the key from this browser?",
@@ -108,7 +109,8 @@
       confirmDeleteChat: "Delete this chat?", noChats: "No earlier chats yet.",
       chatsKept: "Only {name}'s 3 most recent chats stay in this browser. Before an older chat is deleted, its facts are saved to memory (and to Firebase when it's connected).",
       notSaved: "Waiting to be saved to memory",
-      tobyAddon: "Toby (jester add-on)", keyNotice: "To answer everything I need a Gemini key. Until then I'm answering in local mode.",
+      tobyAddon: "Toby (jester add-on)",
+      elevenTitle: "ElevenLabs voice (optional)", elevenHint: "Read replies with a voice you designed in ElevenLabs. Without a key, or when it can't be reached, the browser's voice reads them. The key is stored only in this browser (localStorage), unencrypted.", elevenKey: "ElevenLabs API key", elevenKeySaved: "A key is saved", elevenVoice: "Voice ID", elevenVoicePlaceholder: "Empty = the default voice", elevenSave: "Save", elevenRemove: "Remove", elevenBadVoice: "That doesn't look like a voice ID (letters and digits, from the voice's page in ElevenLabs).", elevenNoKey: "Enter a key first.", elevenOff: "Off: the browser's voice reads replies.", elevenOn: "On: replies are read with your ElevenLabs voice.", elevenErrAUTH: "ElevenLabs rejected the key. Using the browser's voice.", elevenErrBAD_VOICE: "ElevenLabs doesn't know this voice ID. Using the browser's voice.", elevenErrQUOTA: "Your ElevenLabs characters are used up. Using the browser's voice.", elevenErrRATE_LIMITED: "ElevenLabs is busy. Using the browser's voice for a couple of minutes.", elevenErrSERVER: "ElevenLabs is busy. Using the browser's voice for a couple of minutes.", elevenErrNETWORK: "Couldn't reach ElevenLabs (offline?). Using the browser's voice.", elevenErrUNKNOWN: "ElevenLabs didn't answer as expected. Using the browser's voice.",
       sectionExtensions: "Extensions", extSearch: "Web search (Google Search)",
       extPc: "PC (Toby PC companion)", extPhone: "Phone actions and contacts",
       needsAndroid: "Only in the Android app", needsApps: "In the desktop and Android apps",
@@ -119,8 +121,8 @@
       firebaseOff: "Not connected: the memory stays in this browser only.", firebaseWaiting: "Connected, waiting for the first sync.",
       firebaseSynced: "Last synced at {time}.", firebaseError: "Sync failed ({error}). The local memory keeps working; it will retry.",
       firebasePending: " {count} topic(s) waiting to upload.", firebaseSecretSaved: "A secret is saved. Paste a new one to replace it.",
-      keyTitle: "Connect Toby to Gemini",
-      keyBody: "Toby needs your own Google AI Studio API key to chat. Creating one is free.",
+      keyTitle: "Connect to Gemini (optional)",
+      keyBody: "With your own Google AI Studio API key the assistant can answer anything. Without one it answers in local mode. Creating a key is free.",
       keyStorage: "The key is stored only in this browser (localStorage), never in the HTML file, and is sent only to Google. On a shared computer, remove it when you're done.",
       keyGet: "Get a free key at aistudio.google.com", keySave: "Save and start", keyLater: "Later",
       keyChecking: "Checking the key with Google…", keyInvalid: "Google rejected this key. Check that you copied all of it.",
@@ -174,6 +176,8 @@
 
   const state = {
     apiKey: load(STORE.key, null),
+    elevenKey: load(STORE.elevenKey, null), // ElevenLabs (optional voice); unencrypted, like the Gemini key
+    cloudVoiceError: null, // the last ElevenLabs problem (null after it spoke)
     settings: Object.assign({}, Core.DEFAULT_SETTINGS, load(STORE.settings, {})),
     // [{ id, title, created, updated, memoryTs, unsaved? }], newest first; memoryTs: newest message in the notes
     sessions: [],
@@ -656,14 +660,12 @@
    */
   function handleFailure(kind, question, hasImage, hasDocument) {
     if (KEY_PROBLEMS.includes(kind)) {
-      const lastNote = [...state.messages].reverse().find((m) => m.role === "assistant");
-      if (!(lastNote && lastNote.action === "addKey") && !(lastNote && lastNote.offline && lastNote.reason === kind)) {
-        const text = kind === "MISSING_KEY" ? t("keyNotice") : Core.errorLine(kind, lang())[0];
-        addMessage({ role: "assistant", text, local: true, notice: true, action: "addKey" });
+      // The key is optional: no pop-up. One note per chat (with an "Add key" button), then local mode.
+      if (!state.messages.some((m) => m.notice && m.reason === kind)) {
+        addMessage({ role: "assistant", text: Core.errorLine(kind, lang())[0], local: true, notice: true, action: "addKey", reason: kind });
       }
       answerOffline(question, hasImage, hasDocument, kind);
-      setLive(false); // the key dialog needs the user's attention
-      openKeyDialog(kind === "INVALID_KEY" ? t("keyInvalid") : "");
+      if (kind === "INVALID_KEY") setLive(false); // a wrong key is worth a look; a missing one isn't
       return;
     }
     answerOffline(question, hasImage, hasDocument, kind);
@@ -1049,6 +1051,12 @@
     $("pitchValue").textContent = `${Number($("setPitch").value).toFixed(1)}×`;
     $("setRate").disabled = $("setPitch").disabled = $("testVoice").disabled = !Voice.speechSupported;
     $("setSpeak").checked = Boolean(state.settings.speakReplies);
+    $("elevenKey").placeholder = state.elevenKey ? t("elevenKeySaved") : "";
+    if (document.activeElement !== $("elevenVoice")) $("elevenVoice").value = state.settings.elevenVoiceId || "";
+    $("elevenRemove").disabled = !state.elevenKey && !state.settings.elevenVoiceId;
+    $("elevenStatus").textContent = !state.elevenKey ? t("elevenOff")
+      : state.cloudVoiceError ? t(`elevenErr${state.cloudVoiceError}`) : t("elevenOn");
+    $("elevenStatus").classList.toggle("error", Boolean(state.elevenKey && state.cloudVoiceError));
     $("setSpeak").disabled = !Voice.speechSupported;
     $("speakHint").textContent = !Voice.speechSupported ? t("speakUnsupported")
       : state.settings.speakReplies && !Voice.hasVoiceFor(state.settings.language) ? t("speakNoVoice")
@@ -1337,6 +1345,51 @@
       fillSettings();
     });
 
+    // ElevenLabs reads replies when a key is saved; re-run after saving to retry right away.
+    const setupCloudVoice = () => Voice.configureCloud({
+      key: () => state.elevenKey,
+      voiceId: () => state.settings.elevenVoiceId || "",
+      onResult: (error) => {
+        if (state.cloudVoiceError === error) return;
+        state.cloudVoiceError = error;
+        fillVoiceSettings();
+      },
+    });
+    setupCloudVoice();
+    $("elevenSave").addEventListener("click", () => {
+      const key = $("elevenKey").value.trim();
+      const voice = $("elevenVoice").value.trim();
+      if (voice && !Core.validVoiceId(voice)) {
+        $("elevenProblem").textContent = t("elevenBadVoice");
+        return;
+      }
+      if (!key && !state.elevenKey) {
+        $("elevenProblem").textContent = t("elevenNoKey");
+        return;
+      }
+      $("elevenProblem").textContent = "";
+      if (key) {
+        state.elevenKey = key;
+        save(STORE.elevenKey, key);
+      }
+      $("elevenKey").value = "";
+      state.settings.elevenVoiceId = voice;
+      save(STORE.settings, state.settings);
+      state.cloudVoiceError = null;
+      setupCloudVoice();
+      fillSettings();
+    });
+    $("elevenRemove").addEventListener("click", () => {
+      state.elevenKey = null;
+      save(STORE.elevenKey, null);
+      delete state.settings.elevenVoiceId;
+      save(STORE.settings, state.settings);
+      state.cloudVoiceError = null;
+      $("elevenProblem").textContent = "";
+      Voice.stopSpeaking();
+      fillSettings();
+    });
+
     $("keyForm").addEventListener("submit", submitKey);
     $("keyLater").addEventListener("click", () => $("keyDialog").close());
 
@@ -1344,9 +1397,8 @@
     Memory.setDatabaseUrl(() => state.settings.firebaseUrl);
     Memory.pull().then(fillSettings).then(sweepSessions); // chats left last time are memorized
 
-    // First launch (or the key was removed): ask for it before anything else.
-    if (!state.apiKey) openKeyDialog();
-    else $("input").focus();
+    // No key prompt: Gemini is optional (Settings → Model). Without it the chat answers in local mode.
+    $("input").focus();
   }
 
   init();

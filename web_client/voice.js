@@ -1,6 +1,8 @@
 /*
  * Floma web app - voice: dictation (Web Speech API SpeechRecognition) and Toby reading his replies
- * aloud (speechSynthesis). The web counterpart of Android's SpeechInput.kt and TobySpeaker.kt.
+ * aloud: with the user's ElevenLabs voice when a key is saved (configureCloud), else (or when
+ * ElevenLabs can't be reached) the browser's speechSynthesis. The web counterpart of Android's
+ * SpeechInput.kt and TobySpeaker.kt.
  *
  * Dictation fills the text field and is never sent automatically, so it can be corrected first
  * (like Android). In Chrome the audio is recognized by Google's speech service; nothing is stored.
@@ -121,16 +123,124 @@
     if ("onvoiceschanged" in synth) synth.onvoiceschanged = () => synth.getVoices();
   }
 
-  /**
-   * Reads [text] aloud in the chat language; anything Toby was still saying is cut off first.
-   * Never throws: a speech problem must never turn a good reply into an error.
-   */
   // Each speak() gets a number; stopping or a newer speak() makes older callbacks stale, so an
   // interrupted reply never triggers its onDone (live conversation must not reopen the mic then).
   let speechToken = 0;
   let speakingText = "";
 
-  function speak(text, language, { rate = 1, pitch = 1, onDone = null } = {}) {
+  // --- ElevenLabs (optional) ---
+
+  const cloud = { key: () => null, voiceId: () => "", onResult: null, fetch: null, Audio: null, URL: null };
+  let audio = null; // the ElevenLabs reply playing now
+  let cloudPausedUntil = 0; // after a network/server problem the browser's voice is used for a while
+  const CLOUD_PAUSE_MS = 2 * 60 * 1000;
+  const OUTPUT_FORMAT = "mp3_44100_128";
+
+  /** key(), voiceId(): read at every reply; onResult(errorKind | null) after each attempt. */
+  function configureCloud({ key, voiceId, onResult = null, fetchImpl = null, AudioImpl = null, URLImpl = null }) {
+    cloud.key = key;
+    cloud.voiceId = voiceId;
+    cloud.onResult = onResult;
+    cloud.fetch = fetchImpl;
+    cloud.Audio = AudioImpl;
+    cloud.URL = URLImpl;
+    cloudPausedUntil = 0;
+  }
+
+  function cloudReady() {
+    return Boolean(cloud.key && cloud.key()) && Boolean(window.FlomaCore) && Date.now() >= cloudPausedUntil;
+  }
+
+  /** HTTP status and body -> AUTH | QUOTA | BAD_VOICE | RATE_LIMITED | SERVER | UNKNOWN (same as Android). */
+  function cloudError(status, body) {
+    const text = String(body || "");
+    if (status === 401 && text.includes("quota")) return "QUOTA";
+    if (status === 401 || status === 403) return "AUTH";
+    if (status === 402) return "QUOTA";
+    if (status === 404 || (status === 422 && text.includes("voice")) || (status === 400 && text.includes("voice_not_found"))) return "BAD_VOICE";
+    if (status === 429) return "RATE_LIMITED";
+    if (status >= 500) return "SERVER";
+    return "UNKNOWN";
+  }
+
+  function report(error) {
+    if (["NETWORK", "SERVER", "RATE_LIMITED"].includes(error)) cloudPausedUntil = Date.now() + CLOUD_PAUSE_MS;
+    if (cloud.onResult) try { cloud.onResult(error); } catch (e) { /* UI only */ }
+  }
+
+  /** The reply as MP3 from ElevenLabs; resolves to a Blob, or rejects with an error kind. */
+  async function cloudAudio(text) {
+    const request = window.FlomaCore.cloudVoiceRequest(text, cloud.voiceId ? cloud.voiceId() : "");
+    if (!request) throw "EMPTY";
+    const doFetch = cloud.fetch || window.fetch.bind(window);
+    const timeout = window.FLOMA_PLATFORM.cloud_voice.timeout_seconds * 1000;
+    const controller = typeof AbortController === "function" ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), timeout) : null;
+    let response;
+    try {
+      response = await doFetch(`${request.url}?output_format=${OUTPUT_FORMAT}`, {
+        method: "POST",
+        headers: { "xi-api-key": cloud.key(), "Content-Type": "application/json", Accept: "audio/mpeg" },
+        body: JSON.stringify(request.body),
+        signal: controller ? controller.signal : undefined,
+      });
+    } catch (e) {
+      throw "NETWORK";
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+    if (!response.ok) throw cloudError(response.status, await response.text().catch(() => ""));
+    const blob = await response.blob();
+    if (!blob || !blob.size) throw "UNKNOWN";
+    return blob;
+  }
+
+  /**
+   * Reads [text] aloud in the chat language; anything Toby was still saying is cut off first.
+   * ElevenLabs first when configured; on any failure the browser's voice reads it instead.
+   * Never throws: a speech problem must never turn a good reply into an error.
+   */
+  function speak(text, language, options = {}) {
+    if (!text) return false;
+    if (!cloudReady()) return speakLocal(text, language, options);
+    stopSpeaking();
+    const token = ++speechToken;
+    speakingText = text;
+    const fallback = () => {
+      if (token !== speechToken) return;
+      speechToken--; // speakLocal takes the next number again, keeping this reply current
+      speakLocal(text, language, options);
+    };
+    cloudAudio(text).then((blob) => {
+      if (token !== speechToken) return;
+      const urls = cloud.URL || window.URL;
+      const url = urls.createObjectURL(blob);
+      const Player = cloud.Audio || window.Audio;
+      const player = new Player(url);
+      audio = player;
+      const finish = () => {
+        try { urls.revokeObjectURL(url); } catch (e) { /* already gone */ }
+        if (audio === player) audio = null;
+      };
+      player.playbackRate = options.rate || 1;
+      player.onended = () => {
+        finish();
+        if (token !== speechToken) return;
+        speakingText = "";
+        if (options.onDone) options.onDone();
+      };
+      player.onerror = () => { finish(); fallback(); };
+      report(null);
+      return Promise.resolve(player.play()).catch(() => { finish(); fallback(); }); // e.g. autoplay blocked
+    }, (error) => {
+      if (error !== "EMPTY") report(error);
+      fallback();
+    });
+    return true;
+  }
+
+  /** The browser's own voice (speechSynthesis). */
+  function speakLocal(text, language, { rate = 1, pitch = 1, onDone = null } = {}) {
     if (!synth || !text) return false;
     try {
       stopSpeaking();
@@ -167,6 +277,10 @@
   function stopSpeaking() {
     speechToken++;
     speakingText = "";
+    if (audio) {
+      try { audio.pause(); } catch (e) { /* not playing */ }
+      audio = null;
+    }
     try {
       if (synth && (synth.speaking || synth.pending)) synth.cancel();
     } catch (e) { /* nothing to stop */ }
@@ -174,10 +288,12 @@
 
   window.FlomaVoice = {
     dictationSupported: Boolean(Recognition),
-    speechSupported: Boolean(synth),
-    hasVoiceFor: (language) => Boolean(pickVoice(languageTag(language))),
-    languageTag, dictationError, createDictation, chunks, speak, stopSpeaking,
-    get speaking() { return Boolean(synth && (synth.speaking || synth.pending)); },
+    /** True with the browser's voice, or with an ElevenLabs key saved. */
+    get speechSupported() { return Boolean(synth) || Boolean(cloud.key && cloud.key()); },
+    get cloudConfigured() { return Boolean(cloud.key && cloud.key()); },
+    hasVoiceFor: (language) => Boolean(cloud.key && cloud.key()) || Boolean(pickVoice(languageTag(language))),
+    languageTag, dictationError, createDictation, chunks, speak, stopSpeaking, configureCloud, cloudError,
+    get speaking() { return Boolean(audio) || Boolean(synth && (synth.speaking || synth.pending)); },
     /** The text being read aloud right now ("" when silent): the speaker button toggles it. */
     get speakingText() { return speakingText; },
   };

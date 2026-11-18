@@ -2,7 +2,7 @@
  * Floma web app - service worker. Makes the chat installable and lets it open offline.
  *
  * Strategy: network first for the app's own files (so an update shows up on the next load),
- * falling back to the cached copy when offline. Requests to other origins (Gemini, GitHub, Google
+ * falling back to the cached copy when offline. Requests to other origins (Gemini, Firebase, ElevenLabs, Google
  * Search widgets) are never intercepted or cached: the API key and chat traffic stay out of the
  * cache, and offline Toby answers with his own NETWORK line instead.
  *

@@ -183,9 +183,9 @@ window.FLOMA_PLATFORM = {
   },
   "errors": {
     "MISSING_KEY": {
-      "emotion": "CONFUSED",
-      "HEBREW": "הייתי שמח לענות, אבל עוד אין לי מפתח Gemini. הוסיפו מפתח ואני כולי שלכם.",
-      "ENGLISH": "I'd love to answer, but I don't have a Gemini key yet. Add one and I'm all yours."
+      "emotion": "IDLE",
+      "HEBREW": "אני במצב מקומי: לא הוגדר מפתח Gemini, אז אני עונה מהמכשיר הזה. הוספת מפתח בהגדרות היא אופציונלית ותעשה אותי חכם יותר.",
+      "ENGLISH": "I'm in local mode: no Gemini key is set, so I'm answering from this device. Adding a key in Settings is optional and makes me smarter."
     },
     "INVALID_KEY": {
       "emotion": "SAD",
@@ -593,6 +593,18 @@ window.FLOMA_PLATFORM = {
       "HEBREW": "לא הצלחתי לפתוח את התמונה הזאת. אפשר לנסות קובץ JPG או PNG?",
       "ENGLISH": "I couldn't open that picture. Could you try a JPG or PNG file?"
     }
+  },
+  "cloud_voice": {
+    "provider": "ElevenLabs",
+    "endpoint": "https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
+    "default_voice_id": "JBFqnCBsd6RMkjVDRZzb",
+    "voice_id_pattern": "^[A-Za-z0-9]{8,40}$",
+    "models": {
+      "HEBREW": "eleven_v3",
+      "ENGLISH": "eleven_multilingual_v2"
+    },
+    "max_chars": 2500,
+    "timeout_seconds": 20
   },
   "documents": {
     "extensions": [
