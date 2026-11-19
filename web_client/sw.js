@@ -13,7 +13,7 @@
 self.window = self; // the persona files assign window.FLOMA_PLATFORM / FLOMA_PERSONAS
 importScripts("../persona/floma_platform.js", "../persona/personas.js");
 
-const CACHE = "floma-web-v4";
+const CACHE = "floma-web-v5";
 const AVATAR_DIR = "../app/src/main/res/drawable-nodpi/";
 const SHELL = [
   "./",
@@ -33,6 +33,7 @@ const SHELL = [
   "icons/favicon-32.png",
   "../persona/floma_platform.js",
   "../persona/personas.js",
+  "../persona/system_guide.js",
   // Every persona's art: Toby's picture per emotion, the neutral assistant's logo.
   ...[...new Set(Object.values(self.FLOMA_PERSONAS).flatMap((p) => [...Object.values(p.images || {}), p.logo]).filter(Boolean))]
     .map((image) => AVATAR_DIR + image),

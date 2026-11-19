@@ -680,3 +680,14 @@ button.danger { background: transparent; color: var(--error); border: 1px solid 
 .site-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 8px; border-radius: 8px; background: var(--surface2, rgb(127 127 127 / 0.12)); margin: 2px 0; font-size: 0.85rem; }
 .site-list button { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 0.9rem; }
 .bubble-footer .tag.sites { color: var(--muted); }
+
+/* --- The system guide (Step 51) --- */
+.guide-button { width: 100%; margin: 4px 0; }
+.guide-dialog { max-width: min(760px, 94vw); }
+.guide-body { max-height: 70vh; overflow-y: auto; line-height: 1.5; }
+.guide-body h1 { font-size: 1.3rem; margin: 4px 0 8px; }
+.guide-body h2 { font-size: 1.1rem; margin: 16px 0 6px; color: var(--primary); }
+.guide-body h3 { font-size: 0.98rem; margin: 10px 0 4px; }
+.guide-body ul, .guide-body ol { margin: 4px 0; padding-inline-start: 22px; }
+.guide-body a { color: var(--primary); }
+.guide-body code { font-size: 0.85em; }

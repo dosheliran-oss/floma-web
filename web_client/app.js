@@ -52,7 +52,7 @@
       memBadgeError: "☁ שגיאת סנכרון ({error}) · {facts} עובדות בדפדפן", memBadgeTime: " · סונכרן {time}",
       memSyncNow: "סנכרן וחלץ עכשיו", memSyncing: "מסנכרן ומחלץ עובדות…", memView: "הצג זיכרון שמור",
       memViewTitle: "מה אני זוכר עליך", memViewEmpty: "עוד אין עובדות שמורות.", memNotSavedYet: "לא נשמר עדיין לענן",
-      sectionSites: "אתרים לשאילתות", sitesHint: "כששואלים על אחד האתרים האלה, אפליקציית המחשב שולפת את המידע מהאתר ועונה במודל המקומי - בלי טוקנים בענן. אפשר לשים {q} בכתובת במקום מילות החיפוש.",
+      guide: "📖 מדריך מערכת ויכולות", sectionSites: "אתרים לשאילתות", sitesHint: "כששואלים על אחד האתרים האלה, אפליקציית המחשב שולפת את המידע מהאתר ועונה במודל המקומי - בלי טוקנים בענן. אפשר לשים {q} בכתובת במקום מילות החיפוש.",
       sitesNeedsDesktop: "בדפדפן אי אפשר לקרוא אתרים אחרים ישירות: התכונה פועלת באפליקציית המחשב (ובאנדרואיד דרכה).",
       sitesAdd: "הוסף", sitesUrl: "כתובת אתר", sitesName: "שם (לא חובה)", sitesBad: "זו לא כתובת אתר תקינה.", sitesNone: "עוד לא נוספו אתרים.", sitesRemove: "הסרה", confirmRemoveKey: "למחוק את המפתח מהדפדפן הזה?",
       chats: "שיחות", newChat: "שיחה חדשה", untitled: "שיחה חדשה", deleteChat: "מחיקת השיחה",
@@ -117,7 +117,7 @@
       memBadgeError: "☁ Sync error ({error}) · {facts} facts in this browser", memBadgeTime: " · synced {time}",
       memSyncNow: "Sync & extract now", memSyncing: "Syncing and extracting facts…", memView: "View saved memory",
       memViewTitle: "What I remember about you", memViewEmpty: "No saved facts yet.", memNotSavedYet: "not in the cloud yet",
-      sectionSites: "Custom query sites", sitesHint: "When you ask about one of these sites, the desktop app reads it and the local model answers - 0 cloud tokens. Put {q} in an address for the search words.",
+      guide: "📖 System guide & capabilities", sectionSites: "Custom query sites", sitesHint: "When you ask about one of these sites, the desktop app reads it and the local model answers - 0 cloud tokens. Put {q} in an address for the search words.",
       sitesNeedsDesktop: "A browser can't read other sites directly: this works in the desktop app (and on Android through it).",
       sitesAdd: "Add", sitesUrl: "Site address", sitesName: "Name (optional)", sitesBad: "That isn't a valid site address.", sitesNone: "No sites added yet.", sitesRemove: "Remove", confirmRemoveKey: "Remove the key from this browser?",
       chats: "Chats", newChat: "New chat", untitled: "New chat", deleteChat: "Delete chat",
@@ -974,6 +974,77 @@
     }
   }
 
+  // --- The system guide (persona/system_guide.js, generated from the sites catalog) ---
+
+  /** Inline Markdown (links, **bold**, `code`) as safe DOM nodes: text only, links only to http(s). */
+  function inline(parent, text) {
+    const pattern = /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)|\*\*([^*]+)\*\*|`([^`]+)`/g;
+    let last = 0;
+    for (const m of text.matchAll(pattern)) {
+      if (m.index > last) parent.append(text.slice(last, m.index));
+      if (m[1]) {
+        const a = document.createElement("a");
+        a.href = m[2];
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.textContent = m[1];
+        parent.append(a);
+      } else if (m[3]) {
+        const b = document.createElement("strong");
+        b.textContent = m[3];
+        parent.append(b);
+      } else {
+        const c = document.createElement("code");
+        c.textContent = m[4];
+        parent.append(c);
+      }
+      last = m.index + m[0].length;
+    }
+    if (last < text.length) parent.append(text.slice(last));
+  }
+
+  /** The guide's Markdown (headings, lists, numbered steps, paragraphs) rendered into [box]. */
+  function renderGuide(box, markdown) {
+    box.replaceChildren();
+    let list = null;
+    for (const raw of markdown.split("\n")) {
+      const line = raw.trim();
+      if (!line) { list = null; continue; }
+      const heading = line.match(/^(#{1,3}) (.*)$/);
+      const bullet = line.match(/^- (.*)$/);
+      const step = line.match(/^\d+\. (.*)$/);
+      if (heading) {
+        list = null;
+        const h = document.createElement(`h${heading[1].length}`);
+        if (heading[1].length === 1) h.id = "guideTitle";
+        inline(h, heading[2]);
+        box.append(h);
+      } else if (bullet || step) {
+        const tag = bullet ? "UL" : "OL";
+        if (!list || list.tagName !== tag) {
+          list = document.createElement(tag.toLowerCase());
+          box.append(list);
+        }
+        const item = document.createElement("li");
+        inline(item, (bullet || step)[1]);
+        list.append(item);
+      } else {
+        list = null;
+        const p = document.createElement("p");
+        inline(p, line);
+        box.append(p);
+      }
+    }
+  }
+
+  function showGuide() {
+    const guide = window.FLOMA_GUIDE;
+    renderGuide($("guideBody"), guide && guide.markdown ? guide.markdown : "");
+    const dialog = $("guideDialog");
+    if (typeof dialog.showModal === "function") dialog.showModal();
+    else dialog.setAttribute("open", "");
+  }
+
   function memoryStatusText() {
     const status = Memory.status();
     if (!status.configured) return t("firebaseOff");
@@ -1588,6 +1659,8 @@
       fillSettings();
     });
 
+    $("settingsGuide").addEventListener("click", showGuide);
+    $("sessionsGuide").addEventListener("click", showGuide);
     $("memSync").addEventListener("click", syncAndExtract);
     $("memView").addEventListener("click", showSavedMemory);
     $("siteAdd").addEventListener("click", () => {

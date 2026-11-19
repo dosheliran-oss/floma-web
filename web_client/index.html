@@ -60,6 +60,7 @@
       <h2 id="sessionsTitle" data-i18n="chats"></h2>
       <button class="icon-button" id="closeSessions" type="button" data-i18n-label="close">✕</button>
     </div>
+    <button type="button" class="guide-button" id="sessionsGuide" data-i18n="guide"></button>
     <button type="button" class="new-chat" id="sessionsNewChat" data-i18n="newChat"></button>
     <p class="mem-badge" id="memBadgeSessions" role="status"></p>
     <p class="hint" id="ephemeralHint" hidden></p>
@@ -157,6 +158,10 @@
     </section>
 
     <section>
+      <button type="button" class="guide-button" id="settingsGuide" data-i18n="guide"></button>
+    </section>
+
+    <section>
       <h3 data-i18n="sectionSites"></h3>
       <p class="hint" data-i18n="sitesHint"></p>
       <p class="hint" data-i18n="sitesNeedsDesktop"></p>
@@ -197,6 +202,12 @@
     </form>
   </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <dialog class="key-dialog guide-dialog" id="guideDialog" aria-labelledby="guideTitle">
+    <form method="dialog">
+      <div id="guideBody" class="guide-body"></div>
+      <div class="buttons"><button type="submit" data-i18n="close"></button></div>
+    </form>
+  </dialog>
 
   <dialog class="key-dialog" id="keyDialog">
     <form method="dialog" id="keyForm">
@@ -216,6 +227,7 @@
   <!-- The Floma platform and its assistant personas, shared with Android and the desktop app. -->
   <script src="../persona/floma_platform.js"></script>
   <script src="../persona/personas.js"></script>
+  <script src="../persona/system_guide.js"></script>
   <script src="core.js"></script>
   <script src="memory.js"></script>
   <script src="sites.js"></script>
