@@ -52,7 +52,7 @@
       memBadgeError: "☁ שגיאת סנכרון ({error}) · {facts} עובדות בדפדפן", memBadgeTime: " · סונכרן {time}",
       memSyncNow: "סנכרן וחלץ עכשיו", memSyncing: "מסנכרן ומחלץ עובדות…", memView: "הצג זיכרון שמור",
       memViewTitle: "מה אני זוכר עליך", memViewEmpty: "עוד אין עובדות שמורות.", memNotSavedYet: "לא נשמר עדיין לענן",
-      guide: "📖 מדריך מערכת ויכולות", sectionSites: "אתרים לשאילתות", sitesHint: "כששואלים על אחד האתרים האלה, אפליקציית המחשב שולפת את המידע מהאתר ועונה במודל המקומי - בלי טוקנים בענן. אפשר לשים {q} בכתובת במקום מילות החיפוש.",
+      guide: "📖 מדריך מערכת ויכולות", help: "מדריך מערכת ויכולות", sectionSites: "אתרים לשאילתות", sitesHint: "כששואלים על אחד האתרים האלה, אפליקציית המחשב שולפת את המידע מהאתר ועונה במודל המקומי - בלי טוקנים בענן. אפשר לשים {q} בכתובת במקום מילות החיפוש.",
       sitesNeedsDesktop: "בדפדפן אי אפשר לקרוא אתרים אחרים ישירות: התכונה פועלת באפליקציית המחשב (ובאנדרואיד דרכה).",
       sitesAdd: "הוסף", sitesUrl: "כתובת אתר", sitesName: "שם (לא חובה)", sitesBad: "זו לא כתובת אתר תקינה.", sitesNone: "עוד לא נוספו אתרים.", sitesRemove: "הסרה", confirmRemoveKey: "למחוק את המפתח מהדפדפן הזה?",
       chats: "שיחות", newChat: "שיחה חדשה", untitled: "שיחה חדשה", deleteChat: "מחיקת השיחה",
@@ -117,7 +117,7 @@
       memBadgeError: "☁ Sync error ({error}) · {facts} facts in this browser", memBadgeTime: " · synced {time}",
       memSyncNow: "Sync & extract now", memSyncing: "Syncing and extracting facts…", memView: "View saved memory",
       memViewTitle: "What I remember about you", memViewEmpty: "No saved facts yet.", memNotSavedYet: "not in the cloud yet",
-      guide: "📖 System guide & capabilities", sectionSites: "Custom query sites", sitesHint: "When you ask about one of these sites, the desktop app reads it and the local model answers - 0 cloud tokens. Put {q} in an address for the search words.",
+      guide: "📖 System guide & capabilities", help: "System guide & capabilities", sectionSites: "Custom query sites", sitesHint: "When you ask about one of these sites, the desktop app reads it and the local model answers - 0 cloud tokens. Put {q} in an address for the search words.",
       sitesNeedsDesktop: "A browser can't read other sites directly: this works in the desktop app (and on Android through it).",
       sitesAdd: "Add", sitesUrl: "Site address", sitesName: "Name (optional)", sitesBad: "That isn't a valid site address.", sitesNone: "No sites added yet.", sitesRemove: "Remove", confirmRemoveKey: "Remove the key from this browser?",
       chats: "Chats", newChat: "New chat", untitled: "New chat", deleteChat: "Delete chat",
@@ -217,6 +217,7 @@
     document.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = t(el.dataset.i18n); });
     document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => { el.placeholder = t(el.dataset.i18nPlaceholder).replace("{name}", assistant()); });
     document.querySelectorAll("[data-i18n-label]").forEach((el) => { el.setAttribute("aria-label", t(el.dataset.i18nLabel)); });
+    document.querySelectorAll("[data-i18n-title]").forEach((el) => { el.title = t(el.dataset.i18nTitle); }); // tooltips
     updateSubtitle();
   }
 
@@ -1659,7 +1660,7 @@
       fillSettings();
     });
 
-    $("settingsGuide").addEventListener("click", showGuide);
+    $("settingsHelp").addEventListener("click", showGuide); // the "?" in the Settings header
     $("sessionsGuide").addEventListener("click", showGuide);
     $("memSync").addEventListener("click", syncAndExtract);
     $("memView").addEventListener("click", showSavedMemory);
