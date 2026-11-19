@@ -13,7 +13,7 @@
 self.window = self; // the persona files assign window.FLOMA_PLATFORM / FLOMA_PERSONAS
 importScripts("../persona/floma_platform.js", "../persona/personas.js");
 
-const CACHE = "floma-web-v5";
+const CACHE = "floma-web-v6";
 const AVATAR_DIR = "../app/src/main/res/drawable-nodpi/";
 const SHELL = [
   "./",
@@ -40,7 +40,10 @@ const SHELL = [
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));
+  // One by one: a single missing file must not stop the whole offline copy (and the worker) from installing.
+  event.waitUntil(caches.open(CACHE)
+    .then((cache) => Promise.all(SHELL.map((file) => cache.add(file).catch(() => console.warn("Not cached:", file)))))
+    .then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", (event) => {

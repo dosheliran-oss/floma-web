@@ -52,7 +52,9 @@
       memBadgeError: "☁ שגיאת סנכרון ({error}) · {facts} עובדות בדפדפן", memBadgeTime: " · סונכרן {time}",
       memSyncNow: "סנכרן וחלץ עכשיו", memSyncing: "מסנכרן ומחלץ עובדות…", memView: "הצג זיכרון שמור",
       memViewTitle: "מה אני זוכר עליך", memViewEmpty: "עוד אין עובדות שמורות.", memNotSavedYet: "לא נשמר עדיין לענן",
-      guide: "📖 מדריך מערכת ויכולות", help: "מדריך מערכת ויכולות", sectionSites: "אתרים לשאילתות", sitesHint: "כששואלים על אחד האתרים האלה, אפליקציית המחשב שולפת את המידע מהאתר ועונה במודל המקומי - בלי טוקנים בענן. אפשר לשים {q} בכתובת במקום מילות החיפוש.",
+      guide: "📖 מדריך מערכת ויכולות", help: "מדריך מערכת ויכולות",
+      guideMissing: "המדריך לא נטען כרגע (אולי אין חיבור, או שהאתר מתעדכן).", guideRetry: "נסה שוב",
+      guideLoading: "טוען את המדריך…", sectionSites: "אתרים לשאילתות", sitesHint: "כששואלים על אחד האתרים האלה, אפליקציית המחשב שולפת את המידע מהאתר ועונה במודל המקומי - בלי טוקנים בענן. אפשר לשים {q} בכתובת במקום מילות החיפוש.",
       sitesNeedsDesktop: "בדפדפן אי אפשר לקרוא אתרים אחרים ישירות: התכונה פועלת באפליקציית המחשב (ובאנדרואיד דרכה).",
       sitesAdd: "הוסף", sitesUrl: "כתובת אתר", sitesName: "שם (לא חובה)", sitesBad: "זו לא כתובת אתר תקינה.", sitesNone: "עוד לא נוספו אתרים.", sitesRemove: "הסרה", confirmRemoveKey: "למחוק את המפתח מהדפדפן הזה?",
       chats: "שיחות", newChat: "שיחה חדשה", untitled: "שיחה חדשה", deleteChat: "מחיקת השיחה",
@@ -117,7 +119,9 @@
       memBadgeError: "☁ Sync error ({error}) · {facts} facts in this browser", memBadgeTime: " · synced {time}",
       memSyncNow: "Sync & extract now", memSyncing: "Syncing and extracting facts…", memView: "View saved memory",
       memViewTitle: "What I remember about you", memViewEmpty: "No saved facts yet.", memNotSavedYet: "not in the cloud yet",
-      guide: "📖 System guide & capabilities", help: "System guide & capabilities", sectionSites: "Custom query sites", sitesHint: "When you ask about one of these sites, the desktop app reads it and the local model answers - 0 cloud tokens. Put {q} in an address for the search words.",
+      guide: "📖 System guide & capabilities", help: "System guide & capabilities",
+      guideMissing: "The guide didn't load right now (maybe offline, or the site is updating).", guideRetry: "Try again",
+      guideLoading: "Loading the guide…", sectionSites: "Custom query sites", sitesHint: "When you ask about one of these sites, the desktop app reads it and the local model answers - 0 cloud tokens. Put {q} in an address for the search words.",
       sitesNeedsDesktop: "A browser can't read other sites directly: this works in the desktop app (and on Android through it).",
       sitesAdd: "Add", sitesUrl: "Site address", sitesName: "Name (optional)", sitesBad: "That isn't a valid site address.", sitesNone: "No sites added yet.", sitesRemove: "Remove", confirmRemoveKey: "Remove the key from this browser?",
       chats: "Chats", newChat: "New chat", untitled: "New chat", deleteChat: "Delete chat",
@@ -1016,8 +1020,8 @@
       const step = line.match(/^\d+\. (.*)$/);
       if (heading) {
         list = null;
-        const h = document.createElement(`h${heading[1].length}`);
-        if (heading[1].length === 1) h.id = "guideTitle";
+        if (heading[1].length === 1) continue; // the guide's own title: the dialog shows its title already
+        const h = document.createElement(`h${heading[1].length + 1}`); // under the dialog's h2 title
         inline(h, heading[2]);
         box.append(h);
       } else if (bullet || step) {
@@ -1038,12 +1042,51 @@
     }
   }
 
+  const guideText = () => (window.FLOMA_GUIDE && typeof window.FLOMA_GUIDE.markdown === "string"
+    ? window.FLOMA_GUIDE.markdown.trim() : "");
+
+  /** Loads ../persona/system_guide.js again, bypassing every cache (?t=...). Resolves when it ran or failed. */
+  function reloadGuideScript() {
+    return new Promise((resolve) => {
+      const script = document.createElement("script");
+      script.src = `../persona/system_guide.js?t=${Date.now()}`;
+      script.onload = script.onerror = () => { script.remove(); resolve(); };
+      document.head.append(script);
+    });
+  }
+
+  /** The guide's text, or - never an empty box - a short message with a "try again" button. */
+  function fillGuide() {
+    const box = $("guideBody");
+    box.dir = lang() === "ENGLISH" ? "auto" : "rtl";
+    const text = guideText();
+    if (text) {
+      renderGuide(box, text);
+      return true;
+    }
+    box.replaceChildren();
+    const note = document.createElement("p");
+    note.className = "guide-missing";
+    note.textContent = t("guideMissing");
+    const retry = document.createElement("button");
+    retry.type = "button";
+    retry.textContent = t("guideRetry");
+    retry.addEventListener("click", () => {
+      note.textContent = t("guideLoading");
+      reloadGuideScript().then(fillGuide);
+    });
+    box.append(note, retry);
+    return false;
+  }
+
   function showGuide() {
-    const guide = window.FLOMA_GUIDE;
-    renderGuide($("guideBody"), guide && guide.markdown ? guide.markdown : "");
+    if (!fillGuide()) reloadGuideScript().then(fillGuide); // a stale or failed load: one fresh try
     const dialog = $("guideDialog");
-    if (typeof dialog.showModal === "function") dialog.showModal();
-    else dialog.setAttribute("open", "");
+    if (!dialog.open) {
+      if (typeof dialog.showModal === "function") dialog.showModal();
+      else dialog.setAttribute("open", "");
+    }
+    $("guideBody").scrollTop = 0;
   }
 
   function memoryStatusText() {

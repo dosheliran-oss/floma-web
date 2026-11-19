@@ -699,3 +699,10 @@ button.danger { background: transparent; color: var(--error); border: 1px solid 
   margin-inline-start: auto; margin-inline-end: 6px;
 }
 .help-button:hover, .help-button:focus-visible { background: var(--surface-variant); }
+
+/* The guide dialog's own title, and the message when the guide couldn't load (Step 53). */
+.guide-title { margin: 0 0 8px; font-size: 1.15rem; }
+.guide-body h2 { font-size: 1.2rem; margin: 4px 0 8px; color: var(--text); }
+.guide-body h3 { font-size: 1.05rem; margin: 16px 0 6px; color: var(--primary); }
+.guide-body h4 { font-size: 0.95rem; margin: 10px 0 4px; }
+.guide-missing { color: var(--muted); }
