@@ -61,6 +61,7 @@
       <button class="icon-button" id="closeSessions" type="button" data-i18n-label="close">✕</button>
     </div>
     <button type="button" class="new-chat" id="sessionsNewChat" data-i18n="newChat"></button>
+    <p class="mem-badge" id="memBadgeSessions" role="status"></p>
     <p class="hint" id="ephemeralHint" hidden></p>
     <ul class="session-list" id="sessionList"></ul>
   </aside>
@@ -140,7 +141,12 @@
     <section>
       <h3 data-i18n="sectionFirebase"></h3>
       <p class="hint" data-i18n="firebaseHint"></p>
+      <p class="mem-badge" id="memBadge" role="status"></p>
       <p class="hint" id="firebaseStatus"></p>
+      <div class="buttons">
+        <button type="button" id="memSync" data-i18n="memSyncNow"></button>
+        <button type="button" id="memView" data-i18n="memView"></button>
+      </div>
       <label><span data-i18n="firebaseUrl"></span><input id="firebaseUrl" type="url" dir="ltr" spellcheck="false" placeholder="https://….firebaseio.com"></label>
       <label><span data-i18n="firebaseSecret"></span><input id="firebaseSecret" type="password" autocomplete="off" spellcheck="false" dir="ltr"></label>
       <p class="error" id="firebaseProblem" role="alert"></p>
@@ -148,6 +154,17 @@
         <button type="button" id="firebaseSave" data-i18n="firebaseSave"></button>
         <button type="button" id="firebaseRemove" class="danger" data-i18n="firebaseRemove"></button>
       </div>
+    </section>
+
+    <section>
+      <h3 data-i18n="sectionSites"></h3>
+      <p class="hint" data-i18n="sitesHint"></p>
+      <p class="hint" data-i18n="sitesNeedsDesktop"></p>
+      <ul class="site-list" id="siteList"></ul>
+      <label><span data-i18n="sitesUrl"></span><input id="siteUrl" type="url" dir="ltr" spellcheck="false" placeholder="https://…"></label>
+      <label><span data-i18n="sitesName"></span><input id="siteName" type="text"></label>
+      <p class="error" id="siteProblem" role="alert"></p>
+      <div class="buttons"><button type="button" id="siteAdd" data-i18n="sitesAdd"></button></div>
     </section>
 
     <section>
@@ -171,6 +188,16 @@
 
   </aside>
 
+  <dialog class="key-dialog memory-dialog" id="memoryDialog" aria-labelledby="memoryDialogTitle">
+    <form method="dialog">
+      <h2 id="memoryDialogTitle" data-i18n="memViewTitle"></h2>
+      <p class="hint" id="memoryDialogStatus"></p>
+      <div id="memoryFacts" class="memory-facts"></div>
+      <div class="buttons"><button type="submit" data-i18n="close"></button></div>
+    </form>
+  </dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
   <dialog class="key-dialog" id="keyDialog">
     <form method="dialog" id="keyForm">
       <h2 data-i18n="keyTitle"></h2>
@@ -191,6 +218,7 @@
   <script src="../persona/personas.js"></script>
   <script src="core.js"></script>
   <script src="memory.js"></script>
+  <script src="sites.js"></script>
   <script src="voice.js"></script>
   <script src="documents.js"></script>
   <script src="app.js"></script>

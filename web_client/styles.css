@@ -662,3 +662,21 @@ button.danger { background: transparent; color: var(--error); border: 1px solid 
   .app { padding-inline-start: 280px; }
   #openSessions, #closeSessions { display: none; }
 }
+
+/* --- Memory status, the saved-memory dialog, the "saved" toast, query sites (Step 49) --- */
+.mem-badge { font-size: 0.82rem; margin: 6px 0; padding: 6px 10px; border-radius: 10px; background: var(--surface2, rgb(127 127 127 / 0.12)); color: var(--muted); }
+.mem-badge.on { color: var(--primary); }
+.memory-dialog { max-width: min(520px, 92vw); }
+.memory-facts { max-height: 55vh; overflow-y: auto; }
+.memory-facts h3 { font-size: 0.95rem; margin: 12px 0 4px; color: var(--primary); }
+.memory-facts ul { margin: 0; padding-inline-start: 20px; }
+.memory-facts li { margin: 2px 0; }
+.toast {
+  position: fixed; inset-inline: 0; bottom: 96px; margin: 0 auto; width: max-content; max-width: 90vw;
+  padding: 8px 16px; border-radius: 999px; background: var(--surface2, #333); color: var(--text);
+  font-size: 0.85rem; box-shadow: 0 4px 16px rgb(0 0 0 / 0.25); z-index: 50; animation: bubble-in 0.25s var(--ease-out) both;
+}
+.site-list { list-style: none; margin: 4px 0; padding: 0; }
+.site-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 8px; border-radius: 8px; background: var(--surface2, rgb(127 127 127 / 0.12)); margin: 2px 0; font-size: 0.85rem; }
+.site-list button { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 0.9rem; }
+.bubble-footer .tag.sites { color: var(--muted); }

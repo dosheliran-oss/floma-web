@@ -13,7 +13,7 @@
 self.window = self; // the persona files assign window.FLOMA_PLATFORM / FLOMA_PERSONAS
 importScripts("../persona/floma_platform.js", "../persona/personas.js");
 
-const CACHE = "floma-web-v3";
+const CACHE = "floma-web-v4";
 const AVATAR_DIR = "../app/src/main/res/drawable-nodpi/";
 const SHELL = [
   "./",
@@ -21,6 +21,7 @@ const SHELL = [
   "styles.css",
   "core.js",
   "memory.js",
+  "sites.js",
   "voice.js",
   "documents.js",
   "app.js",

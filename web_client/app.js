@@ -21,6 +21,7 @@
 
   const Core = window.FlomaCore;
   const Memory = window.FlomaMemory;
+  const Sites = window.FlomaSites;
   const Voice = window.FlomaVoice;
   const Docs = window.FlomaDocuments;
   const STORE = {
@@ -45,8 +46,15 @@
       pFriendly: "הומוריסטי וחברותי", pPlayful: "הומוריסטי מאוד", pProfessional: "רציני ומקצועי", pConcise: "רציני ותמציתי",
       sectionModel: "מודל (Gemini)", keySaved: "מפתח שמור בדפדפן הזה.", keyMissing: "אין מפתח: עונה במצב מקומי. המפתח אופציונלי.",
       changeKey: "החלפת מפתח", removeKey: "מחיקת מפתח", addKey: "הוספת מפתח",
-      sectionMemory: "זיכרון", memoryHint: "השיחות נשמרות בדפדפן הזה בלבד.", clearChat: "מחיקת כל השיחות",
-      confirmClear: "למחוק את כל השיחות מהדפדפן הזה?", confirmRemoveKey: "למחוק את המפתח מהדפדפן הזה?",
+      sectionMemory: "זיכרון", memoryHint: "השיחות נשמרות בדפדפן הזה בלבד. מחיקת שיחות לא מוחקת את מה שלמדתי עליך.", clearChat: "מחיקת כל השיחות",
+      confirmClear: "למחוק את כל השיחות מהדפדפן הזה? מה שלמדתי עליך נשאר בזיכרון.",
+      memBadgeOn: "☁ זיכרון ענן מחובר · {topics} נושאים · {facts} עובדות", memBadgeOff: "☁ זיכרון ענן לא מחובר · {facts} עובדות בדפדפן",
+      memBadgeError: "☁ שגיאת סנכרון ({error}) · {facts} עובדות בדפדפן", memBadgeTime: " · סונכרן {time}",
+      memSyncNow: "סנכרן וחלץ עכשיו", memSyncing: "מסנכרן ומחלץ עובדות…", memView: "הצג זיכרון שמור",
+      memViewTitle: "מה אני זוכר עליך", memViewEmpty: "עוד אין עובדות שמורות.", memNotSavedYet: "לא נשמר עדיין לענן",
+      sectionSites: "אתרים לשאילתות", sitesHint: "כששואלים על אחד האתרים האלה, אפליקציית המחשב שולפת את המידע מהאתר ועונה במודל המקומי - בלי טוקנים בענן. אפשר לשים {q} בכתובת במקום מילות החיפוש.",
+      sitesNeedsDesktop: "בדפדפן אי אפשר לקרוא אתרים אחרים ישירות: התכונה פועלת באפליקציית המחשב (ובאנדרואיד דרכה).",
+      sitesAdd: "הוסף", sitesUrl: "כתובת אתר", sitesName: "שם (לא חובה)", sitesBad: "זו לא כתובת אתר תקינה.", sitesNone: "עוד לא נוספו אתרים.", sitesRemove: "הסרה", confirmRemoveKey: "למחוק את המפתח מהדפדפן הזה?",
       chats: "שיחות", newChat: "שיחה חדשה", untitled: "שיחה חדשה", deleteChat: "מחיקת השיחה",
       confirmDeleteChat: "למחוק את השיחה הזו?", noChats: "עוד אין שיחות קודמות.",
       chatsKept: "רק 3 השיחות האחרונות של {name} נשמרות בדפדפן. לפני שמוחקים שיחה ישנה, העובדות ממנה נשמרות בזיכרון (וב-Firebase כשהוא מחובר).",
@@ -103,8 +111,15 @@
       pFriendly: "Humorous and friendly", pPlayful: "Very humorous", pProfessional: "Serious and professional", pConcise: "Serious and concise",
       sectionModel: "Model (Gemini)", keySaved: "A key is saved in this browser.", keyMissing: "No key: answering in local mode. The key is optional.",
       changeKey: "Change key", removeKey: "Remove key", addKey: "Add key",
-      sectionMemory: "Memory", memoryHint: "Chats are kept in this browser only.", clearChat: "Delete all chats",
-      confirmClear: "Delete all chats from this browser?", confirmRemoveKey: "Remove the key from this browser?",
+      sectionMemory: "Memory", memoryHint: "Chats are kept in this browser only. Deleting chats never deletes what I learned about you.", clearChat: "Delete all chats",
+      confirmClear: "Delete all chats from this browser? What I learned about you stays in memory.",
+      memBadgeOn: "☁ Cloud memory connected · {topics} topics · {facts} facts", memBadgeOff: "☁ Cloud memory not connected · {facts} facts in this browser",
+      memBadgeError: "☁ Sync error ({error}) · {facts} facts in this browser", memBadgeTime: " · synced {time}",
+      memSyncNow: "Sync & extract now", memSyncing: "Syncing and extracting facts…", memView: "View saved memory",
+      memViewTitle: "What I remember about you", memViewEmpty: "No saved facts yet.", memNotSavedYet: "not in the cloud yet",
+      sectionSites: "Custom query sites", sitesHint: "When you ask about one of these sites, the desktop app reads it and the local model answers - 0 cloud tokens. Put {q} in an address for the search words.",
+      sitesNeedsDesktop: "A browser can't read other sites directly: this works in the desktop app (and on Android through it).",
+      sitesAdd: "Add", sitesUrl: "Site address", sitesName: "Name (optional)", sitesBad: "That isn't a valid site address.", sitesNone: "No sites added yet.", sitesRemove: "Remove", confirmRemoveKey: "Remove the key from this browser?",
       chats: "Chats", newChat: "New chat", untitled: "New chat", deleteChat: "Delete chat",
       confirmDeleteChat: "Delete this chat?", noChats: "No earlier chats yet.",
       chatsKept: "Only {name}'s 3 most recent chats stay in this browser. Before an older chat is deleted, its facts are saved to memory (and to Firebase when it's connected).",
@@ -316,7 +331,12 @@
     if (message.role === "assistant" && !notice) {
       const footer = document.createElement("div");
       footer.className = "bubble-footer";
-      if (message.offline) {
+      if (message.siteQuery) {
+        const tag = document.createElement("span");
+        tag.className = "tag sites";
+        tag.textContent = window.FLOMA_PLATFORM.site_query.badge[lang()];
+        footer.append(tag);
+      } else if (message.offline) {
         const tag = document.createElement("span");
         tag.className = "tag";
         tag.textContent = `⚡ ${t("localMode")}`;
@@ -579,6 +599,7 @@
   function renderSessions() {
     const list = $("sessionList");
     list.replaceChildren();
+    renderMemoryBadges();
     const hint = $("ephemeralHint");
     hint.hidden = false;
     hint.textContent = t("chatsKept").replace("{name}", assistant());
@@ -614,7 +635,11 @@
       remove.textContent = "✕";
       remove.setAttribute("aria-label", t("deleteChat"));
       remove.title = t("deleteChat");
-      remove.addEventListener("click", () => { if (confirm(t("confirmDeleteChat"))) deleteSession(entry.id); });
+      remove.addEventListener("click", () => {
+        if (!confirm(t("confirmDeleteChat"))) return;
+        extractBeforeDelete([entry.id]); // from a copy: the facts it taught stay
+        deleteSession(entry.id);
+      });
       item.append(open, remove);
       list.append(item);
     }
@@ -712,6 +737,12 @@
       sent.context = docContext.prompt;
     }
     addMessage(sent);
+    if (!image && !doc && Sites.plan(trimmed, state.settings.querySites, Boolean(state.apiKey)).length
+        && !state.messages.some((m) => m.reason === "SITES_NEED_DESKTOP")) {
+      // Reading the user's sites needs the desktop engine (a browser can't fetch other sites): say so once.
+      addMessage({ role: "assistant", text: window.FLOMA_PLATFORM.site_query.needs_desktop[lang()], local: true,
+        notice: true, reason: "SITES_NEED_DESKTOP" });
+    }
     if (!state.apiKey) {
       handleFailure("MISSING_KEY", trimmed, Boolean(image), Boolean(doc));
       return;
@@ -777,6 +808,170 @@
         }
         fillSettings();
       });
+  }
+
+  // --- Memory lifecycle: checkpoints, extraction before deleting, badges, toast, viewer ---
+
+  const distilling = new Set(); // chats whose facts are being extracted right now
+
+  /** A stored chat's messages and how many aren't in the memory yet. */
+  function freshOf(id) {
+    const entry = sessionEntry(id);
+    const messages = id === state.sessionId ? state.messages.slice() : load(STORE.chat(id), []);
+    const since = (entry && entry.memoryTs) || 0;
+    const fresh = messages.filter((m) => !m.local && m.ts && m.ts > since);
+    return { messages, since, fresh, newest: Math.max(since, ...fresh.map((m) => m.ts)) };
+  }
+
+  /**
+   * The open chat's new facts go into the memory (and Firebase) without closing it: at start (the chat
+   * left open last time), when the page is hidden, and from "Sync & extract now". Without this, a short
+   * chat that was never switched away from would never reach the memory.
+   */
+  async function checkpoint(id = state.sessionId) {
+    const { messages, since, fresh, newest } = freshOf(id);
+    if (fresh.length < 2 || distilling.has(id)) return false;
+    distilling.add(id);
+    try {
+      const saved = await Memory.distill(messages, summarizer(), since);
+      const entry = sessionEntry(id);
+      if (saved === true && entry) {
+        entry.memoryTs = Math.max(entry.memoryTs || 0, newest);
+        saveSessions();
+      }
+      return saved === true;
+    } finally {
+      distilling.delete(id);
+      renderMemoryBadges();
+    }
+  }
+
+  /** Deleting chats never loses what they taught: their messages not in the memory yet are summarized first. */
+  function extractBeforeDelete(ids) {
+    const batch = [];
+    for (const id of ids) {
+      const entry = sessionEntry(id);
+      if ((!entry && id !== state.sessionId) || (entry && entry.memorized) || distilling.has(id)) continue;
+      batch.push(...freshOf(id).fresh);
+    }
+    if (batch.length < 2) return Promise.resolve(false);
+    batch.sort((a, b) => a.ts - b.ts);
+    return Memory.distill(batch, summarizer(), 0).then(() => renderMemoryBadges());
+  }
+
+  let memoryBusy = false;
+
+  async function syncAndExtract() {
+    if (memoryBusy) return;
+    memoryBusy = true;
+    renderMemoryBadges();
+    try {
+      await checkpoint();
+      await Memory.syncNow();
+    } finally {
+      memoryBusy = false;
+      fillSettings();
+    }
+  }
+
+  function memoryBadgeText() {
+    if (memoryBusy) return t("memSyncing");
+    const status = Memory.status();
+    const fill = (text) => text.replace("{topics}", status.topics).replace("{facts}", status.facts)
+      .replace("{error}", status.lastError);
+    if (!status.configured) return fill(t("memBadgeOff"));
+    if (status.lastError) return fill(t("memBadgeError"));
+    let text = fill(t("memBadgeOn"));
+    if (status.lastSync) {
+      const when = new Date(status.lastSync);
+      const sameDay = when.toDateString() === new Date().toDateString();
+      const time = when.toLocaleString([], sameDay ? { hour: "2-digit", minute: "2-digit" }
+        : { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+      text += t("memBadgeTime").replace("{time}", time);
+    }
+    return text;
+  }
+
+  function renderMemoryBadges() {
+    const status = Memory.status();
+    for (const id of ["memBadge", "memBadgeSessions"]) {
+      const badge = $(id);
+      if (!badge) continue;
+      badge.textContent = memoryBadgeText();
+      badge.classList.toggle("on", status.configured && !status.lastError);
+    }
+  }
+
+  let toastTimer = null;
+
+  /** A small, quiet note above the input that goes away by itself. */
+  function showToast(text) {
+    const toast = $("toast");
+    toast.textContent = text;
+    toast.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toast.hidden = true; }, 3200);
+  }
+
+  function showSavedMemory() {
+    const facts = Memory.facts();
+    const pending = new Set(Memory.pendingKeys());
+    const box = $("memoryFacts");
+    box.replaceChildren();
+    $("memoryDialogStatus").textContent = memoryBadgeText();
+    for (const category of window.FLOMA_PLATFORM.memory_categories) {
+      const items = facts[category.key];
+      if (!items) continue;
+      const title = document.createElement("h3");
+      title.textContent = category.title + (pending.has(category.key) ? ` (${t("memNotSavedYet")})` : "");
+      const list = document.createElement("ul");
+      for (const fact of items) {
+        const item = document.createElement("li");
+        item.dir = "auto";
+        item.textContent = fact; // facts are text, never HTML
+        list.append(item);
+      }
+      box.append(title, list);
+    }
+    if (!box.children.length) {
+      const none = document.createElement("p");
+      none.className = "hint";
+      none.textContent = t("memViewEmpty");
+      box.append(none);
+    }
+    const dialog = $("memoryDialog");
+    if (typeof dialog.showModal === "function") dialog.showModal();
+    else dialog.setAttribute("open", "");
+  }
+
+  function renderSites() {
+    const list = $("siteList");
+    list.replaceChildren();
+    const sites = Sites.clean(state.settings.querySites);
+    if (!sites.length) {
+      const none = document.createElement("li");
+      none.className = "hint";
+      none.textContent = t("sitesNone");
+      list.append(none);
+    }
+    for (const site of sites) {
+      const item = document.createElement("li");
+      const label = document.createElement("span");
+      label.dir = "auto";
+      label.textContent = site.name || Sites.host(site.url);
+      label.title = site.url;
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.textContent = "✕";
+      remove.setAttribute("aria-label", t("sitesRemove"));
+      remove.addEventListener("click", () => {
+        state.settings.querySites = Sites.clean(state.settings.querySites).filter((x) => x.url !== site.url);
+        save(STORE.settings, state.settings);
+        renderSites();
+      });
+      item.append(label, remove);
+      list.append(item);
+    }
   }
 
   function memoryStatusText() {
@@ -882,6 +1077,8 @@
     $("removeKey").disabled = !state.apiKey;
     $("changeKey").textContent = t(state.apiKey ? "changeKey" : "addKey");
     $("firebaseStatus").textContent = memoryStatusText();
+    renderMemoryBadges();
+    renderSites();
     $("firebaseSecret").placeholder = Memory.hasSecret() ? t("firebaseSecretSaved") : "";
     if (document.activeElement !== $("firebaseUrl")) $("firebaseUrl").value = s.firebaseUrl || "";
     $("firebaseRemove").disabled = !Memory.hasSecret() && !s.firebaseUrl;
@@ -1309,6 +1506,7 @@
     $("clearChat").addEventListener("click", () => {
       if (!confirm(t("confirmClear"))) return;
       Voice.stopSpeaking();
+      extractBeforeDelete([...state.sessions.map((x) => x.id), state.sessionId]); // the facts stay
       for (const entry of state.sessions) save(STORE.chat(entry.id), null); // both assistants' chats
       save(STORE.chat(state.sessionId), null);
       state.sessions = [];
@@ -1316,7 +1514,7 @@
       openChats = {};
       showPersonaChats();
       state.messages = [];
-      Memory.forgetLocal(); // like Android: the local notes go too (what's in Firebase stays)
+      Memory.forgetLocal(); // the chats go; the facts stay (here and in Firebase)
       renderChat();
       renderSessions();
       setEmotion(Core.avatarFor("default"));
@@ -1390,12 +1588,36 @@
       fillSettings();
     });
 
+    $("memSync").addEventListener("click", syncAndExtract);
+    $("memView").addEventListener("click", showSavedMemory);
+    $("siteAdd").addEventListener("click", () => {
+      const url = Sites.normalize($("siteUrl").value);
+      if (!url) {
+        $("siteProblem").textContent = t("sitesBad");
+        return;
+      }
+      $("siteProblem").textContent = "";
+      const others = Sites.clean(state.settings.querySites).filter((x) => x.url !== url);
+      state.settings.querySites = Sites.clean([...others, { url, name: $("siteName").value }]);
+      save(STORE.settings, state.settings);
+      $("siteUrl").value = $("siteName").value = "";
+      renderSites();
+    });
+    Memory.onSaved(() => {
+      showToast(window.FLOMA_PLATFORM.memory_sync.saved_toast[lang()]);
+      renderMemoryBadges();
+    });
+    // The user switched away or is closing the tab: save what this chat taught so far (best effort).
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") checkpoint(); });
+
     $("keyForm").addEventListener("submit", submitKey);
     $("keyLater").addEventListener("click", () => $("keyDialog").close());
 
-    // Notes the phone or the PC added since last time (throttled; harmless offline).
+    // Every start loads the shared facts first (no pull interval, no old backoff), so a new chat's
+    // prompt already has what the phone and the PC learned. Then the chats left last time are memorized,
+    // and the chat left open is checkpointed (its facts saved without closing it).
     Memory.setDatabaseUrl(() => state.settings.firebaseUrl);
-    Memory.pull().then(fillSettings).then(sweepSessions); // chats left last time are memorized
+    Memory.refreshOnStart().then(fillSettings).then(sweepSessions).then(() => checkpoint());
 
     // No key prompt: Gemini is optional (Settings → Model). Without it the chat answers in local mode.
     $("input").focus();

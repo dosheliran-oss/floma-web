@@ -109,6 +109,18 @@
     };
   }
 
+  const fact = (line) => line.trim().replace(/^(- |\* |\u2022 )/, "").trim();
+
+  /** A summary without topics: its new lines go into the catch-all topic (memory_sync.summary_category). */
+  function summaryAsSections(summary, previous) {
+    const key = window.FLOMA_PLATFORM.memory_sync.summary_category || "notes";
+    const known = new Set(Object.values(previous).flatMap((n) => (n || "").split("\n")).map(fact).filter(Boolean));
+    const fresh = (summary || "").split("\n").map(fact).filter((f) => f && !known.has(f)).map((f) => `- ${f}`);
+    const merged = { ...previous };
+    if (fresh.length) merged[key] = unionNotes(previous[key] || "", fresh.join("\n"));
+    return merged;
+  }
+
   /** A category's notes from both sides on first connect: the database's lines, then this device's others. */
   function unionNotes(remote, local) {
     const lines = (text) => (text || "").split("\n").map((l) => l.trim()).filter(Boolean);
@@ -130,8 +142,9 @@
 
   const state = Object.assign({
     summary: "", sections: {}, coveredTs: 0, pending: {}, lastPull: 0, nextAttempt: 0, failures: 0,
-    lastError: null, lastSync: 0,
+    lastError: null, lastSync: 0, lastSaved: 0,
   }, read(STORE.cache, {}));
+  const savedListeners = []; // called after facts reached Firebase (the chat's "saved" toast)
   let busy = Promise.resolve(); // one sync job at a time
   let dbUrl = () => null;
 
@@ -201,8 +214,13 @@
       if (state.pending[key] === notes) delete state.pending[key]; // unless re-queued with newer notes
     }
     succeeded();
+    state.lastSaved = Date.now();
     save();
-    return Object.keys(nodes).length;
+    const count = Object.keys(nodes).length;
+    for (const listener of savedListeners) {
+      try { listener(count); } catch (e) { console.error(e); }
+    }
+    return count;
   }
 
   /** Summarizes [batch] into the notes and queues the changed categories; false if the model failed. */
@@ -216,7 +234,11 @@
       return false; // no model right now: retried later
     }
     if (!result.summary.trim()) return false;
-    const sections = Object.keys(result.sections).length ? result.sections : previous;
+    // A topic left blank keeps its facts (a small model skipping it must never wipe them), and a reply
+    // with no topics at all still saves its facts, in the catch-all topic (memory_sync.py does the same).
+    const given = Object.fromEntries(Object.entries(result.sections || {}).filter(([, v]) => v && v.trim()).map(([k, v]) => [k, v.trim()]));
+    const kept = Object.fromEntries(Object.entries(previous).filter(([, v]) => v && v.trim()));
+    const sections = Object.keys(given).length ? { ...kept, ...given } : summaryAsSections(result.summary, previous);
     // Queued for Firebase only when it's set up; before that the notes stay local (the first connect merges them).
     if (configured()) for (const [key, notes] of Object.entries(sections)) if (previous[key] !== notes) state.pending[key] = notes;
     Object.assign(state, { summary: result.summary, sections, coveredTs: Math.max(state.coveredTs, batch[batch.length - 1].ts) });
@@ -278,13 +300,40 @@
     await pushNow();
   }
 
+  /** App start: always pulls (no pull interval, no old backoff), then pushes what's still queued. */
+  async function refreshOnStartJob() {
+    if (!configured()) return false;
+    state.nextAttempt = 0;
+    const pulled = await pullOnce(true);
+    await pushNow();
+    return Boolean(pulled);
+  }
+
+  /** The saved facts by category key (Settings → "View saved memory"). */
+  function facts() {
+    const result = {};
+    for (const [key, notes] of Object.entries(state.sections)) {
+      const list = Core.memoryNode(key, notes, 0, DEVICE).facts;
+      if (list.length) result[key] = list;
+    }
+    return result;
+  }
+
   window.FlomaMemory = {
     normalizeDbUrl,
     setDatabaseUrl(fn) { dbUrl = fn; },
     /** What goes inside the prompt's <memory> block (always the local copy). */
     notes: () => Core.memoryNotes(state.sections, state.summary),
-    status: () => ({ configured: configured(), lastSync: state.lastSync, lastError: state.lastError,
-      pending: Object.keys(state.pending).length }),
+    status: () => {
+      const all = facts();
+      return { configured: configured(), lastSync: state.lastSync, lastError: state.lastError,
+        pending: Object.keys(state.pending).length, topics: Object.keys(all).length,
+        facts: Object.values(all).reduce((n, list) => n + list.length, 0), lastSaved: state.lastSaved };
+    },
+    facts,
+    pendingKeys: () => Object.keys(state.pending),
+    onSaved(listener) { savedListeners.push(listener); },
+    refreshOnStart: () => serial(refreshOnStartJob),
     hasSecret: () => !!secret(),
     setSecret(value) { write(STORE.secret, value ? value.trim() : null); },
     pull: (force = false) => serial(() => pullNow(force)),
@@ -292,7 +341,8 @@
     fold: (messages, summarize, since) => serial(() => foldNow(messages, summarize, since)),
     distill: (messages, summarize, since) => serial(() => distillNow(messages, summarize, since)),
     syncNow: () => serial(syncNowJob),
-    forgetLocal() { Object.assign(state, { summary: "", sections: {}, pending: {}, coveredTs: 0 }); save(); },
+    /** "Delete all chats": the chats go, the facts stay (here and in Firebase); only the bookmark resets. */
+    forgetLocal() { state.coveredTs = 0; save(); },
     _mergeRemote: mergeRemote,
   };
 })();
