@@ -162,7 +162,7 @@ window.FLOMA_PLATFORM = {
   },
   "site_query": {
     "max_sites": 20,
-    "lookup_words": ["חפש", "תחפש", "חפשי", "תבדוק", "בדוק", "תבדקי", "בדקי", "מה כתוב", "לפי האתר", "באתר", "search", "look up", "lookup", "check on", "according to", "on the site", "on the website"],
+    "lookup_words": ["חפש", "תחפש", "חפשי", "תבדוק", "בדוק", "תבדקי", "בדקי", "מה כתוב", "לפי האתר", "באתר", "search", "look up", "lookup", "check on", "according to", "on the site", "on the website", "find", "מצא", "תמצא", "תמצאי"],
     "badge": {
       "HEBREW": "🔎 מאתרים, במודל המקומי (0 טוקנים בענן)",
       "ENGLISH": "🔎 From your sites, local model (0 cloud tokens)"
