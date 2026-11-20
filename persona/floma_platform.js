@@ -160,6 +160,59 @@ window.FLOMA_PLATFORM = {
       "ENGLISH": "✓ Saved to cloud memory"
     }
   },
+  "quota": {
+    "_comment": "Settings' key & quota cards (Step 56), the same on every platform: when each key was added, Gemini requests sent today from this device against an estimated daily limit (the day resets at midnight Pacific time), ElevenLabs characters from the user's own subscription, and the Firebase memory's size.",
+    "gemini_daily_requests": 250,
+    "eleven_subscription_url": "https://api.elevenlabs.io/v1/user/subscription",
+    "texts": {
+      "HEBREW": {
+        "added": "נוסף: {time}",
+        "added_unknown": "מועד ההוספה לא ידוע (נשמר לפני הגרסה הזו)",
+        "gemini_title": "מכסת Gemini היום (מהמכשיר הזה)",
+        "gemini_used": "{used} בקשות היום מתוך כ-{limit} (הערכה)",
+        "eleven_title": "מכסת ElevenLabs",
+        "eleven_used": "{used} מתוך {limit} תווים נוצלו",
+        "eleven_loading": "בודק את המכסה בחשבון ElevenLabs…",
+        "eleven_error": "לא הצלחתי לקרוא את המכסה ({error}).",
+        "firebase_title": "זיכרון ענן (Firebase)",
+        "firebase_stats": "{topics} נושאים · {facts} עובדות · כ-{kb} KB",
+        "last_sync": "סנכרון אחרון: {time}",
+        "never_synced": "עוד לא סונכרן",
+        "remaining": "נותרו {percent}%",
+        "reset_in": "איפוס בעוד {countdown}",
+        "under_minute": "פחות מדקה",
+        "join": " · ",
+        "units": {
+          "day": {"one": "יום אחד", "two": "יומיים", "many": "{n} ימים"},
+          "hour": {"one": "שעה אחת", "two": "שעתיים", "many": "{n} שעות"},
+          "minute": {"one": "דקה אחת", "two": "2 דקות", "many": "{n} דקות"}
+        }
+      },
+      "ENGLISH": {
+        "added": "Added: {time}",
+        "added_unknown": "Added: unknown (saved before this version)",
+        "gemini_title": "Gemini quota today (this device)",
+        "gemini_used": "{used} requests today of about {limit} (estimate)",
+        "eleven_title": "ElevenLabs quota",
+        "eleven_used": "{used} of {limit} characters used",
+        "eleven_loading": "Checking your ElevenLabs quota…",
+        "eleven_error": "Couldn't read the quota ({error}).",
+        "firebase_title": "Cloud memory (Firebase)",
+        "firebase_stats": "{topics} topics · {facts} facts · about {kb} KB",
+        "last_sync": "Last sync: {time}",
+        "never_synced": "Not synced yet",
+        "remaining": "{percent}% left",
+        "reset_in": "Resets in {countdown}",
+        "under_minute": "less than a minute",
+        "join": " · ",
+        "units": {
+          "day": {"one": "1 day", "two": "2 days", "many": "{n} days"},
+          "hour": {"one": "1 hour", "two": "2 hours", "many": "{n} hours"},
+          "minute": {"one": "1 minute", "two": "2 minutes", "many": "{n} minutes"}
+        }
+      }
+    }
+  },
   "site_query": {
     "max_sites": 20,
     "lookup_words": ["חפש", "תחפש", "חפשי", "תבדוק", "בדוק", "תבדקי", "בדקי", "מה כתוב", "לפי האתר", "באתר", "search", "look up", "lookup", "check on", "according to", "on the site", "on the website", "find", "מצא", "תמצא", "תמצאי"],
@@ -174,6 +227,14 @@ window.FLOMA_PLATFORM = {
     "launcher_badge": {
       "HEBREW": "🔗 קישורים רשמיים בלבד - ללא שאיבת מידע",
       "ENGLISH": "🔗 Official links only - no scraping"
+    },
+    "copy_details": {
+      "HEBREW": "📋 העתקת הפרטים",
+      "ENGLISH": "📋 Copy the details"
+    },
+    "copied": {
+      "HEBREW": "הפרטים הועתקו ✓",
+      "ENGLISH": "Details copied ✓"
     },
     "needs_desktop": {
       "HEBREW": "כדי לשלוף מידע מהאתרים שלך בלי Gemini צריך את אפליקציית המחשב (Floma PC) פתוחה ומחוברת.",

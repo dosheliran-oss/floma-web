@@ -27,6 +27,10 @@ window.FLOMA_SITES = {
   "shopping": {
    "HEBREW": "קניות",
    "ENGLISH": "Shopping"
+  },
+  "real_estate": {
+   "HEBREW": "נדל״ן ומבנים",
+   "ENGLISH": "Real estate & buildings"
   }
  },
  "sites": [
@@ -1044,6 +1048,53 @@ window.FLOMA_SITES = {
    "launcher_fields": [
     "product"
    ]
+  },
+  {
+   "id": "nadlan",
+   "name": "מידע נדל״ן - רשות המסים",
+   "category": "real_estate",
+   "url": "https://www.nadlan.gov.il",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "nadlan",
+    "נדל\"ן",
+    "עסקאות נדל\"ן",
+    "רשות המסים"
+   ],
+   "note": "Official government portal (dynamic JS app); official link only, never read automatically",
+   "launcher_url_template": null,
+   "launcher_kind": "property",
+   "launcher_fields": [
+    "street",
+    "city"
+   ]
+  },
+  {
+   "id": "govmap",
+   "name": "GovMap - המרכז למיפוי ישראל",
+   "category": "real_estate",
+   "url": "https://www.govmap.gov.il",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "govmap",
+    "גוב מאפ",
+    "גוש וחלקה",
+    "גוש חלקה",
+    "המרכז למיפוי ישראל"
+   ],
+   "note": "Official government map (dynamic JS app); official search link only, never read automatically",
+   "launcher_url_template": "https://www.govmap.gov.il/?q={address}",
+   "launcher_kind": "property",
+   "launcher_fields": [
+    "street",
+    "city"
+   ]
   }
  ],
  "rules": {
@@ -1300,6 +1351,14 @@ window.FLOMA_SITES = {
   },
   "launcher": {
    "max_links": 3,
+   "max_links_by_kind": {
+    "people": 5
+   },
+   "first_kinds": [
+    "people",
+    "property"
+   ],
+   "google_search": "https://www.google.com/search?q={q}",
    "triggers": {
     "people": [
      "מספר טלפון",
@@ -1359,11 +1418,42 @@ window.FLOMA_SITES = {
      "ספר בשם",
      "buy the book",
      "buy a book"
+    ],
+    "property": [
+     "נדל\"ן",
+     "נדלן",
+     "מחירי דירות",
+     "מחירי הדירות",
+     "מחיר דירה",
+     "מחיר הדירה",
+     "מחירי נכסים",
+     "עסקאות נדל\"ן",
+     "עסקאות דירות",
+     "גוש וחלקה",
+     "גוש חלקה",
+     "מידע על בניין",
+     "מידע על הבניין",
+     "נתוני בניין",
+     "היתר בנייה",
+     "היתרי בנייה",
+     "מידע תכנוני",
+     "real estate",
+     "property prices",
+     "property info",
+     "property records",
+     "house prices",
+     "apartment prices",
+     "building info",
+     "building permit",
+     "land registry",
+     "parcel"
     ]
    },
    "defaults": {
     "people": [
      "b144",
+     "cellcom_locate",
+     "pelephone_find",
      "ofrix",
      "tel4u"
     ],
@@ -1390,6 +1480,10 @@ window.FLOMA_SITES = {
     "books": [
      "steimatzky",
      "amazon"
+    ],
+    "property": [
+     "nadlan",
+     "govmap"
     ]
    },
    "book_words": [
@@ -1400,6 +1494,160 @@ window.FLOMA_SITES = {
     "book",
     "books"
    ],
+   "translit": {
+    "names": {
+     "משה": "Moshe",
+     "כהן": "Cohen",
+     "לוי": "Levi",
+     "דוד": "David",
+     "דנה": "Dana",
+     "יוסי": "Yossi",
+     "יוסף": "Yosef",
+     "אברהם": "Avraham",
+     "יצחק": "Yitzhak",
+     "יעקב": "Yaakov",
+     "שרה": "Sarah",
+     "רחל": "Rachel",
+     "לאה": "Leah",
+     "רבקה": "Rivka",
+     "מרים": "Miriam",
+     "אורי": "Uri",
+     "נועה": "Noa",
+     "מיכל": "Michal",
+     "תמר": "Tamar",
+     "רונית": "Ronit",
+     "אבי": "Avi",
+     "דני": "Danny",
+     "רון": "Ron",
+     "גיל": "Gil",
+     "עומר": "Omer",
+     "איתי": "Itay",
+     "יונתן": "Yonatan",
+     "נתן": "Natan",
+     "אריאל": "Ariel",
+     "שירה": "Shira",
+     "מאיה": "Maya",
+     "יעל": "Yael",
+     "אליעזר": "Eliezer",
+     "שלמה": "Shlomo",
+     "חיים": "Haim",
+     "מזרחי": "Mizrahi",
+     "פרץ": "Peretz",
+     "ביטון": "Biton",
+     "דהן": "Dahan",
+     "אברהמי": "Avrahami",
+     "פרידמן": "Friedman",
+     "שפירא": "Shapira",
+     "אזולאי": "Azulay",
+     "מלכה": "Malka",
+     "אוחיון": "Ohayon",
+     "גבאי": "Gabay",
+     "חדד": "Hadad",
+     "עמר": "Amar",
+     "יוסופוב": "Yusupov",
+     "גולן": "Golan",
+     "בן": "Ben",
+     "בר": "Bar",
+     "שמעון": "Shimon",
+     "אהרון": "Aharon",
+     "אליהו": "Eliyahu",
+     "ישראל": "Israel",
+     "מנחם": "Menachem",
+     "שמואל": "Shmuel",
+     "רפאל": "Rafael",
+     "עדי": "Adi",
+     "ליאור": "Lior",
+     "אלון": "Alon",
+     "אלעד": "Elad",
+     "אליה": "Eliya",
+     "אלה": "Ella",
+     "אסף": "Asaf",
+     "בני": "Benny",
+     "גלית": "Galit",
+     "דורית": "Dorit",
+     "הילה": "Hila",
+     "זיו": "Ziv",
+     "חן": "Chen",
+     "טל": "Tal",
+     "יאיר": "Yair",
+     "ירון": "Yaron",
+     "כרמל": "Carmel",
+     "ליאת": "Liat",
+     "מיכאל": "Michael",
+     "נוי": "Noy",
+     "סיגל": "Sigal",
+     "עינת": "Einat",
+     "ענבל": "Inbal",
+     "צחי": "Tzachi",
+     "קרן": "Keren",
+     "רועי": "Roy",
+     "שי": "Shai",
+     "שני": "Shani",
+     "תומר": "Tomer",
+     "אורן": "Oren",
+     "עמית": "Amit",
+     "אלי": "Eli",
+     "ויצמן": "Weizman",
+     "רוזנברג": "Rosenberg",
+     "גרינברג": "Greenberg",
+     "קליין": "Klein",
+     "שטרן": "Stern",
+     "שטרנברג": "Sternberg",
+     "וייס": "Weiss",
+     "אשכנזי": "Ashkenazi",
+     "ספרדי": "Sfaradi",
+     "נחום": "Nachum",
+     "חזן": "Hazan",
+     "סעדה": "Saada",
+     "אלמוג": "Almog",
+     "ברק": "Barak"
+    },
+    "letters": {
+     "א": "",
+     "ב": "v",
+     "ג": "g",
+     "ד": "d",
+     "ה": "h",
+     "ו": "o",
+     "ז": "z",
+     "ח": "ch",
+     "ט": "t",
+     "י": "i",
+     "כ": "ch",
+     "ך": "ch",
+     "ל": "l",
+     "מ": "m",
+     "ם": "m",
+     "נ": "n",
+     "ן": "n",
+     "ס": "s",
+     "ע": "",
+     "פ": "f",
+     "ף": "f",
+     "צ": "tz",
+     "ץ": "tz",
+     "ק": "k",
+     "ר": "r",
+     "ש": "sh",
+     "ת": "t"
+    },
+    "first": {
+     "א": "a",
+     "ב": "b",
+     "ה": "h",
+     "ו": "v",
+     "י": "y",
+     "כ": "k",
+     "ע": "a",
+     "פ": "p"
+    },
+    "last": {
+     "א": "a",
+     "ה": "a",
+     "ע": "a"
+    },
+    "vowels": "aeiou"
+   },
    "places": {
     "תל אביב": [
      "TLV",
@@ -1807,6 +2055,10 @@ window.FLOMA_SITES = {
     "flight": {
      "HEBREW": "מספר טיסה",
      "ENGLISH": "Flight"
+    },
+    "name_en": {
+     "HEBREW": "השם באנגלית",
+     "ENGLISH": "Name in English"
     }
    },
    "text": {
@@ -1829,6 +2081,42 @@ window.FLOMA_SITES = {
     "form_note": {
      "HEBREW": "(טופס באתר: העתק/י את הפרטים)",
      "ENGLISH": "(site form: copy the details)"
+    },
+    "phone_formats": {
+     "HEBREW": "הטלפון בכל הפורמטים (להעתקה):",
+     "ENGLISH": "The number in every format (to copy):"
+    },
+    "tiers": {
+     "HEBREW": "חיפוש מדורג (מהמדויק לרחב):",
+     "ENGLISH": "Cascading search (narrowest first):"
+    },
+    "tiers_note": {
+     "HEBREW": "אין תוצאות בשלב אחד? עוברים לשלב הבא.",
+     "ENGLISH": "No results at one tier? Try the next."
+    },
+    "tier_1": {
+     "HEBREW": "מדויק — שם + רחוב + עיר",
+     "ENGLISH": "Exact — name + street + city"
+    },
+    "tier_2": {
+     "HEBREW": "אזורי — שם + עיר",
+     "ENGLISH": "Regional — name + city"
+    },
+    "tier_3": {
+     "HEBREW": "רחב — שם מלא בלבד",
+     "ENGLISH": "Broad — full name only"
+    },
+    "google": {
+     "HEBREW": "Google",
+     "ENGLISH": "Google"
+    },
+    "google_en": {
+     "HEBREW": "באנגלית",
+     "ENGLISH": "in English"
+    },
+    "google_phone": {
+     "HEBREW": "הטלפון בכל הפורמטים",
+     "ENGLISH": "the number in every format"
     }
    },
    "patterns": {

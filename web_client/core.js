@@ -320,6 +320,8 @@
     try {
       let response;
       try {
+        // Settings' quota card counts today's Gemini requests from this browser (quota.js).
+        if (window.FlomaQuota) window.FlomaQuota.recordRequest();
         response = await fetch(`${API_BASE}/${model}:generateContent`, {
           method: "POST",
           // Header, not ?key=, so the key never appears in URLs, history or logs.

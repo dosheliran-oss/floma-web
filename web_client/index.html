@@ -121,6 +121,7 @@
       <h4 data-i18n="elevenTitle"></h4>
       <p class="hint" data-i18n="elevenHint"></p>
       <p class="hint" id="elevenStatus"></p>
+      <div class="quota-card" id="elevenQuota" hidden></div>
       <label><span data-i18n="elevenKey"></span><input id="elevenKey" type="password" autocomplete="off" spellcheck="false" dir="ltr"></label>
       <label><span data-i18n="elevenVoice"></span><input id="elevenVoice" type="text" autocomplete="off" spellcheck="false" dir="ltr" data-i18n-placeholder="elevenVoicePlaceholder"></label>
       <p class="error" id="elevenProblem" role="alert"></p>
@@ -136,6 +137,7 @@
       <p class="hint" id="modelHint"></p>
       <p class="hint" data-i18n="fallbackHint"></p>
       <p class="hint" id="keyStatus"></p>
+      <div class="quota-card" id="geminiQuota" hidden></div>
       <div class="buttons">
         <button type="button" id="changeKey" data-i18n="changeKey"></button>
         <button type="button" id="removeKey" class="danger" data-i18n="removeKey"></button>
@@ -147,6 +149,7 @@
       <p class="hint" data-i18n="firebaseHint"></p>
       <p class="mem-badge" id="memBadge" role="status"></p>
       <p class="hint" id="firebaseStatus"></p>
+      <div class="quota-card" id="firebaseQuota" hidden></div>
       <div class="buttons">
         <button type="button" id="memSync" data-i18n="memSyncNow"></button>
         <button type="button" id="memView" data-i18n="memView"></button>
@@ -229,13 +232,14 @@
   <!-- The Floma platform and its assistant personas, shared with Android and the desktop app. -->
   <script src="../persona/floma_platform.js"></script>
   <script src="../persona/personas.js"></script>
-  <script src="../persona/system_guide.js?v=b475d5e438"></script>
+  <script src="../persona/system_guide.js?v=24691b783a"></script>
   <script src="core.js"></script>
   <script src="memory.js"></script>
   <script src="sites.js"></script>
   <script src="../persona/sites_catalog.js"></script>
   <script src="catalog.js"></script>
   <script src="launcher.js"></script>
+  <script src="quota.js"></script>
   <script src="voice.js"></script>
   <script src="documents.js"></script>
   <script src="app.js"></script>

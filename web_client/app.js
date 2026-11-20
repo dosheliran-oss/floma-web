@@ -24,6 +24,7 @@
   const Sites = window.FlomaSites;
   const Catalog = window.FlomaCatalog;
   const Launcher = window.FlomaLauncher;
+  const Quota = window.FlomaQuota;
   const Voice = window.FlomaVoice;
   const Docs = window.FlomaDocuments;
   const STORE = {
@@ -359,6 +360,14 @@
       }
       footer.append(speakButton(message.text));
       bubble.append(footer);
+    }
+    if (message.launcher) {
+      const copy = document.createElement("button");
+      copy.type = "button";
+      copy.className = "copy-details";
+      copy.textContent = window.FLOMA_PLATFORM.site_query.copy_details[lang()];
+      copy.addEventListener("click", () => copyDetails(message.text));
+      bubble.append(copy);
     }
     if (message.action === "addKey") {
       const actions = document.createElement("div");
@@ -739,7 +748,7 @@
     // The legal Smart Query Launcher (launcher.js): a lookup on a restricted site gets official links, never a
     // fetch. A restricted site named outright goes first; a phone lookup goes here rather than to "only on Android".
     const launch = !image && !doc && (route.kind === "model" || route.extension === "contacts") ? Launcher.plan(trimmed) : null;
-    if (launch && (route.kind !== "model" || launch.kind === "people" || Catalog.restrictedNamed(trimmed).length)) {
+    if (launch && (route.kind !== "model" || Launcher.firstKind(launch.kind) || Catalog.restrictedNamed(trimmed).length)) {
       sendLaunch(trimmed, launch);
       return;
     }
@@ -802,6 +811,21 @@
       if (!(e instanceof Core.AiError)) console.error(e); // a bug: still answered kindly below
       handleFailure(e instanceof Core.AiError ? e.kind : "BAD_RESPONSE", trimmed, Boolean(image), Boolean(doc));
     }
+  }
+
+  /** The launcher's details (names, phone formats, search tiers) to the clipboard. */
+  async function copyDetails(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (e) {
+      const area = document.createElement("textarea"); // older browsers / no clipboard permission
+      area.value = text;
+      document.body.append(area);
+      area.select();
+      try { document.execCommand("copy"); } catch (e2) { /* nothing more to try */ }
+      area.remove();
+    }
+    showToast(window.FLOMA_PLATFORM.site_query.copied[lang()]);
   }
 
   /** Official query links for a restricted site and the details to copy; both bubbles stay local (no model). */
@@ -1194,6 +1218,81 @@
     return text;
   }
 
+  // --- Settings: the key & quota cards (Step 56) ---
+
+  let elevenQuota = null; // {at, subscription, error, loading}
+  let quotaTimer = null;
+
+  function drawCard(box, card) {
+    box.hidden = !card;
+    if (!card) return;
+    box.replaceChildren();
+    const title = document.createElement("h4");
+    title.textContent = card.title;
+    box.append(title);
+    for (const line of card.lines) {
+      const p = document.createElement("p");
+      p.textContent = line;
+      box.append(p);
+    }
+    if (card.left !== null) {
+      const bar = document.createElement("div");
+      bar.className = "quota-bar";
+      bar.setAttribute("role", "meter");
+      bar.setAttribute("aria-valuemin", "0");
+      bar.setAttribute("aria-valuemax", "100");
+      bar.setAttribute("aria-valuenow", String(Math.round(card.left * 100)));
+      const fill = document.createElement("span");
+      fill.style.width = `${Math.round(card.left * 100)}%`;
+      bar.append(fill);
+      box.append(bar);
+    }
+  }
+
+  function memoryFacts() {
+    try {
+      return Memory.facts ? Memory.facts() : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function renderQuota() {
+    const now = Date.now();
+    drawCard($("geminiQuota"), state.apiKey ? Quota.geminiCard(Quota.keyAdded("gemini"), Quota.requestsUsed(now), now, lang()) : null);
+    if (state.elevenKey) {
+      if (!$("settings").hidden) refreshElevenQuota(); // read from ElevenLabs only when Settings is open
+      const q = elevenQuota || {};
+      drawCard($("elevenQuota"), Quota.elevenCard(Quota.keyAdded("elevenlabs"), q.subscription || null, now, lang(), q.error || null));
+    } else {
+      drawCard($("elevenQuota"), null);
+    }
+    const status = Memory.status();
+    if (status.configured) {
+      const facts = memoryFacts();
+      const last = status.lastSync ? Quota.nowIso(status.lastSync) : null;
+      drawCard($("firebaseQuota"), Quota.firebaseCard(Quota.keyAdded("firebase"), status.topics || 0, status.facts || 0,
+        Quota.kb(facts), last, lang()));
+    } else {
+      drawCard($("firebaseQuota"), null);
+    }
+    // The countdowns tick while Settings is open.
+    clearTimeout(quotaTimer);
+    if (!$("settings").hidden) quotaTimer = setTimeout(renderQuota, 30000);
+  }
+
+  /** Reads the ElevenLabs subscription with the user's key (at most once a minute). */
+  function refreshElevenQuota() {
+    const now = Date.now();
+    if (elevenQuota && (elevenQuota.loading || now - elevenQuota.at < 60000)) return;
+    const key = state.elevenKey;
+    elevenQuota = { at: now, loading: true, subscription: elevenQuota ? elevenQuota.subscription : null };
+    Quota.fetchSubscription(key).then(
+      (subscription) => { elevenQuota = { at: Date.now(), subscription, error: null }; },
+      (e) => { elevenQuota = { at: Date.now(), subscription: null, error: String(e && e.message || e) }; },
+    ).then(() => { if (state.elevenKey === key) renderQuota(); });
+  }
+
   // --- Settings drawer ---
 
   /** Floma is the assistant by default; Toby, the jester, is an add-on switched on here. */
@@ -1311,6 +1410,7 @@
     $("changeKey").textContent = t(state.apiKey ? "changeKey" : "addKey");
     $("firebaseStatus").textContent = memoryStatusText();
     renderMemoryBadges();
+    renderQuota();
     renderSites();
     $("firebaseSecret").placeholder = Memory.hasSecret() ? t("firebaseSecretSaved") : "";
     if (document.activeElement !== $("firebaseUrl")) $("firebaseUrl").value = s.firebaseUrl || "";
@@ -1334,6 +1434,7 @@
 
   function setDrawer(open) {
     $("settings").hidden = !open;
+    if (open) renderQuota();
     $("scrim").hidden = !open;
     $("openSettings").setAttribute("aria-expanded", String(open));
     if (open) $("closeSettings").focus();
@@ -1364,6 +1465,7 @@
     }
     state.apiKey = key;
     save(STORE.key, key);
+    Quota.stamp("gemini");
     fillSettings();
     if (problem === "NETWORK") {
       $("keyError").textContent = t("keyOffline");
@@ -1734,6 +1836,7 @@
       if (!confirm(t("confirmRemoveKey"))) return;
       state.apiKey = null;
       save(STORE.key, null);
+      Quota.forget("gemini");
       fillSettings();
     });
     $("clearChat").addEventListener("click", () => {
@@ -1761,6 +1864,7 @@
       }
       $("firebaseProblem").textContent = "";
       const secretValue = $("firebaseSecret").value.trim();
+      if (secretValue || url !== state.settings.firebaseUrl) Quota.stamp("firebase");
       if (secretValue) Memory.setSecret(secretValue);
       $("firebaseSecret").value = "";
       state.settings.firebaseUrl = url;
@@ -1771,6 +1875,7 @@
     $("firebaseRemove").addEventListener("click", () => {
       Memory.setSecret(null);
       delete state.settings.firebaseUrl;
+      Quota.forget("firebase");
       save(STORE.settings, state.settings);
       $("firebaseProblem").textContent = "";
       fillSettings();
@@ -1802,6 +1907,8 @@
       if (key) {
         state.elevenKey = key;
         save(STORE.elevenKey, key);
+        Quota.stamp("elevenlabs");
+        elevenQuota = null; // a new key: read its subscription again
       }
       $("elevenKey").value = "";
       state.settings.elevenVoiceId = voice;
@@ -1813,6 +1920,8 @@
     $("elevenRemove").addEventListener("click", () => {
       state.elevenKey = null;
       save(STORE.elevenKey, null);
+      Quota.forget("elevenlabs");
+      elevenQuota = null;
       delete state.settings.elevenVoiceId;
       save(STORE.settings, state.settings);
       state.cloudVoiceError = null;

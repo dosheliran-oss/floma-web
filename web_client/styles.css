@@ -90,6 +90,31 @@ html, body { overflow: hidden; }
 .persona-toggle button:disabled { cursor: default; opacity: 0.5; }
 .persona-toggle button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
+/* Settings: the key & quota cards (Step 56). */
+.quota-card {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-variant);
+  border: 1px solid var(--border);
+}
+.quota-card[hidden] { display: none; }
+.quota-card h4 { margin: 0 0 4px; font-size: 0.9rem; }
+.quota-card p { margin: 2px 0; color: var(--muted); font-size: 0.82rem; }
+.quota-bar { height: 8px; margin-top: 6px; border-radius: 999px; background: var(--border); overflow: hidden; }
+.quota-bar span { display: block; height: 100%; border-radius: inherit; background: var(--primary); transition: width 0.3s ease; }
+.bubble .copy-details {
+  margin-block-start: 6px;
+  padding: 4px 12px;
+  border: 1px solid var(--primary);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--primary);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
 /* Offline notice under the header. */
 .offline-banner {
   margin: 8px 16px 0;

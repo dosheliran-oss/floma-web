@@ -5,6 +5,8 @@
  * rules.launcher), pinned by the shared "sites.launches" cases. It never contacts a restricted site: it
  * reads the details out of the question (name, city, street, phone; product; book; flight) and builds the
  * site's official link, which the user opens in their own browser.
+ * A people lookup also gets (Step 56) every Israeli format of the phone number, the name in English letters
+ * and cascading search tiers (name + street + city, name + city, name only) with Google search links.
  */
 (function () {
   "use strict";
@@ -55,20 +57,20 @@
   const title = (text) => text.toLowerCase().replace(/(^|[^\p{L}])(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
 
   function padded(question) {
-    return ` ${String(question).toLowerCase().split(/\s+/).filter(Boolean).join(" ")} `;
+    return ` ${String(question).toLowerCase().replace(/״/g, '"').split(/\s+/).filter(Boolean).join(" ")} `;
   }
 
   function mentions(text, phrase) {
     return word(`[והבלמשכ]?${esc(phrase.toLowerCase())}`).test(text);
   }
 
-  /** people | shopping | flights | books, or null. */
+  /** people | shopping | flights | books | property, or null. */
   function kindOf(question) {
     const p = padded(question);
     const named = Catalog.restrictedNamed(question);
     if (named.length) return named[0].launcher_kind;
     if (pattern("PHONE").test(question) && [" של מי ", " מי ", " whose ", " who "].some((w) => p.includes(w))) return "people";
-    for (const kind of ["books", "people", "flights", "shopping"]) {
+    for (const kind of ["books", "people", "property", "flights", "shopping"]) {
       if (L().triggers[kind].some((t) => mentions(p, t))) {
         if (kind === "shopping" && L().book_words.some((w) => mentions(p, w))) return "books";
         return kind;
@@ -128,10 +130,133 @@
     return text.split(/\s+/).map(stripChars).filter((w) => w && !filler.has(w.toLowerCase()) && !books.has(w.toLowerCase())).join(" ");
   }
 
+  /** {street, city, text without them} - for people lookups and the property portals (launcher._address). */
+  function address(start) {
+    let text = start;
+    let street = "";
+    const he = pattern("STREET_HE").exec(text);
+    const en = he ? null : pattern("STREET_EN").exec(text);
+    if (he) {
+      street = [he[1].trim(), he[2] || ""].filter(Boolean).join(" ");
+      text = `${text.slice(0, he.index)} ${text.slice(he.index + he[0].length)}`;
+    } else if (en) {
+      street = [(en[1] || "").trim(), en[2].trim()].filter(Boolean).join(" ");
+      text = `${text.slice(0, en.index)} ${text.slice(en.index + en[0].length)}`;
+    }
+    const place = findPlace(text, L().israeli_cities);
+    let city = "";
+    if (place) {
+      city = isAscii(place[0]) ? L().places[place[0]][1] : place[0];
+      text = text.replace(new RegExp(`(?:\\b(?:in|from)\\s+)?[במלו]?${esc(place[0])}`, "giu"), " ");
+    }
+    return { street, city, text };
+  }
+
+  // --- People: phone formats, English names, search tiers (Step 56) ---
+
+  /** Every standard Israeli way to write [phone] (launcher.phone_formats). */
+  function phoneFormats(phone) {
+    const digits = String(phone || "").replace(/\D/g, "");
+    if (!digits) return [];
+    const local = digits.startsWith("972") ? `0${digits.slice(3)}` : digits;
+    let area;
+    let rest;
+    if (local.length === 10 && "57".includes(local[1])) {
+      area = local.slice(0, 3);
+      rest = local.slice(3);
+    } else if (local.length === 9) {
+      area = local.slice(0, 2);
+      rest = local.slice(2);
+    } else {
+      return [phone];
+    }
+    return [`+972-${area.slice(1)}-${rest}`, `+972${local.slice(1)}`, local, `${area}-${rest}`,
+      `${area}-${rest.slice(0, 3)}-${rest.slice(3)}`];
+  }
+
+  const hebrew = (text) => /[\u05d0-\u05ea]/.test(text);
+
+  function transliterateWord(word) {
+    const t = L().translit;
+    if (t.names[word] !== undefined || !hebrew(word)) return t.names[word] !== undefined ? t.names[word] : word;
+    const pieces = [];
+    for (let i = 0; i < word.length; i++) {
+      const ch = word[i];
+      const last = i === word.length - 1;
+      const next = last ? "" : word[i + 1];
+      let piece;
+      if ("וי".includes(ch) && next === ch && i > 0) {
+        piece = ch === "ו" ? "v" : "y";
+        i++;
+      } else if (i === 0 && t.first[ch] !== undefined) {
+        piece = t.first[ch];
+      } else if (last && t.last[ch] !== undefined) {
+        piece = t.last[ch];
+      } else {
+        piece = t.letters[ch] !== undefined ? t.letters[ch] : ch;
+      }
+      if (piece && pieces.length && !t.vowels.includes(pieces[pieces.length - 1].slice(-1)) && !t.vowels.includes(piece[0])) {
+        pieces.push("a");
+      }
+      if (piece) pieces.push(piece);
+    }
+    const out = pieces.join("");
+    return out.slice(0, 1).toUpperCase() + out.slice(1);
+  }
+
+  /** [name] in English letters ("משה כהן" → "Moshe Cohen"); "" when it has no Hebrew letters. */
+  function transliterate(name) {
+    if (!hebrew(name)) return "";
+    const clean = String(name).replace(/'/g, "").replace(/"/g, "").replace(/״/g, "").replace(/׳/g, "");
+    return clean.split(/\s+/).filter(Boolean).map((w) => w.split("-").map(transliterateWord).join("-")).filter(Boolean).join(" ");
+  }
+
+  /** The cascading search, narrowest first (launcher.tiers). */
+  function tiers(fields) {
+    const name = [fields.first_name || "", fields.last_name || ""].filter(Boolean).join(" ");
+    if (!name) return [];
+    const found = [];
+    if (fields.street && fields.city) found.push({ level: 1, query: `${name} ${fields.street} ${fields.city}` });
+    if (fields.city) found.push({ level: 2, query: `${name} ${fields.city}` });
+    found.push({ level: 3, query: name });
+    return found;
+  }
+
+  function googleLink(query, title, exact = "") {
+    let q = query;
+    if (exact && q.includes(exact)) q = q.replace(exact, `"${exact}"`);
+    return { title, uri: L().google_search.replace("{q}", Catalog.quote(q, "")), site: "google", deep: true };
+  }
+
+  function peopleExtras(launch) {
+    const f = launch.fields;
+    const t = L().text;
+    const name = [f.first_name || "", f.last_name || ""].filter(Boolean).join(" ");
+    launch.name_en = transliterate(name);
+    launch.phone_formats = phoneFormats(f.phone || "");
+    launch.tiers = tiers(f);
+    const google = launch.tiers.map((tier) =>
+      googleLink(tier.query, `${t.google.HEBREW} · ${tier.level}. ${t[`tier_${tier.level}`].HEBREW}`, name));
+    if (launch.name_en) {
+      const city = f.city || "";
+      const cityEn = L().places[city] ? L().places[city][1] : (isAscii(city) ? city : "");
+      const query = [launch.name_en, cityEn].filter(Boolean).join(" ");
+      google.push(googleLink(query, `${t.google.HEBREW} · ${t.google_en.HEBREW}: ${query}`, launch.name_en));
+    }
+    if (launch.phone_formats.length > 1) {
+      google.push(googleLink(launch.phone_formats.map((x) => `"${x}"`).join(" OR "), `${t.google.HEBREW} · ${t.google_phone.HEBREW}`));
+    }
+    launch.links = [...google, ...launch.links];
+  }
+
   /** The structured details of [question] for a [kind] lookup (launcher.extract). */
   function extract(question, kind, today = new Date()) {
     if (kind === "shopping") return { product: subject(question, kind) };
     if (kind === "books") return { book: subject(question, kind) };
+    if (kind === "property") {
+      const where = address(question);
+      return { street: where.street, city: where.city };
+    }
     const places = L().places;
     if (kind === "flights") {
       const flight = pattern("FLIGHT").exec(question) || pattern("FLIGHT_AFTER_WORD").exec(question);
@@ -158,24 +283,11 @@
     // people
     const phoneMatch = pattern("PHONE").exec(question);
     const phone = phoneMatch ? phoneMatch[0].replace(/\s/g, "") : "";
-    let text = question;
-    for (const part of question.match(pattern("PHONE", true)) || []) text = text.replace(new RegExp(esc(part), "giu"), " ");
-    let street = "";
-    const he = pattern("STREET_HE").exec(text);
-    const en = he ? null : pattern("STREET_EN").exec(text);
-    if (he) {
-      street = [he[1].trim(), he[2] || ""].filter(Boolean).join(" ");
-      text = `${text.slice(0, he.index)} ${text.slice(he.index + he[0].length)}`;
-    } else if (en) {
-      street = [(en[1] || "").trim(), en[2].trim()].filter(Boolean).join(" ");
-      text = `${text.slice(0, en.index)} ${text.slice(en.index + en[0].length)}`;
-    }
-    const place = findPlace(text, L().israeli_cities);
-    let city = "";
-    if (place) {
-      city = isAscii(place[0]) ? places[place[0]][1] : place[0];
-      text = text.replace(new RegExp(`(?:\\b(?:in|from)\\s+)?[במלו]?${esc(place[0])}`, "giu"), " ");
-    }
+    let start = question;
+    for (const part of question.match(pattern("PHONE", true)) || []) start = start.replace(new RegExp(esc(part), "giu"), " ");
+    const where = address(start);
+    const { street, city } = where;
+    let text = where.text;
     for (const trigger of [...L().triggers.people].sort((a, b) => b.length - a.length)) {
       text = text.replace(word(esc(trigger), "giu"), " ");
     }
@@ -205,6 +317,7 @@
       date_yymmdd: fields.date ? fields.date.replace(/-/g, "").slice(2) : "",
       origin_code: originCode.toLowerCase(), destination_code: destinationCode.toLowerCase(),
       ORIGIN_CODE: originCode, DESTINATION_CODE: destinationCode, flights_query: flightsQuery,
+      address: [fields.street || "", fields.city || ""].filter(Boolean).join(" "),
     };
     if (template) {
       const needed = [...template.matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
@@ -227,9 +340,18 @@
     const shown = Object.entries(launch.fields).filter(([, v]) => v);
     if (shown.length) {
       lines.push(t.summary[lang]);
-      for (const [k, v] of shown) lines.push(`${L().labels[k][lang]}: ${v}`);
+      for (const [k, v] of shown) {
+        lines.push(`${L().labels[k][lang]}: ${v}`);
+        if (k === "last_name" && launch.name_en) lines.push(`${L().labels.name_en[lang]}: ${launch.name_en}`);
+      }
     } else {
       lines.push(t.no_details[lang]);
+    }
+    if (launch.phone_formats.length > 1) lines.push("", t.phone_formats[lang], ...launch.phone_formats.map((f) => `• ${f}`));
+    if (launch.tiers.length) {
+      lines.push("", t.tiers[lang]);
+      for (const tier of launch.tiers) lines.push(`${tier.level}. ${t[`tier_${tier.level}`][lang]}: ${tier.query}`);
+      lines.push(t.tiers_note[lang]);
     }
     return lines.join("\n");
   }
@@ -253,7 +375,10 @@
       chosen = L().defaults[key].map((id) => sites().find((s) => s.id === id));
     }
     const publicFields = Object.fromEntries(Object.entries(fields).filter(([k]) => !k.startsWith("_")));
-    const launch = { kind, fields: publicFields, links: chosen.slice(0, L().max_links).map((s) => linkFor(s, fields)) };
+    const max = L().max_links_by_kind[kind] || L().max_links;
+    const launch = { kind, fields: publicFields, links: chosen.slice(0, max).map((s) => linkFor(s, fields)),
+      name_en: "", phone_formats: [], tiers: [] };
+    if (kind === "people") peopleExtras(launch);
     launch.text = (language) => text(launch, language);
     launch.sources = (language) => sources(launch, language);
     return launch;
@@ -297,5 +422,8 @@
     return families.has(family(h));
   }
 
-  window.FlomaLauncher = { plan, kindOf, extract, linkFor, blockedHost, convert };
+  /** Kinds the launcher answers before any catalog source (people/phone, property/address). */
+  const firstKind = (kind) => L().first_kinds.includes(kind);
+
+  window.FlomaLauncher = { plan, kindOf, extract, linkFor, blockedHost, convert, phoneFormats, transliterate, tiers, firstKind };
 })();
