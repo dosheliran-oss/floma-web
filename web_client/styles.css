@@ -62,6 +62,34 @@ html, body { overflow: hidden; }
   border-block-end: 1px solid var(--border);
 }
 
+/* The quick "פלומה | טובי" switch on the top bar: a small pill, the active assistant filled. */
+.persona-toggle {
+  display: inline-flex;
+  flex: none;
+  padding: 3px;
+  gap: 2px;
+  border-radius: 999px;
+  background: var(--surface-variant);
+  border: 1px solid var(--border);
+}
+.persona-toggle button {
+  border: 0;
+  border-radius: 999px;
+  padding: 5px 12px;
+  min-height: 30px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.persona-toggle button[aria-checked="true"] { background: var(--primary); color: var(--on-primary); }
+.persona-toggle button:not([aria-checked="true"]):hover { color: var(--text); }
+.persona-toggle button:disabled { cursor: default; opacity: 0.5; }
+.persona-toggle button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
 /* Offline notice under the header. */
 .offline-banner {
   margin: 8px 16px 0;
@@ -332,9 +360,16 @@ button.danger { background: transparent; color: var(--error); border: 1px solid 
 @media (max-width: 520px) {
   .bubble { max-width: 88%; }
   .chat { padding: 12px; }
-  .topbar { gap: 10px; padding-inline: 12px; }
+  .topbar { gap: 8px; padding-inline: 12px; }
+  .avatar-wrap, .avatar { width: 40px; height: 40px; }
+  .persona-toggle button { padding: 4px 9px; font-size: 0.8rem; }
   .composer { padding-inline: 12px; }
   .drawer { width: 100vw; border: 0; }
+}
+
+/* Narrow phones: the switch already says who's active, so the name gives it room. */
+@media (max-width: 420px) {
+  .topbar .title { display: none; }
 }
 
 /* Installed (standalone window): no browser chrome around it, so the header acts as the title bar. */

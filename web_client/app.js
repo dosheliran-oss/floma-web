@@ -64,6 +64,7 @@
       chatsKept: "רק 3 השיחות האחרונות של {name} נשמרות בדפדפן. לפני שמוחקים שיחה ישנה, העובדות ממנה נשמרות בזיכרון (וב-Firebase כשהוא מחובר).",
       notSaved: "ממתינה לשמירה בזיכרון",
       tobyAddon: "טובי (תוסף ליצן)",
+      personaSwitch: "החלפת עוזר: פלומה או טובי",
       elevenTitle: "קול ElevenLabs (אופציונלי)", elevenHint: "הקראת התשובות בקול שעיצבתם ב-ElevenLabs. בלי מפתח, או כשאין גישה, הקול של הדפדפן מקריא. המפתח נשמר רק בדפדפן הזה (localStorage), לא מוצפן.", elevenKey: "מפתח API של ElevenLabs", elevenKeySaved: "מפתח שמור", elevenVoice: "מזהה קול (Voice ID)", elevenVoicePlaceholder: "ריק = קול ברירת המחדל", elevenSave: "שמירה", elevenRemove: "הסרה", elevenBadVoice: "זה לא נראה כמו מזהה קול (אותיות וספרות, מעמוד הקול ב-ElevenLabs).", elevenNoKey: "צריך להזין מפתח.", elevenOff: "כבוי: הקול של הדפדפן מקריא את התשובות.", elevenOn: "פעיל: התשובות מוקראות בקול ה-ElevenLabs שלכם.", elevenErrAUTH: "ElevenLabs דחה את המפתח. משתמש בקול של הדפדפן.", elevenErrBAD_VOICE: "ElevenLabs לא מכיר את מזהה הקול. משתמש בקול של הדפדפן.", elevenErrQUOTA: "נגמרו התווים בחשבון ElevenLabs. משתמש בקול של הדפדפן.", elevenErrRATE_LIMITED: "ElevenLabs עמוס. משתמש בקול של הדפדפן לכמה דקות.", elevenErrSERVER: "ElevenLabs עמוס. משתמש בקול של הדפדפן לכמה דקות.", elevenErrNETWORK: "אין גישה ל-ElevenLabs (אין אינטרנט?). משתמש בקול של הדפדפן.", elevenErrUNKNOWN: "ElevenLabs לא ענה כצפוי. משתמש בקול של הדפדפן.",
       sectionExtensions: "תוספים", extSearch: "חיפוש באינטרנט (Google Search)",
       extPc: "המחשב (Toby PC companion)", extPhone: "פעולות בטלפון ואנשי קשר",
@@ -131,6 +132,7 @@
       chatsKept: "Only {name}'s 3 most recent chats stay in this browser. Before an older chat is deleted, its facts are saved to memory (and to Firebase when it's connected).",
       notSaved: "Waiting to be saved to memory",
       tobyAddon: "Toby (jester add-on)",
+      personaSwitch: "Switch assistant: Floma or Toby",
       elevenTitle: "ElevenLabs voice (optional)", elevenHint: "Read replies with a voice you designed in ElevenLabs. Without a key, or when it can't be reached, the browser's voice reads them. The key is stored only in this browser (localStorage), unencrypted.", elevenKey: "ElevenLabs API key", elevenKeySaved: "A key is saved", elevenVoice: "Voice ID", elevenVoicePlaceholder: "Empty = the default voice", elevenSave: "Save", elevenRemove: "Remove", elevenBadVoice: "That doesn't look like a voice ID (letters and digits, from the voice's page in ElevenLabs).", elevenNoKey: "Enter a key first.", elevenOff: "Off: the browser's voice reads replies.", elevenOn: "On: replies are read with your ElevenLabs voice.", elevenErrAUTH: "ElevenLabs rejected the key. Using the browser's voice.", elevenErrBAD_VOICE: "ElevenLabs doesn't know this voice ID. Using the browser's voice.", elevenErrQUOTA: "Your ElevenLabs characters are used up. Using the browser's voice.", elevenErrRATE_LIMITED: "ElevenLabs is busy. Using the browser's voice for a couple of minutes.", elevenErrSERVER: "ElevenLabs is busy. Using the browser's voice for a couple of minutes.", elevenErrNETWORK: "Couldn't reach ElevenLabs (offline?). Using the browser's voice.", elevenErrUNKNOWN: "ElevenLabs didn't answer as expected. Using the browser's voice.",
       sectionExtensions: "Extensions", extSearch: "Web search (Google Search)",
       extPc: "PC (Toby PC companion)", extPhone: "Phone actions and contacts",
@@ -426,6 +428,7 @@
   function setThinking(on) {
     state.thinking = on;
     $("send").disabled = on;
+    fillPersonaToggle(); // no switching mid-reply: the other assistant waits until the answer is in
     const existing = $("typing");
     if (existing) existing.remove();
     clearInterval(typingTimer);
@@ -1200,10 +1203,33 @@
     const profile = Core.profile(on ? "toby" : "floma");
     $("tobyAddonDesc").textContent = profile.description[lang()] || profile.description.HEBREW;
     $("tobyAddonArt").src = `${AVATAR_DIR}${Core.avatarImage("HAPPY", "toby")}`;
+    fillPersonaToggle();
   }
 
+  /** The top bar's quick "פלומה | טובי" switch (Floma first; the Settings switch does the same). */
+  function fillPersonaToggle() {
+    const toggle = $("personaToggle");
+    const profiles = window.FLOMA_PERSONAS;
+    const ids = ["floma", ...Object.keys(profiles).filter((id) => id !== "floma")];
+    toggle.replaceChildren(...ids.map((id) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.persona = id;
+      button.setAttribute("role", "radio");
+      button.setAttribute("aria-checked", String(id === persona()));
+      button.textContent = profiles[id].switch_label[lang()] || profiles[id].switch_label.HEBREW;
+      button.disabled = state.thinking && id !== persona();
+      button.addEventListener("click", () => switchPersona(id));
+      return button;
+    }));
+  }
+
+  /** Both switches (Settings and the top bar) come here: the same chats, memory, name and art switch. */
   function switchPersona(id) {
-    if (id === persona() || state.thinking) return;
+    if (id === persona() || state.thinking) {
+      fillPersonas(); // a refused switch: both switches show the assistant that stayed
+      return;
+    }
     const leavingChat = state.sessionId;
     Voice.stopSpeaking();
     setLive(false);

@@ -1,13 +1,18 @@
 // Floma's assistant profiles: who the user talks to, loaded on top of the Floma platform
 // (floma_platform.js). "toby" is the jester character; "floma" is the neutral built-in assistant.
 // A profile defines the assistant's name, intro, personality and humor, serious-mode wording,
-// greeting, wake words and art (per-emotion images, or a single logo).
+// greeting, wake words and art (per-emotion images, or a single logo), and switch_label: its short name on
+// the top bar's Floma | Toby switch.
 // Everything after "=" must stay strict JSON. After editing, run the persona tests.
 window.FLOMA_PERSONAS = {
   "toby": {
     "label": {
       "HEBREW": "טובי (ליצן)",
       "ENGLISH": "Toby (jester)"
+    },
+    "switch_label": {
+      "HEBREW": "טובי",
+      "ENGLISH": "Toby"
     },
     "description": {
       "HEBREW": "ליצן שנון עם הומור, דמות מונפשת ומצב רציני.",
@@ -73,6 +78,10 @@ window.FLOMA_PERSONAS = {
     "label": {
       "HEBREW": "Floma (ניטרלי)",
       "ENGLISH": "Floma (neutral)"
+    },
+    "switch_label": {
+      "HEBREW": "פלומה",
+      "ENGLISH": "Floma"
     },
     "description": {
       "HEBREW": "העוזר הבסיסי של Floma: רגוע, מדויק, בלי דמות ובלי בדיחות.",
