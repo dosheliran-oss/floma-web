@@ -22,6 +22,8 @@
   const Core = window.FlomaCore;
   const Memory = window.FlomaMemory;
   const Sites = window.FlomaSites;
+  const Catalog = window.FlomaCatalog;
+  const Launcher = window.FlomaLauncher;
   const Voice = window.FlomaVoice;
   const Docs = window.FlomaDocuments;
   const STORE = {
@@ -336,7 +338,12 @@
     if (message.role === "assistant" && !notice) {
       const footer = document.createElement("div");
       footer.className = "bubble-footer";
-      if (message.siteQuery) {
+      if (message.facts || message.launcher) {
+        const tag = document.createElement("span");
+        tag.className = "tag sites";
+        tag.textContent = window.FLOMA_PLATFORM.site_query[message.facts ? "facts_badge" : "launcher_badge"][lang()];
+        footer.append(tag);
+      } else if (message.siteQuery) {
         const tag = document.createElement("span");
         tag.className = "tag sites";
         tag.textContent = window.FLOMA_PLATFORM.site_query.badge[lang()];
@@ -726,6 +733,27 @@
       fillSettings();
     }
 
+    // The legal Smart Query Launcher (launcher.js): a lookup on a restricted site gets official links, never a
+    // fetch. A restricted site named outright goes first; a phone lookup goes here rather than to "only on Android".
+    const launch = !image && !doc && (route.kind === "model" || route.extension === "contacts") ? Launcher.plan(trimmed) : null;
+    if (launch && (route.kind !== "model" || launch.kind === "people" || Catalog.restrictedNamed(trimmed).length)) {
+      sendLaunch(trimmed, launch);
+      return;
+    }
+    // The built-in catalog (catalog.js): weather, books, anime... read straight from their open APIs (0 tokens).
+    // (The user's own sites come first, as on the desktop: a browser can't read them, so that path below says so.)
+    const ownSites = Sites.plan(trimmed, state.settings.querySites, Boolean(state.apiKey));
+    const sources = !image && !doc && route.kind === "model" && !ownSites.length
+      ? Catalog.route(trimmed, Sites.wantsLookup(trimmed), Boolean(state.apiKey)) : [];
+    if (sources.length) {
+      await sendFacts(trimmed, sources, launch);
+      return;
+    }
+    if (launch) {
+      sendLaunch(trimmed, launch);
+      return;
+    }
+
     if (route.kind === "unavailable") {
       // The browser can't do this: Toby says where he is and which Floma app can (persona file).
       // Local-only, like Android's device bubbles: never sent to the model.
@@ -771,6 +799,70 @@
       if (!(e instanceof Core.AiError)) console.error(e); // a bug: still answered kindly below
       handleFailure(e instanceof Core.AiError ? e.kind : "BAD_RESPONSE", trimmed, Boolean(image), Boolean(doc));
     }
+  }
+
+  /** Official query links for a restricted site and the details to copy; both bubbles stay local (no model). */
+  function sendLaunch(text, launch) {
+    addMessage({ role: "user", text, local: true });
+    addLaunch(launch);
+  }
+
+  function addLaunch(launch) {
+    addMessage({ role: "assistant", text: launch.text(lang()), sources: launch.sources(lang()), local: true, launcher: true });
+    setEmotion(Core.avatarFor("action_done"));
+  }
+
+  /** GET [url] as text, unless it's a restricted domain (never contacted); 15 s at most. */
+  async function fetchText(url) {
+    if (Launcher.blockedHost(new URL(url).hostname)) throw new Error("restricted");
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(), 15000);
+    try {
+      const response = await fetch(url, { cache: "no-store", signal: abort.signal });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.text();
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /**
+   * A catalog question: the open APIs are read right here (0 tokens) and their facts shown as they are.
+   * News and web pages can't be read from a browser: with a Gemini key it gets the facts plus Google Search
+   * (so it never says it can't check live data); without one the reply says what's needed.
+   */
+  async function sendFacts(text, sources, launch) {
+    addMessage({ role: "user", text });
+    setThinking(true);
+    setEmotion(Core.avatarFor("thinking"));
+    const pending = sources.filter((s) => !Catalog.deviceReadable(s));
+    try {
+      const results = await Catalog.fetchFacts(text, sources, fetchText);
+      if (pending.length && state.apiKey) {
+        const facts = results.flatMap((r) => r.lines.map((l) => `[${r.site.name}] ${l}`)).join("\n") || "(none)";
+        const turn = window.FLOMA_PLATFORM.site_query.facts_template.replace("{facts}", facts).replace("{question}", text);
+        const history = state.messages.filter((m) => !m.local).map((m) => ({ role: m.role, text: m.context || m.text }));
+        history[history.length - 1] = { role: "user", text: turn };
+        const reply = await Core.complete(state.apiKey, state.settings, history,
+          { kind: "model", model: Core.MODELS.RESEARCH, webSearch: true }, Memory.notes(), null);
+        addMessage({ role: "assistant", text: reply.text, sources: reply.sources, searchWidget: reply.searchWidget });
+        setEmotion(reply.emotion);
+        say(reply.text);
+      } else {
+        const reply = Catalog.localReply(results, lang(), pending);
+        const links = results.filter((r) => r.lines.length).map((r) => ({ title: r.site.name, uri: r.site.url }));
+        addMessage({ role: "assistant", text: reply, sources: links, facts: true });
+        setEmotion(Core.avatarFor("action_done"));
+        say(reply);
+      }
+    } catch (e) {
+      if (!(e instanceof Core.AiError)) console.error(e);
+      handleFailure(e instanceof Core.AiError ? e.kind : "BAD_RESPONSE", text, false, false);
+    } finally {
+      setThinking(false);
+    }
+    if (launch) addLaunch(launch);
+    updateMemory();
   }
 
   /**

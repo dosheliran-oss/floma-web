@@ -706,3 +706,24 @@ button.danger { background: transparent; color: var(--error); border: 1px solid 
 .guide-body h3 { font-size: 1.05rem; margin: 16px 0 6px; color: var(--primary); }
 .guide-body h4 { font-size: 0.95rem; margin: 10px 0 4px; }
 .guide-missing { color: var(--muted); }
+
+/* The system guide, full screen (Step 54): 96vw x 94vh, a header that stays in view, the text scrolls. */
+.guide-dialog {
+  width: 96vw; height: 94vh; max-width: none; max-height: none; padding: 0; box-sizing: border-box;
+  overflow: hidden;
+}
+.guide-frame { display: flex; flex-direction: column; height: 100%; margin: 0; }
+.guide-head {
+  position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 20px; background: var(--surface2, var(--surface)); border-bottom: 1px solid var(--border, rgb(127 127 127 / 0.25));
+}
+.guide-head .guide-title { margin: 0; font-size: 1.3rem; }
+.guide-close {
+  min-height: 44px; padding: 8px 18px; border-radius: 999px; font-size: 1rem; font-weight: 700;
+  background: var(--primary); color: var(--on-primary, #fff); border: 0; cursor: pointer;
+}
+.guide-body { flex: 1; max-height: none; overflow-y: auto; padding: 8px 28px 32px; font-size: 1.02rem; }
+@media (max-width: 600px) {
+  .guide-dialog { width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: 0; margin: 0; }
+  .guide-body { padding: 6px 14px 24px; }
+}
