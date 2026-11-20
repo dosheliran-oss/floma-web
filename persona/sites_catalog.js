@@ -1571,6 +1571,133 @@ window.FLOMA_SITES = {
     "people",
     "email"
    ],
+   "buy_kinds": [
+    "books",
+    "shopping"
+   ],
+   "capability": {
+    "ask": [
+     "אתה יכול",
+     "את יכולה",
+     "אתם יכולים",
+     "תוכל",
+     "תוכלי",
+     "אפשר",
+     "יש לך אפשרות",
+     "יש לך גישה",
+     "אתה מסוגל",
+     "את מסוגלת",
+     "אתה יודע",
+     "את יודעת",
+     "can you",
+     "could you",
+     "are you able",
+     "do you have access",
+     "is it possible"
+    ],
+    "topics": [
+     "טלפון",
+     "טלפונים",
+     "טלפום",
+     "טלפומים",
+     "תלפון",
+     "פלאפון",
+     "מספרי טלפון",
+     "מספר טלפון",
+     "מספרי",
+     "מספרים",
+     "מייל",
+     "מיילים",
+     "אימייל",
+     "כתובות מייל",
+     "phone",
+     "phones",
+     "phone number",
+     "phone numbers",
+     "numbers",
+     "email",
+     "emails",
+     "email addresses"
+    ],
+    "words": [
+     "אתה",
+     "את",
+     "אתם",
+     "יכול",
+     "יכולה",
+     "יכולים",
+     "תוכל",
+     "תוכלי",
+     "אפשר",
+     "יש",
+     "לך",
+     "אפשרות",
+     "גישה",
+     "מסוגל",
+     "מסוגלת",
+     "יודע",
+     "יודעת",
+     "לבדוק",
+     "בדוק",
+     "לחפש",
+     "חפש",
+     "למצוא",
+     "לאתר",
+     "איתור",
+     "בדיקת",
+     "חיפוש",
+     "של",
+     "אנשים",
+     "ברשת",
+     "באינטרנט",
+     "בשבילי",
+     "לי",
+     "גם",
+     "מה",
+     "האם",
+     "עם",
+     "בזמן",
+     "אמת",
+     "מידע",
+     "על",
+     "כמו",
+     "can",
+     "could",
+     "you",
+     "are",
+     "able",
+     "to",
+     "do",
+     "have",
+     "access",
+     "is",
+     "it",
+     "possible",
+     "check",
+     "search",
+     "find",
+     "look",
+     "up",
+     "lookup",
+     "people",
+     "online",
+     "the",
+     "web",
+     "for",
+     "me",
+     "of",
+     "a",
+     "an",
+     "in",
+     "real",
+     "time",
+     "real-time",
+     "info",
+     "information",
+     "and",
+     "or"
+    ]
+   },
    "google_search": "https://www.google.com/search?q={q}",
    "compose_words": [
     "שלח",
@@ -2462,6 +2589,28 @@ window.FLOMA_SITES = {
      "HEBREW": "אזכורים ציבוריים של המייל",
      "ENGLISH": "public mentions of the email"
     },
+    "buy_search": {
+     "HEBREW": "המשתמש/ת שאל/ה: {question}\n{what}: {item}\nעובדות שכבר נקראו מ-Open Library (ייתכן שאין):\n{facts}\nחפש/י ב-Google וענה/י ישירות על השאלה: האם {what_lower} הזה קיים, והאם אפשר לקנות אותו בישראל (באילו חנויות, ומחירים אם מצאת). בסס/י את התשובה על מה שמצאת ואל תמציא/י זמינות. האפליקציה מציגה מתחת לתשובה קישורי חיפוש רשמיים לחנויות, אז אין צורך לפרט כתובות של חנויות.",
+     "ENGLISH": "The user asked: {question}\n{what}: {item}\nFacts already read from Open Library (may be empty):\n{facts}\nUse Google Search to answer the user's question directly: does this {what_lower} exist, and can it be bought in Israel (which stores carry it, and prices if you find them)? Base the answer on what you find and don't invent availability. The app shows official store search links below your answer, so don't list store addresses."
+    },
+    "buy_what": {
+     "HEBREW": {
+      "books": "ספר",
+      "shopping": "מוצר"
+     },
+     "ENGLISH": {
+      "books": "Book",
+      "shopping": "Product"
+     }
+    },
+    "no_facts": {
+     "HEBREW": "(אין)",
+     "ENGLISH": "(none)"
+    },
+    "capability": {
+     "HEBREW": "כן! אני יכול לבדוק את זה בשבילך. הדביקו כאן מספר טלפון (למשל 052-1234567), כתובת מייל או שם מלא (ועיר, אם יודעים), ואני אכין חיפוש ברשת הפתוחה, את המספר בכל הפורמטים, וקישורים רשמיים לאתרי האיתור (B144, מי התקשר אליי, Truecaller ועוד) עם הפרטים להעתקה. עם מפתח Gemini אני גם מריץ חיפוש Google ועונה עם מה שנמצא. את החיפוש באתרים הרשמיים עצמם מריצים בדפדפן שלך - אני לא שואב מהם מידע.",
+     "ENGLISH": "Yes! I can check that for you. Paste a phone number (e.g. 052-1234567), an email address or a full name (and a city, if you know it), and I'll prepare an open-web search, the number in every format, and official links to the lookup sites (B144, Mi Hitkasher, Truecaller and more) with the details to copy. With a Gemini key I also run a Google search and answer with what I find. You run the search on the official sites in your own browser - I never scrape them."
+    },
     "email_search": {
      "HEBREW": "חפש/י ב-Google אזכורים ציבוריים או עסקיים של כתובת המייל {email} (למשל אתר של חברה, מדריך עסקים או פרופיל מקצועי פומבי). סכם/י בקצרה מה פורסם בפומבי וציין/י את המקורות. אל תנחש/י ואל תמציא/י פרטים אישיים; אם לא נמצא דבר פומבי, אמור/י זאת.",
      "ENGLISH": "Search Google for public or business mentions of the email address {email} (for example a company website, a business directory or a public professional profile). Briefly summarize what is publicly listed and cite the sources. Don't guess or invent personal details; if nothing public is found, say so."
@@ -2498,6 +2647,10 @@ window.FLOMA_SITES = {
     },
     "EMAIL": {
      "source": "(?<![A-Za-z0-9._%+-])([A-Za-z0-9._%+-]+)@([A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)*\\.[A-Za-z]{2,})(?![A-Za-z0-9-])",
+     "ignore_case": false
+    },
+    "QUOTED": {
+     "source": "(?<![^\\s(:])[\"'“”‘’]([^\"“”\\n]{2,}?)[\"'“”‘’](?![^\\s?!.,:;)])",
      "ignore_case": false
     }
    }

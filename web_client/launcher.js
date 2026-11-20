@@ -9,6 +9,7 @@
  * and cascading search tiers (name + street + city, name + city, name only) with Google search links.
  * Step 57: email lookups (the address, username and domain to copy; a Google search for its public mentions;
  * Have I Been Pwned, Hunter.io, Gravatar) and corporate / professional lookups (רשם החברות, גיידסטאר, LinkedIn).
+ * Step 58: a term in quotes is taken exactly as written; buying prompts for Gemini; "can you check phone numbers?".
  */
 (function () {
   "use strict";
@@ -118,7 +119,15 @@
     return new Set([...Catalog.siteNames(site), ...site.keywords.map((k) => k.toLowerCase())]);
   }
 
+  /** The first term in quotes, exactly as written ("" when there's none) (launcher.quoted). */
+  function quoted(text) {
+    const found = pattern("QUOTED").exec(String(text || ""));
+    return found ? found[1].trim() : "";
+  }
+
   function subject(question, kind) {
+    const exact = quoted(question);
+    if (exact) return exact;
     let text = question;
     for (const site of sites()) {
       if (site.connectable) continue;
@@ -443,6 +452,31 @@
   /** Kinds the launcher answers before any catalog source (people/phone, property/address, email, company). */
   const firstKind = (kind) => L().first_kinds.includes(kind);
 
+  /** What Gemini (with Google Search) is asked for a book / product with buying intent (launcher.buy_search_prompt). */
+  function buySearchPrompt(question, launch, facts, language) {
+    const lang = language === "ENGLISH" ? "ENGLISH" : "HEBREW";
+    const t = L().text;
+    const what = t.buy_what[lang][launch.kind];
+    const item = launch.fields.book || launch.fields.product || "";
+    return t.buy_search[lang].split("{question}").join(question).split("{what_lower}").join(what.toLowerCase())
+      .split("{what}").join(what).split("{item}").join(item).split("{facts}").join(facts.join("\n") || t.no_facts[lang]);
+  }
+
+  /** The answer to "can you check phone numbers / emails?", or null (launcher.capability_reply). */
+  function capabilityReply(question, language) {
+    if (pattern("PHONE").test(question) || pattern("EMAIL").test(question) || quoted(question)) return null;
+    const c = L().capability;
+    const p = padded(question);
+    if (!c.ask.some((a) => mentions(p, a)) || !c.topics.some((w) => mentions(p, w))) return null;
+    const allowed = new Set([...c.words, ...c.topics].map((w) => w.toLowerCase()));
+    for (let w of p.split(" ")) {
+      w = w.replace(/^[?!.,:;"'-]+|[?!.,:;"'-]+$/g, "");
+      const bare = "והבלמשכ".includes(w[0]) && w.length > 2 ? w.slice(1) : w;
+      if (w && !allowed.has(w) && !allowed.has(bare)) return null;
+    }
+    return L().text.capability[language === "ENGLISH" ? "ENGLISH" : "HEBREW"];
+  }
+
   /** What Gemini (with Google Search) is asked for an email lookup (launcher.email_search_prompt). */
   function emailSearchPrompt(launch, language) {
     const lang = language === "ENGLISH" ? "ENGLISH" : "HEBREW";
@@ -450,5 +484,5 @@
   }
 
   window.FlomaLauncher = { plan, kindOf, extract, linkFor, blockedHost, convert, phoneFormats, transliterate, tiers, firstKind,
-    emailSearchPrompt };
+    emailSearchPrompt, quoted, buySearchPrompt, capabilityReply, buyKind: (kind) => L().buy_kinds.includes(kind) };
 })();

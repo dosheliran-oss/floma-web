@@ -108,7 +108,9 @@
       return `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`
         + "&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=2";
     }
-    const terms = subjectTerms(question, site, others);
+    // A term in quotes is searched exactly as written (Step 58; launcher.js loads after this file).
+    const exact = window.FlomaLauncher ? window.FlomaLauncher.quoted(question) : "";
+    const terms = exact ? plain(exact).split(" ").filter(Boolean) : subjectTerms(question, site, others);
     if (site.parser === "rss" && !terms.length) return rules().top_headlines;
     if (site.query_template && terms.length) {
       return site.query_template.replace("{q}", quote(site.id === "pokeapi" ? terms.join("-") : terms.join(" ")));

@@ -747,8 +747,18 @@
 
     // The legal Smart Query Launcher (launcher.js): a lookup on a restricted site gets official links, never a
     // fetch. A restricted site named outright goes first; a phone lookup goes here rather than to "only on Android".
-    const launch = !image && !doc && (route.kind === "model" || route.extension === "contacts") ? Launcher.plan(trimmed) : null;
-    if (launch && (route.kind !== "model" || Launcher.firstKind(launch.kind) || Catalog.restrictedNamed(trimmed).length)) {
+    const lookupRoute = !image && !doc && (route.kind === "model" || route.extension === "contacts");
+    // "Can you check phone numbers?": what the app really does, answered right here (Step 58).
+    const capability = lookupRoute ? Launcher.capabilityReply(trimmed, lang()) : null;
+    if (capability) {
+      addMessage({ role: "user", text: trimmed, local: true });
+      addMessage({ role: "assistant", text: capability, local: true });
+      setEmotion(Core.avatarFor("action_done"));
+      return;
+    }
+    const launch = lookupRoute ? Launcher.plan(trimmed) : null;
+    const buying = Boolean(launch && Launcher.buyKind(launch.kind));
+    if (launch && (route.kind !== "model" || Launcher.firstKind(launch.kind) || (Catalog.restrictedNamed(trimmed).length && !buying))) {
       if (launch.kind === "email" && launch.fields.email && state.apiKey) await sendEmailLookup(trimmed, launch);
       else sendLaunch(trimmed, launch);
       return;
@@ -756,8 +766,19 @@
     // The built-in catalog (catalog.js): weather, books, anime... read straight from their open APIs (0 tokens).
     // (The user's own sites come first, as on the desktop: a browser can't read them, so that path below says so.)
     const ownSites = Sites.plan(trimmed, state.settings.querySites, Boolean(state.apiKey));
-    const sources = !image && !doc && route.kind === "model" && !ownSites.length
+    let sources = !image && !doc && route.kind === "model" && !ownSites.length
       ? Catalog.route(trimmed, Sites.wantsLookup(trimmed), Boolean(state.apiKey)) : [];
+    if (buying && !ownSites.length) {
+      // Buying a book or a product (Step 58): the real answer first, the store links after it. A book is always
+      // looked up in Open Library; with a Gemini key, Google Search answers the question itself.
+      if (launch.kind === "books" && !sources.some((s) => s.id === "openlibrary")) {
+        sources = [Catalog.byId("openlibrary"), ...sources].slice(0, window.FLOMA_SITES.rules.max_routed);
+      }
+      if (state.apiKey) {
+        await sendBuying(trimmed, sources, launch);
+        return;
+      }
+    }
     if (sources.length) {
       await sendFacts(trimmed, sources, launch);
       return;
@@ -851,6 +872,36 @@
     setEmotion(Core.avatarFor("thinking"));
     try {
       const history = state.messages.filter((m) => !m.local).map((m) => ({ role: m.role, text: m.context || m.text }));
+      const reply = await Core.complete(state.apiKey, state.settings, history,
+        { kind: "model", model: Core.MODELS.RESEARCH, webSearch: true }, Memory.notes(), null);
+      addMessage({ role: "assistant", text: reply.text, sources: reply.sources, searchWidget: reply.searchWidget });
+      setEmotion(reply.emotion);
+      say(reply.text);
+    } catch (e) {
+      if (!(e instanceof Core.AiError)) console.error(e);
+      handleFailure(e instanceof Core.AiError ? e.kind : "BAD_RESPONSE", text, false, false);
+    } finally {
+      setThinking(false);
+    }
+    addLaunch(launch);
+    updateMemory();
+  }
+
+  /**
+   * A book or product with buying intent, with a Gemini key (Step 58): Open Library's facts (for a book) and
+   * Gemini's grounded Google Search answer the question itself (does it exist, can it be bought in Israel);
+   * the official store links follow the answer (or the error). Stores are never contacted.
+   */
+  async function sendBuying(text, sources, launch) {
+    addMessage({ role: "user", text });
+    setThinking(true);
+    setEmotion(Core.avatarFor("thinking"));
+    try {
+      const readable = sources.filter((s) => Catalog.deviceReadable(s));
+      const results = readable.length ? await Catalog.fetchFacts(text, readable, fetchText) : [];
+      const facts = results.flatMap((r) => r.lines.map((l) => `[${r.site.name}] ${l}`));
+      const history = state.messages.filter((m) => !m.local).map((m) => ({ role: m.role, text: m.context || m.text }));
+      history[history.length - 1] = { role: "user", text: Launcher.buySearchPrompt(text, launch, facts, lang()) };
       const reply = await Core.complete(state.apiKey, state.settings, history,
         { kind: "model", model: Core.MODELS.RESEARCH, webSearch: true }, Memory.notes(), null);
       addMessage({ role: "assistant", text: reply.text, sources: reply.sources, searchWidget: reply.searchWidget });
