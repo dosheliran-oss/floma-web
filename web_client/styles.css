@@ -99,7 +99,14 @@ html, body { overflow: hidden; }
   border: 1px solid var(--border);
 }
 .quota-card[hidden] { display: none; }
-.quota-card h4 { margin: 0 0 4px; font-size: 0.9rem; }
+.quota-card h4 { margin: 0; font-size: 0.9rem; }
+/* Step 57: the title opens the detailed lines (collapsed by default). */
+.quota-head { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 0;
+  border: 0; background: none; color: inherit; font: inherit; text-align: start; cursor: pointer; }
+.quota-chevron { color: var(--muted); font-size: 0.8rem; transition: transform 0.2s ease; }
+.quota-head[aria-expanded="true"] .quota-chevron { transform: rotate(180deg); }
+.quota-lines { margin-top: 4px; }
+.quota-lines[hidden] { display: none; }
 .quota-card p { margin: 2px 0; color: var(--muted); font-size: 0.82rem; }
 .quota-bar { height: 8px; margin-top: 6px; border-radius: 999px; background: var(--border); overflow: hidden; }
 .quota-bar span { display: block; height: 100%; border-radius: inherit; background: var(--primary); transition: width 0.3s ease; }

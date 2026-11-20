@@ -7,6 +7,8 @@
  * site's official link, which the user opens in their own browser.
  * A people lookup also gets (Step 56) every Israeli format of the phone number, the name in English letters
  * and cascading search tiers (name + street + city, name + city, name only) with Google search links.
+ * Step 57: email lookups (the address, username and domain to copy; a Google search for its public mentions;
+ * Have I Been Pwned, Hunter.io, Gravatar) and corporate / professional lookups (רשם החברות, גיידסטאר, LinkedIn).
  */
 (function () {
   "use strict";
@@ -53,7 +55,7 @@
   const word = (body, flags = "u") => new RegExp(`(?<![${WORD}])${body}(?![${WORD}])`, flags);
   const isAlnum = (ch) => /[\p{L}\p{N}]/u.test(ch);
   const isAscii = (text) => /^[\x00-\x7F]*$/.test(text);
-  const stripChars = (w) => w.replace(/^[?!.,:;"']+|[?!.,:;"']+$/g, "");
+  const stripChars = (w) => w.replace(/^[?!.,:;"'-]+|[?!.,:;"'-]+$/g, "");
   const title = (text) => text.toLowerCase().replace(/(^|[^\p{L}])(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
 
   function padded(question) {
@@ -64,13 +66,15 @@
     return word(`[והבלמשכ]?${esc(phrase.toLowerCase())}`).test(text);
   }
 
-  /** people | shopping | flights | books | property, or null. */
+  /** people | shopping | flights | books | property | email | corporate, or null. */
   function kindOf(question) {
     const p = padded(question);
     const named = Catalog.restrictedNamed(question);
     if (named.length) return named[0].launcher_kind;
     if (pattern("PHONE").test(question) && [" של מי ", " מי ", " whose ", " who "].some((w) => p.includes(w))) return "people";
-    for (const kind of ["books", "people", "property", "flights", "shopping"]) {
+    if (L().triggers.email.some((t) => mentions(p, t))) return "email";
+    if (pattern("EMAIL").test(question) && !L().compose_words.some((w) => mentions(p, w))) return "email";
+    for (const kind of ["books", "people", "property", "flights", "shopping", "corporate"]) {
       if (L().triggers[kind].some((t) => mentions(p, t))) {
         if (kind === "shopping" && L().book_words.some((w) => mentions(p, w))) return "books";
         return kind;
@@ -257,6 +261,14 @@
       const where = address(question);
       return { street: where.street, city: where.city };
     }
+    if (kind === "email") {
+      const found = pattern("EMAIL").exec(question);
+      if (!found) return { email: "", email_user: "", email_domain: "" };
+      const user = found[1].toLowerCase();
+      const domain = found[2].toLowerCase();
+      return { email: `${user}@${domain}`, email_user: user, email_domain: domain };
+    }
+    if (kind === "corporate") return { name: subject(question, kind) };
     const places = L().places;
     if (kind === "flights") {
       const flight = pattern("FLIGHT").exec(question) || pattern("FLIGHT_AFTER_WORD").exec(question);
@@ -305,7 +317,7 @@
   /** The site's official deep link, or its official search page (launcher.link_for). */
   function linkFor(site, fields) {
     const template = site.launcher_url_template;
-    const q = ["product", "book"].map((k) => fields[k]).filter(Boolean).join(" ");
+    const q = ["product", "book", "name"].map((k) => fields[k]).filter(Boolean).join(" ");
     const originCode = code(fields._origin || "");
     const destinationCode = code(fields._destination || "");
     let flightsQuery = "";
@@ -318,6 +330,7 @@
       origin_code: originCode.toLowerCase(), destination_code: destinationCode.toLowerCase(),
       ORIGIN_CODE: originCode, DESTINATION_CODE: destinationCode, flights_query: flightsQuery,
       address: [fields.street || "", fields.city || ""].filter(Boolean).join(" "),
+      domain: fields.email_domain || "",
     };
     if (template) {
       const needed = [...template.matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
@@ -367,18 +380,23 @@
     if (!kind) return null;
     const fields = extract(question, kind, today);
     const named = Catalog.restrictedNamed(question).filter((s) => s.launcher_kind === kind);
+    let key = kind;
+    if (kind === "people" && fields.phone && !fields.first_name) key = "people_phone";
+    if (kind === "flights" && fields.flight) key = "flights_number";
     let chosen = named;
-    if (!named.length) {
-      let key = kind;
-      if (kind === "people" && fields.phone && !fields.first_name) key = "people_phone";
-      if (kind === "flights" && fields.flight) key = "flights_number";
-      chosen = L().defaults[key].map((id) => sites().find((s) => s.id === id));
+    if (!named.length || L().fill_kinds.includes(kind)) { // the named directories first, then the kind's others
+      const others = L().defaults[key].map((id) => sites().find((s) => s.id === id)).filter((s) => !named.includes(s));
+      chosen = [...named, ...others];
     }
     const publicFields = Object.fromEntries(Object.entries(fields).filter(([k]) => !k.startsWith("_")));
     const max = L().max_links_by_kind[kind] || L().max_links;
     const launch = { kind, fields: publicFields, links: chosen.slice(0, max).map((s) => linkFor(s, fields)),
       name_en: "", phone_formats: [], tiers: [] };
     if (kind === "people") peopleExtras(launch);
+    if (kind === "email" && fields.email) {
+      const t = L().text;
+      launch.links = [googleLink(`"${fields.email}"`, `${t.google.HEBREW} · ${t.google_email.HEBREW}`), ...launch.links];
+    }
     launch.text = (language) => text(launch, language);
     launch.sources = (language) => sources(launch, language);
     return launch;
@@ -422,8 +440,15 @@
     return families.has(family(h));
   }
 
-  /** Kinds the launcher answers before any catalog source (people/phone, property/address). */
+  /** Kinds the launcher answers before any catalog source (people/phone, property/address, email, company). */
   const firstKind = (kind) => L().first_kinds.includes(kind);
 
-  window.FlomaLauncher = { plan, kindOf, extract, linkFor, blockedHost, convert, phoneFormats, transliterate, tiers, firstKind };
+  /** What Gemini (with Google Search) is asked for an email lookup (launcher.email_search_prompt). */
+  function emailSearchPrompt(launch, language) {
+    const lang = language === "ENGLISH" ? "ENGLISH" : "HEBREW";
+    return L().text.email_search[lang].replace("{email}", launch.fields.email || "");
+  }
+
+  window.FlomaLauncher = { plan, kindOf, extract, linkFor, blockedHost, convert, phoneFormats, transliterate, tiers, firstKind,
+    emailSearchPrompt };
 })();

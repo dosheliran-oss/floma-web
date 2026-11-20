@@ -31,6 +31,18 @@ window.FLOMA_SITES = {
   "real_estate": {
    "HEBREW": "נדל״ן ומבנים",
    "ENGLISH": "Real estate & buildings"
+  },
+  "phone_spam": {
+   "HEBREW": "טלפונים, עסקים ודיווחי ספאם",
+   "ENGLISH": "Phone, business & spam directories"
+  },
+  "email_profiles": {
+   "HEBREW": "בדיקת מיילים ופרופילים ציבוריים",
+   "ENGLISH": "Email & public profile checks"
+  },
+  "corporate": {
+   "HEBREW": "תאגידים ופרופילים מקצועיים",
+   "ENGLISH": "Corporate & professional portals"
   }
  },
  "sites": [
@@ -1095,6 +1107,200 @@ window.FLOMA_SITES = {
     "street",
     "city"
    ]
+  },
+  {
+   "id": "mi_hitkasher",
+   "name": "מי התקשר אליי",
+   "category": "phone_spam",
+   "url": "https://www.mi-hitkasher.co.il",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "mi-hitkasher",
+    "mi hitkasher"
+   ],
+   "note": "Spam-call reports by number; official link only, never read automatically",
+   "launcher_url_template": null,
+   "launcher_kind": "people",
+   "launcher_fields": [
+    "phone"
+   ]
+  },
+  {
+   "id": "truecaller",
+   "name": "Truecaller Web",
+   "category": "phone_spam",
+   "url": "https://www.truecaller.com",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "truecaller",
+    "טרוקולר",
+    "טרו קולר"
+   ],
+   "note": "Caller ID (login required); personal data; official link only, never read automatically",
+   "launcher_url_template": null,
+   "launcher_kind": "people",
+   "launcher_fields": [
+    "phone",
+    "first_name",
+    "last_name"
+   ]
+  },
+  {
+   "id": "dapei_zahav",
+   "name": "דפי זהב Zap",
+   "category": "phone_spam",
+   "url": "https://www.d.co.il",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "דפי זהב",
+    "dapei zahav"
+   ],
+   "note": "Business directory (dynamic JS); official link only, never read automatically",
+   "launcher_url_template": null,
+   "launcher_kind": "people",
+   "launcher_fields": [
+    "first_name",
+    "last_name",
+    "city",
+    "phone"
+   ]
+  },
+  {
+   "id": "hibp",
+   "name": "Have I Been Pwned",
+   "category": "email_profiles",
+   "url": "https://haveibeenpwned.com",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "haveibeenpwned",
+    "hibp",
+    "been pwned"
+   ],
+   "note": "Data-breach check (the user types the address on the site); official link only, never read automatically",
+   "launcher_url_template": null,
+   "launcher_kind": "email",
+   "launcher_fields": [
+    "email"
+   ]
+  },
+  {
+   "id": "hunter_io",
+   "name": "Hunter.io",
+   "category": "email_profiles",
+   "url": "https://hunter.io",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "hunter.io",
+    "hunter io"
+   ],
+   "note": "Domain email lookup (login required); official link only, never read automatically",
+   "launcher_url_template": "https://hunter.io/try/search/{domain}",
+   "launcher_kind": "email",
+   "launcher_fields": [
+    "email_domain"
+   ]
+  },
+  {
+   "id": "gravatar",
+   "name": "Gravatar",
+   "category": "email_profiles",
+   "url": "https://gravatar.com",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "gravatar",
+    "גרבטר",
+    "גראווטר"
+   ],
+   "note": "Public profile picture by email; official link only, never read automatically",
+   "launcher_url_template": null,
+   "launcher_kind": "email",
+   "launcher_fields": [
+    "email"
+   ]
+  },
+  {
+   "id": "ica",
+   "name": "רשם החברות",
+   "category": "corporate",
+   "url": "https://ica.justice.gov.il",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "רשם החברות",
+    "רשם העמותות",
+    "רשות התאגידים",
+    "companies registrar",
+    "ica.justice.gov.il"
+   ],
+   "note": "Israel Corporations Authority (dynamic JS app); official link only, never read automatically",
+   "launcher_url_template": null,
+   "launcher_kind": "corporate",
+   "launcher_fields": [
+    "name"
+   ]
+  },
+  {
+   "id": "guidestar",
+   "name": "גיידסטאר",
+   "category": "corporate",
+   "url": "https://www.guidestar.org.il",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "guidestar",
+    "גיידסטאר",
+    "גיידסטאר ישראל"
+   ],
+   "note": "Nonprofit registry (dynamic JS app); official link only, never read automatically",
+   "launcher_url_template": null,
+   "launcher_kind": "corporate",
+   "launcher_fields": [
+    "name"
+   ]
+  },
+  {
+   "id": "linkedin",
+   "name": "LinkedIn",
+   "category": "corporate",
+   "url": "https://www.linkedin.com",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "linkedin",
+    "לינקדאין",
+    "לינקדין",
+    "לינקד אין"
+   ],
+   "note": "Professional profiles (login required); official link only, never read automatically",
+   "launcher_url_template": "https://www.linkedin.com/search/results/all/?keywords={q}",
+   "launcher_kind": "corporate",
+   "launcher_fields": [
+    "name"
+   ]
   }
  ],
  "rules": {
@@ -1352,13 +1558,40 @@ window.FLOMA_SITES = {
   "launcher": {
    "max_links": 3,
    "max_links_by_kind": {
-    "people": 5
+    "people": 8,
+    "email": 3
    },
    "first_kinds": [
     "people",
-    "property"
+    "property",
+    "email",
+    "corporate"
+   ],
+   "fill_kinds": [
+    "people",
+    "email"
    ],
    "google_search": "https://www.google.com/search?q={q}",
+   "compose_words": [
+    "שלח",
+    "תשלח",
+    "שלחי",
+    "לשלוח",
+    "כתוב",
+    "תכתוב",
+    "כתבי",
+    "לכתוב",
+    "נסח",
+    "תנסח",
+    "נסחי",
+    "לנסח",
+    "send",
+    "write",
+    "draft",
+    "compose",
+    "reply",
+    "forward"
+   ],
    "triggers": {
     "people": [
      "מספר טלפון",
@@ -1370,6 +1603,8 @@ window.FLOMA_SITES = {
      "איתור מנוי",
      "של מי המספר",
      "של מי מספר",
+     "מי התקשר אליי",
+     "מי התקשר אלי",
      "מי התקשר",
      "מי מתקשר",
      "מספר של",
@@ -1447,6 +1682,65 @@ window.FLOMA_SITES = {
      "building permit",
      "land registry",
      "parcel"
+    ],
+    "email": [
+     "בדוק מייל",
+     "בדוק את המייל",
+     "תבדוק מייל",
+     "תבדוק את המייל",
+     "בדיקת מייל",
+     "חפש מייל",
+     "חפש את המייל",
+     "תחפש מייל",
+     "חפש כתובת מייל",
+     "בדוק כתובת מייל",
+     "בדיקת כתובת מייל",
+     "חיפוש כתובת מייל",
+     "חפש אימייל",
+     "בדוק אימייל",
+     "בדיקת אימייל",
+     "חפש כתובת אימייל",
+     "בדוק כתובת אימייל",
+     "של מי המייל",
+     "של מי האימייל",
+     "של מי כתובת המייל",
+     "check email",
+     "check the email",
+     "check an email",
+     "check this email",
+     "email lookup",
+     "look up email",
+     "look up the email",
+     "look up this email",
+     "lookup email",
+     "search email",
+     "search the email",
+     "whose email",
+     "who owns the email",
+     "who owns this email"
+    ],
+    "corporate": [
+     "חברה בע\"מ",
+     "חברה בע״מ",
+     "בע\"מ",
+     "בע״מ",
+     "עמותה",
+     "עמותת",
+     "רשם החברות",
+     "רשם העמותות",
+     "רשות התאגידים",
+     "גיידסטאר",
+     "לינקדאין",
+     "לינקדין",
+     "פרופיל מקצועי",
+     "company registry",
+     "companies registrar",
+     "registered company",
+     "nonprofit",
+     "non-profit",
+     "professional profile",
+     "linkedin",
+     "guidestar"
     ]
    },
    "defaults": {
@@ -1455,12 +1749,18 @@ window.FLOMA_SITES = {
      "cellcom_locate",
      "pelephone_find",
      "ofrix",
-     "tel4u"
+     "tel4u",
+     "mi_hitkasher",
+     "truecaller",
+     "dapei_zahav"
     ],
     "people_phone": [
      "tel4u",
      "b144",
-     "fingerprint"
+     "fingerprint",
+     "mi_hitkasher",
+     "truecaller",
+     "dapei_zahav"
     ],
     "shopping": [
      "amazon",
@@ -1484,6 +1784,16 @@ window.FLOMA_SITES = {
     "property": [
      "nadlan",
      "govmap"
+    ],
+    "email": [
+     "hibp",
+     "hunter_io",
+     "gravatar"
+    ],
+    "corporate": [
+     "ica",
+     "guidestar",
+     "linkedin"
     ]
    },
    "book_words": [
@@ -1960,11 +2270,16 @@ window.FLOMA_SITES = {
     "an",
     "and",
     "at",
+    "check",
+    "company",
+    "details",
     "find",
     "for",
     "get",
     "i",
     "in",
+    "info",
+    "information",
     "is",
     "look",
     "me",
@@ -1991,19 +2306,28 @@ window.FLOMA_SITES = {
     "ב",
     "באתר",
     "בבקשה",
+    "בדוק",
+    "בדקי",
     "גם",
     "דרך",
+    "ו",
+    "חברת",
     "חפש",
+    "ל",
     "לי",
+    "מ",
     "מה",
     "מי",
+    "מידע",
     "מצא",
     "על",
     "עם",
+    "פרטים",
     "צריך",
     "צריכה",
     "רוצה",
     "של",
+    "תבדוק",
     "תביא",
     "תחפש",
     "תמצא",
@@ -2059,6 +2383,22 @@ window.FLOMA_SITES = {
     "name_en": {
      "HEBREW": "השם באנגלית",
      "ENGLISH": "Name in English"
+    },
+    "email": {
+     "HEBREW": "כתובת מייל",
+     "ENGLISH": "Email"
+    },
+    "email_user": {
+     "HEBREW": "שם משתמש",
+     "ENGLISH": "Username"
+    },
+    "email_domain": {
+     "HEBREW": "דומיין",
+     "ENGLISH": "Domain"
+    },
+    "name": {
+     "HEBREW": "שם / חברה",
+     "ENGLISH": "Name / company"
     }
    },
    "text": {
@@ -2117,6 +2457,14 @@ window.FLOMA_SITES = {
     "google_phone": {
      "HEBREW": "הטלפון בכל הפורמטים",
      "ENGLISH": "the number in every format"
+    },
+    "google_email": {
+     "HEBREW": "אזכורים ציבוריים של המייל",
+     "ENGLISH": "public mentions of the email"
+    },
+    "email_search": {
+     "HEBREW": "חפש/י ב-Google אזכורים ציבוריים או עסקיים של כתובת המייל {email} (למשל אתר של חברה, מדריך עסקים או פרופיל מקצועי פומבי). סכם/י בקצרה מה פורסם בפומבי וציין/י את המקורות. אל תנחש/י ואל תמציא/י פרטים אישיים; אם לא נמצא דבר פומבי, אמור/י זאת.",
+     "ENGLISH": "Search Google for public or business mentions of the email address {email} (for example a company website, a business directory or a public professional profile). Briefly summarize what is publicly listed and cite the sources. Don't guess or invent personal details; if nothing public is found, say so."
     }
    },
    "patterns": {
@@ -2146,6 +2494,10 @@ window.FLOMA_SITES = {
     },
     "STREET_EN": {
      "source": "(?:\\b(?:on|at)\\s+)?(\\d{1,4}\\s+)?((?:[A-Z][a-z'\\-]+\\s+){1,3})(?:[Ss]treet|[Ss]t\\.|[Rr]oad|[Rr]d\\.|[Aa]venue|[Aa]ve\\.)(?=\\W|$)",
+     "ignore_case": false
+    },
+    "EMAIL": {
+     "source": "(?<![A-Za-z0-9._%+-])([A-Za-z0-9._%+-]+)@([A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)*\\.[A-Za-z]{2,})(?![A-Za-z0-9-])",
      "ignore_case": false
     }
    }

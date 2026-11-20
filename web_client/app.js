@@ -749,7 +749,8 @@
     // fetch. A restricted site named outright goes first; a phone lookup goes here rather than to "only on Android".
     const launch = !image && !doc && (route.kind === "model" || route.extension === "contacts") ? Launcher.plan(trimmed) : null;
     if (launch && (route.kind !== "model" || Launcher.firstKind(launch.kind) || Catalog.restrictedNamed(trimmed).length)) {
-      sendLaunch(trimmed, launch);
+      if (launch.kind === "email" && launch.fields.email && state.apiKey) await sendEmailLookup(trimmed, launch);
+      else sendLaunch(trimmed, launch);
       return;
     }
     // The built-in catalog (catalog.js): weather, books, anime... read straight from their open APIs (0 tokens).
@@ -837,6 +838,32 @@
   function addLaunch(launch) {
     addMessage({ role: "assistant", text: launch.text(lang()), sources: launch.sources(lang()), local: true, launcher: true });
     setEmotion(Core.avatarFor("action_done"));
+  }
+
+  /**
+   * An email lookup with a Gemini key: Gemini's grounded Google Search for the address's public / business
+   * mentions, then the official check links (Have I Been Pwned, Hunter.io, Gravatar). No restricted site is
+   * contacted: the links only open in the user's browser.
+   */
+  async function sendEmailLookup(text, launch) {
+    addMessage({ role: "user", text, context: Launcher.emailSearchPrompt(launch, lang()) });
+    setThinking(true);
+    setEmotion(Core.avatarFor("thinking"));
+    try {
+      const history = state.messages.filter((m) => !m.local).map((m) => ({ role: m.role, text: m.context || m.text }));
+      const reply = await Core.complete(state.apiKey, state.settings, history,
+        { kind: "model", model: Core.MODELS.RESEARCH, webSearch: true }, Memory.notes(), null);
+      addMessage({ role: "assistant", text: reply.text, sources: reply.sources, searchWidget: reply.searchWidget });
+      setEmotion(reply.emotion);
+      say(reply.text);
+    } catch (e) {
+      if (!(e instanceof Core.AiError)) console.error(e);
+      handleFailure(e instanceof Core.AiError ? e.kind : "BAD_RESPONSE", text, false, false);
+    } finally {
+      setThinking(false);
+    }
+    addLaunch(launch);
+    updateMemory();
   }
 
   /** GET [url] as text, unless it's a restricted domain (never contacted); 15 s at most. */
@@ -1223,18 +1250,43 @@
   let elevenQuota = null; // {at, subscription, error, loading}
   let quotaTimer = null;
 
+  // Step 57: each card shows its title and bar; the detailed lines open on a tap (Settings stays light).
+  const quotaOpen = new Set(); // the cards the user opened (kept across the 30 s refresh)
+
   function drawCard(box, card) {
     box.hidden = !card;
     if (!card) return;
     box.replaceChildren();
+    const open = quotaOpen.has(box.id);
+    const head = document.createElement("button");
+    head.type = "button";
+    head.className = "quota-head";
+    head.setAttribute("aria-expanded", String(open));
+    head.setAttribute("aria-controls", `${box.id}Lines`);
     const title = document.createElement("h4");
     title.textContent = card.title;
-    box.append(title);
+    const chevron = document.createElement("span");
+    chevron.className = "quota-chevron";
+    chevron.setAttribute("aria-hidden", "true");
+    chevron.textContent = "▾";
+    head.append(title, chevron);
+    const lines = document.createElement("div");
+    lines.className = "quota-lines";
+    lines.id = `${box.id}Lines`;
+    lines.hidden = !open;
     for (const line of card.lines) {
       const p = document.createElement("p");
       p.textContent = line;
-      box.append(p);
+      lines.append(p);
     }
+    head.addEventListener("click", () => {
+      const nowOpen = lines.hidden;
+      lines.hidden = !nowOpen;
+      head.setAttribute("aria-expanded", String(nowOpen));
+      if (nowOpen) quotaOpen.add(box.id);
+      else quotaOpen.delete(box.id);
+    });
+    box.append(head, lines);
     if (card.left !== null) {
       const bar = document.createElement("div");
       bar.className = "quota-bar";
