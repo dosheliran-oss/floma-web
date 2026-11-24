@@ -132,10 +132,27 @@
       || cmp(norm(a.title), norm(b.title)) || cmp(a.id, b.id);
   }
 
+  // Step 64: a pasted address (with its query) finds exactly its item - knowledge_vault.url_key / exact_matches.
+  function urlKey(url) {
+    const m = /^[a-z][a-z0-9+.-]*:\/\/([^/?#]*)([^?#]*)(?:\?([^#]*))?(?:#(.*))?$/i.exec(String(url));
+    if (!m) return String(url);
+    let host = m[1].replace(/^.*@/, "").replace(/:\d*$/, "").toLowerCase();
+    if (host.startsWith("www.")) host = host.slice(4);
+    return host + m[2].replace(/\/+$/, "") + (m[3] ? `?${m[3]}` : "") + (m[4] ? `#${m[4]}` : "");
+  }
+
+  function exactMatches(query, vault) {
+    const found = String(query || "").match(/https?:\/\/[^\s<>"']+/gi) || [];
+    const keys = new Set(found.map((u) => urlKey(u.replace(/[.,;)]+$/, ""))));
+    return keys.size ? vault.items.filter((i) => keys.has(urlKey(i.url))) : [];
+  }
+
   function search(query, config, vault) {
     const asked = analyze(query, config, vault);
     const { terms } = asked;
     const prefixes = config.hebrew_prefixes;
+    const exact = exactMatches(query, vault);
+    if (exact.length) return { mode: "search", ...asked, items: exact.slice(0, config.max_results), total: exact.length };
     const filtered = (category, type) => vault.items.filter((i) => (category === null || i.category === category)
       && (type === null || i.content_type === type));
     if (!terms.length) {
@@ -211,7 +228,7 @@
   // --- Skills ---------------------------------------------------------------------------------------
 
   // The skills this build has code for; a newer registry's other skills stay hidden until the app updates.
-  const IMPLEMENTED = ["vault", "phone", "translate"];
+  const IMPLEMENTED = ["vault", "phone", "translate", "calc"];
   const skills = (reg) => (reg || registry()).skills.filter((s) => IMPLEMENTED.includes(s.id));
   const byId = (id, reg) => skills(reg).find((s) => s.id === id) || null;
   const name = (skill, language) => (language === "ENGLISH" ? skill.name_en : skill.name_he);
@@ -294,6 +311,8 @@
         const request = translateRequest(message, reg);
         if (request.command && request.text) return decision("translate", String(message).trim(), false, false, true);
       }
+      // A calculation request ("חשב לי...", "פתור משוואה...") or a message that is only math ("2+3*4") (Step 64).
+      if (byId("calc", reg) && Calc.auto(stripped, calcConfig(reg))) return decision("calc", stripped, false, false, true);
       for (const skill of skills(reg)) {
         if (skill.id === "vault" && skill.auto_triggers.some((t) => normalized.includes(norm(t)))) {
           const v = vault || vaultData();
@@ -308,6 +327,7 @@
     const skill = byId(skillId, reg);
     const v = vault || vaultData();
     if (skillId === "phone") return phoneAnswer(query, language, v, reg);
+    if (skillId === "calc") return calcAnswer(query, language, reg);
     return reply(search(query, skill.search, v), skill, v, language);
   }
 
@@ -489,9 +509,602 @@
     return fill(translateConfig(reg).text[key][language === "ENGLISH" ? "ENGLISH" : "HEBREW"], { icon: skill.icon, ...values });
   }
 
+  // --- @calc (Step 64): a line-for-line port of pc_companion/calc.py - no Gemini, no network, never eval ------------
+
+  const Calc = (function () {
+    const SNAP = 1e-12;
+    const P10 = [1];
+    for (let k = 0; k < 22; k++) P10.push(P10[P10.length - 1] * 10);
+
+    class CalcError extends Error {
+      constructor(key, values = {}) {
+        super(key);
+        this.key = key;
+        this.values = values;
+      }
+    }
+
+    function check(x) {
+      if (!Number.isFinite(x)) throw new CalcError("too_big");
+      return Math.abs(x) < SNAP ? 0 : x;
+    }
+
+    function fixed(a, d) {
+      const n = Math.floor(a * P10[d] + 0.5);
+      let digits = String(n);
+      if (d === 0) return digits;
+      digits = digits.padStart(d + 1, "0");
+      const whole = digits.slice(0, digits.length - d);
+      const frac = digits.slice(digits.length - d).replace(/0+$/, "");
+      return whole + (frac ? `.${frac}` : "");
+    }
+
+    function fmt(x) {
+      if (!Number.isFinite(x)) throw new CalcError("too_big");
+      if (Math.abs(x) < SNAP) return "0";
+      const sign = x < 0 ? "-" : "";
+      const a = Math.abs(x);
+      if (a >= 1e15) {
+        let e = 0;
+        let m = a;
+        while (m >= 10) {
+          m /= 10;
+          e += 1;
+        }
+        let mant = fixed(m, 11);
+        if (mant === "10") {
+          mant = "1";
+          e += 1;
+        }
+        return `${sign}${mant}e${e}`;
+      }
+      let d;
+      if (a >= 1) {
+        let e = 0;
+        while (e < 15 && a >= P10[e + 1]) e += 1;
+        d = Math.max(0, 11 - e);
+      } else d = 12;
+      const s = fixed(a, d);
+      return s === "0" ? "0" : sign + s;
+    }
+
+    const show = (x) => {
+      const s = fmt(x);
+      return s.startsWith("-") ? `(${s})` : s;
+    };
+
+    const SPACES = " \t\r\n ‎‏";
+    const DIGITS = "0123456789";
+    const OPS = "+-*/^()%!=";
+    const SYMBOLS = [["×", "*"], ["·", "*"], ["⋅", "*"], ["÷", "/"], ["−", "-"], ["–", "-"], ["—", "-"], ["**", "^"],
+      ["²", "^2"], ["³", "^3"], ["√", " sqrt "], ["π", " pi "], ["°", " "], ["[", "("], ["]", ")"], ["{", "("],
+      ["}", ")"], ["?", " "], ["׳", "'"], ["״", '"']];
+    const FUNCTIONS = ["sqrt", "log", "ln", "sin", "cos", "tan", "abs"];
+    const SYM = { "+": "+", "-": "-", "*": "×", "/": "÷", "^": "^" };
+    const THOUSANDS = /(?<=[0-9]),(?=[0-9]{3}(?![0-9]))/g;
+    const PERCENT_OF = /%[ ]*(?:of|מתוך|מ)(?![a-zא-ת])[ ]*-?/g;
+    const TIMES_X = /(?<=[0-9.)])[ ]*x[ ]*(?=[0-9.(])/g;
+    const COLON_DIV = /(?<=[0-9)])[ ]*:[ ]*(?=[0-9.(])/g; // 6:2 is division (as taught in Israeli schools)
+    const DATE = /^[0-9]{1,2}[./-][0-9]{1,2}[./-][0-9]{2,4}$/;
+    const byLength = (list) => list.slice().sort((a, b) => b.length - a.length);
+    const isLetter = (c) => (c >= "a" && c <= "z") || (c >= "א" && c <= "ת");
+
+    function replaceWord(text, phrase, by) {
+      const out = [];
+      const p = phrase.toLowerCase();
+      let i = 0;
+      for (;;) {
+        const j = text.indexOf(p, i);
+        if (j < 0) {
+          out.push(text.slice(i));
+          return out.join("");
+        }
+        const end = j + p.length;
+        if ((j === 0 || !isLetter(text[j - 1])) && (end === text.length || !isLetter(text[end]))) out.push(text.slice(i, j), by);
+        else out.push(text.slice(i, end));
+        i = end;
+      }
+    }
+
+    const hasWord = (text, phrase) => replaceWord(text, phrase, "\u0000") !== text;
+
+    function symbols(text) {
+      let t = text.toLowerCase();
+      for (const [a, b] of SYMBOLS) t = t.split(a).join(b);
+      for (const c of SPACES) t = t.split(c).join(" ");
+      return t.replace(THOUSANDS, "");
+    }
+
+    function prepare(body, cfg) {
+      let text = symbols(body);
+      for (const phrase of byLength(Object.keys(cfg.words))) text = replaceWord(text, phrase, ` ${cfg.words[phrase]} `);
+      text = text.replace(PERCENT_OF, "%*");
+      const radians = cfg.radian_words.some((w) => hasWord(text, w));
+      for (const w of byLength([...cfg.radian_words, ...cfg.degree_words, ...cfg.filler])) text = replaceWord(text, w, " ");
+      text = text.replace(COLON_DIV, "/").split(":").join(" ");
+      if (!text.includes("=")) text = text.replace(TIMES_X, "*");
+      text = text.trim();
+      if (text.endsWith("=")) text = text.slice(0, -1).trim();
+      return [text, radians];
+    }
+
+    function tokenize(text, cfg) {
+      const out = [];
+      const n = text.length;
+      let i = 0;
+      while (i < n) {
+        const c = text[i];
+        if (c === " ") i += 1;
+        else if (DIGITS.includes(c) || (c === "." && i + 1 < n && DIGITS.includes(text[i + 1]))) {
+          let j = i;
+          while (j < n && DIGITS.includes(text[j])) j += 1;
+          if (j < n && text[j] === ".") {
+            j += 1;
+            while (j < n && DIGITS.includes(text[j])) j += 1;
+          }
+          if (j + 1 < n && text[j] === "e" && (DIGITS.includes(text[j + 1])
+            || ("+-".includes(text[j + 1]) && j + 2 < n && DIGITS.includes(text[j + 2])))) {
+            j += 2;
+            while (j < n && DIGITS.includes(text[j])) j += 1;
+          }
+          out.push(["num", text.slice(i, j)]);
+          i = j;
+        } else if (isLetter(c)) {
+          let j = i;
+          while (j < n && isLetter(text[j])) j += 1;
+          let word = text.slice(i, j);
+          if (Object.prototype.hasOwnProperty.call(cfg.functions, word)) word = cfg.functions[word];
+          if (!FUNCTIONS.includes(word) && !["pi", "e", "x"].includes(word)) throw new CalcError("no_expression");
+          out.push(["id", word]);
+          i = j;
+        } else if (OPS.includes(c)) {
+          out.push(["op", c]);
+          i += 1;
+        } else throw new CalcError("no_expression");
+      }
+      return out;
+    }
+
+    function parse(tokens) {
+      if (!tokens.length) throw new CalcError("no_expression");
+      let i = 0;
+      const peek = () => (i < tokens.length ? tokens[i] : null);
+      const isOp = (chars) => {
+        const tok = peek();
+        return tok !== null && tok[0] === "op" && chars.includes(tok[1]);
+      };
+      const take = () => tokens[i++];
+      const startsPrimary = () => {
+        const tok = peek();
+        return tok !== null && (tok[0] === "num" || tok[0] === "id" || (tok[0] === "op" && tok[1] === "("));
+      };
+      function expr() {
+        let node = term();
+        while (isOp("+-")) {
+          const op = take()[1];
+          node = ["bin", op, node, term()];
+        }
+        return node;
+      }
+      function term() {
+        let node = unary();
+        for (;;) {
+          if (isOp("*/")) {
+            const op = take()[1];
+            node = ["bin", op, node, unary()];
+          } else if (startsPrimary()) node = ["bin", "*", node, power()];
+          else return node;
+        }
+      }
+      function unary() {
+        if (isOp("-")) {
+          take();
+          return ["neg", unary()];
+        }
+        if (isOp("+")) {
+          take();
+          return unary();
+        }
+        return power();
+      }
+      function power() {
+        const base = postfix();
+        if (isOp("^")) {
+          take();
+          return ["bin", "^", base, unary()];
+        }
+        return base;
+      }
+      function postfix() {
+        let node = primary();
+        while (isOp("%!")) node = ["post", take()[1], node];
+        return node;
+      }
+      function primary() {
+        const tok = peek();
+        if (tok === null) throw new CalcError("no_expression");
+        if (tok[0] === "num") {
+          take();
+          return ["num", check(Number(tok[1]))];
+        }
+        if (tok[0] === "id") {
+          take();
+          if (FUNCTIONS.includes(tok[1])) {
+            const arg = isOp("(") ? group() : power();
+            return ["fn", tok[1], arg];
+          }
+          return tok[1] === "x" ? ["var"] : ["const", tok[1]];
+        }
+        if (tok[0] === "op" && tok[1] === "(") return group();
+        throw new CalcError("no_expression");
+      }
+      function group() {
+        take();
+        const node = expr();
+        if (isOp(")")) take();
+        else if (peek() !== null) throw new CalcError("no_expression");
+        return node;
+      }
+      const node = expr();
+      if (peek() !== null) throw new CalcError("no_expression");
+      return node;
+    }
+
+    const hasVar = (node) => node[0] === "var" || node.slice(1).some((c) => Array.isArray(c) && hasVar(c));
+
+    function applyBin(op, a, b) {
+      if (op === "+") return check(a + b);
+      if (op === "-") return check(a - b);
+      if (op === "*") return check(a * b);
+      if (op === "/") {
+        if (b === 0) throw new CalcError("div_zero");
+        return check(a / b);
+      }
+      if (a === 0 && b < 0) throw new CalcError("div_zero");
+      if (a < 0 && b !== Math.floor(b)) throw new CalcError("pow_negative");
+      return check(Math.pow(a, b));
+    }
+
+    function applyPost(op, v) {
+      if (op === "%") return check(v / 100);
+      if (v < 0 || v !== Math.floor(v) || v > 170) throw new CalcError("factorial");
+      let r = 1;
+      for (let k = 2; k <= v; k += 1) r *= k;
+      return check(r);
+    }
+
+    function applyFn(name, v, radians) {
+      if (name === "sqrt") {
+        if (v < 0) throw new CalcError("sqrt_negative");
+        return check(Math.sqrt(v));
+      }
+      if (name === "log" || name === "ln") {
+        if (v <= 0) throw new CalcError("log_domain");
+        return check(name === "log" ? Math.log10(v) : Math.log(v));
+      }
+      if (name === "abs") return check(Math.abs(v));
+      const angle = radians ? v : v * Math.PI / 180;
+      if (name === "sin") return check(Math.sin(angle));
+      if (name === "cos") return check(Math.cos(angle));
+      if (Math.abs(Math.cos(angle)) < SNAP) throw new CalcError("tan_undefined");
+      return check(Math.tan(angle));
+    }
+
+    function fnLabel(name, v, radians) {
+      if (name === "sqrt") return `√${show(v)}`;
+      if (name === "abs") return `|${fmt(v)}|`;
+      if (["sin", "cos", "tan"].includes(name) && !radians) return `${name}(${fmt(v)}°)`;
+      return `${name}(${fmt(v)})`;
+    }
+
+    const constant = (name) => (name === "pi" ? Math.PI : Math.E);
+
+    function evaluate(node, steps, radians) {
+      const kind = node[0];
+      if (kind === "num") return node[1];
+      if (kind === "const") return constant(node[1]);
+      if (kind === "var") throw new CalcError("no_expression");
+      if (kind === "neg") return check(-evaluate(node[1], steps, radians));
+      if (kind === "post") {
+        const v = evaluate(node[2], steps, radians);
+        const r = applyPost(node[1], v);
+        steps.push(`${fmt(v)}${node[1]} = ${fmt(r)}`);
+        return r;
+      }
+      if (kind === "fn") {
+        const v = evaluate(node[2], steps, radians);
+        const r = applyFn(node[1], v, radians);
+        steps.push(`${fnLabel(node[1], v, radians)} = ${fmt(r)}`);
+        return r;
+      }
+      const a = evaluate(node[2], steps, radians);
+      const b = evaluate(node[3], steps, radians);
+      const r = applyBin(node[1], a, b);
+      steps.push(`${show(a)} ${SYM[node[1]]} ${show(b)} = ${fmt(r)}`);
+      return r;
+    }
+
+    const degree = (p) => (p[2] !== 0 ? 2 : p[1] !== 0 ? 1 : 0);
+
+    function times(p, q) {
+      const out = [0, 0, 0];
+      for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+          if (p[i] !== 0 && q[j] !== 0) {
+            if (i + j > 2) throw new CalcError("degree");
+            out[i + j] = out[i + j] + p[i] * q[j];
+          }
+        }
+      }
+      return out.map(check);
+    }
+
+    function poly(node, radians) {
+      const kind = node[0];
+      if (kind === "num") return [node[1], 0, 0];
+      if (kind === "const") return [constant(node[1]), 0, 0];
+      if (kind === "var") return [0, 1, 0];
+      if (kind === "neg") return poly(node[1], radians).map((c) => check(-c));
+      if (kind === "post" || kind === "fn") {
+        const p = poly(node[2], radians);
+        if (degree(p) > 0) throw new CalcError("not_polynomial");
+        return [kind === "post" ? applyPost(node[1], p[0]) : applyFn(node[1], p[0], radians), 0, 0];
+      }
+      const op = node[1];
+      const a = poly(node[2], radians);
+      const b = poly(node[3], radians);
+      if (op === "+") return [0, 1, 2].map((k) => check(a[k] + b[k]));
+      if (op === "-") return [0, 1, 2].map((k) => check(a[k] - b[k]));
+      if (op === "*") return times(a, b);
+      if (degree(b) > 0) throw new CalcError("not_polynomial");
+      if (op === "/") {
+        if (b[0] === 0) throw new CalcError("div_zero");
+        return a.map((c) => check(c / b[0]));
+      }
+      if (degree(a) === 0) return [applyBin("^", a[0], b[0]), 0, 0];
+      if (b[0] !== Math.floor(b[0]) || b[0] < 0 || b[0] * degree(a) > 2) throw new CalcError("degree");
+      let out = [1, 0, 0];
+      for (let k = 0; k < b[0]; k += 1) out = times(out, a);
+      return out;
+    }
+
+    function polyText(p) {
+      let out = "";
+      for (const power of [2, 1, 0]) {
+        const c = p[power];
+        if (c === 0) continue;
+        const mag = fmt(Math.abs(c));
+        const body = power === 0 ? mag : (mag === "1" ? "" : mag) + (power === 2 ? "x²" : "x");
+        if (!out) out = (c < 0 ? "-" : "") + body;
+        else out += (c < 0 ? " - " : " + ") + body;
+      }
+      return out || "0";
+    }
+
+    const UNIT_TEXT = /-?[0-9]+(?:\.[0-9]+)?|[a-zא-ת]+/g;
+    const CURRENCY = [["$", " usd "], ["€", " eur "], ["₪", " ils "], ["£", " gbp "]];
+    const CALC_QUOTES = "'\"`‘’“”";
+
+    function unitWords(body) {
+      let text = body.toLowerCase();
+      for (const [a, b] of CURRENCY) text = text.split(a).join(b);
+      for (const [a, b] of SYMBOLS) if ("׳״".includes(a)) text = text.split(a).join(b);
+      for (const q of CALC_QUOTES) text = text.split(q).join("");
+      text = text.replace(/(?<=[א-ת])-/g, " ").replace(THOUSANDS, "");
+      return text.match(UNIT_TEXT) || [];
+    }
+
+    function unitOf(word, names) {
+      if (Object.prototype.hasOwnProperty.call(names, word)) return names[word];
+      if (word.length > 2 && "לבהמו".includes(word[0]) && Object.prototype.hasOwnProperty.call(names, word.slice(1))) return names[word.slice(1)];
+      return null;
+    }
+
+    const isNumber = (word) => DIGITS.includes(word[0]) || word[0] === "-";
+
+    function convert(body, cfg, language) {
+      const units = cfg.units;
+      const names = {};
+      for (const [key, u] of Object.entries(units)) for (const n of u.names) names[n.toLowerCase()] = key;
+      const words = unitWords(body);
+      const rateWords = new Set(cfg.rate_words);
+      let amount = null;
+      let amountAt = -1;
+      let rate = null;
+      const found = [];
+      words.forEach((w, i) => {
+        if (isNumber(w)) {
+          if (i > 0 && rateWords.has(words[i - 1])) rate = rate !== null ? rate : Number(w);
+          else if (amount === null) {
+            amount = Number(w);
+            amountAt = i;
+          }
+        } else {
+          const key = unitOf(w, names);
+          if (key !== null) found.push([i, key]);
+        }
+      });
+      if (found.length < 2) return null;
+      let source;
+      let target;
+      if (amount === null) { // "כמה מטרים בקילומטר" / "how many meters in a km": 1 of the second unit, in the first
+        target = found[0][1];
+        const other = found.find(([, k]) => k !== target);
+        source = other ? other[1] : target;
+      } else {
+        const after = found.filter(([i]) => i > amountAt).map(([, k]) => k);
+        source = after.length ? after[0] : found[0][1];
+        const other = found.find(([, k]) => k !== source);
+        target = other ? other[1] : source;
+      }
+      const lang = language === "ENGLISH" ? "ENGLISH" : "HEBREW";
+      const t = cfg.text;
+      const a = units[source];
+      const b = units[target];
+      if (a.kind !== b.kind) throw new CalcError("unit_mismatch", { source: a.label[lang], target: b.label[lang] });
+      const n = amount === null ? 1 : amount;
+      const label = b.label[lang];
+      const steps = [];
+      let r;
+      if (a.kind === "temperature") {
+        let c = n;
+        if (source === "f") {
+          c = check((n - 32) * 5 / 9);
+          steps.push(fill(t.f_to_c[lang], { n: fmt(n), r: fmt(c) }));
+        } else if (source === "k") {
+          c = check(n - 273.15);
+          steps.push(fill(t.k_to_c[lang], { n: fmt(n), r: fmt(c) }));
+        }
+        r = c;
+        if (target === "f") {
+          r = check(c * 9 / 5 + 32);
+          steps.push(fill(t.c_to_f[lang], { n: fmt(c), r: fmt(r) }));
+        } else if (target === "k") {
+          r = check(c + 273.15);
+          steps.push(fill(t.c_to_k[lang], { n: fmt(c), r: fmt(r) }));
+        }
+      } else if (a.kind === "currency") {
+        if (source === target) r = n;
+        else if (rate === null || rate <= 0) throw new CalcError("needs_rate");
+        else if (source === "ils") {
+          r = check(n / rate);
+          steps.push(fill(t.rate_divide[lang], { n: fmt(n), rate: fmt(rate), r: fmt(r), to: label }));
+        } else {
+          r = check(n * rate);
+          steps.push(fill(t.rate_multiply[lang], { n: fmt(n), rate: fmt(rate), r: fmt(r), to: label }));
+        }
+      } else {
+        const factor = check(Number(a.factor) / Number(b.factor));
+        r = check(n * factor);
+        steps.push(fill(t.factor[lang], { source: a.label[lang], factor: fmt(factor), to: label }));
+        steps.push(fill(t.multiply[lang], { n: fmt(n), factor: fmt(factor), r: fmt(r), to: label }));
+      }
+      return { result: `${fmt(r)} ${label}`, steps };
+    }
+
+    function solve(body, cfg, language) {
+      const lang = language === "ENGLISH" ? "ENGLISH" : "HEBREW";
+      const t = cfg.text;
+      const [text, radians] = prepare(body, cfg);
+      const sides = text.split("=");
+      if (sides.length > 2) throw new CalcError("no_expression");
+      const trees = sides.map((side) => parse(tokenize(side, cfg)));
+      const steps = [];
+      if (trees.length === 1 && !hasVar(trees[0])) {
+        const value = evaluate(trees[0], steps, radians);
+        return { kind: "expression", result: fmt(value), steps };
+      }
+      if (trees.length === 2 && !hasVar(trees[0]) && !hasVar(trees[1])) {
+        const left = evaluate(trees[0], steps, radians);
+        const right = evaluate(trees[1], steps, radians);
+        const same = fmt(left) === fmt(right);
+        return { kind: "check", result: fill(t[same ? "true" : "false"][lang], { left: fmt(left), right: fmt(right) }), steps };
+      }
+      const left = poly(trees[0], radians);
+      const right = trees.length === 2 ? poly(trees[1], radians) : [0, 0, 0];
+      const p = [0, 1, 2].map((k) => check(left[k] - right[k]));
+      const [c, b, a] = p;
+      steps.push(fill(t.arrange[lang], { equation: `${polyText(p)} = 0` }));
+      if (a === 0 && b === 0) {
+        return { kind: "equation", result: fill(t[c === 0 ? "identity" : "contradiction"][lang], { c: fmt(c) }), steps };
+      }
+      if (a === 0) {
+        const rightSide = check(-c);
+        if (c !== 0) steps.push(fill(t.isolate[lang], { left: polyText([0, b, 0]), right: fmt(rightSide) }));
+        const x = check(rightSide / b);
+        if (b !== 1) steps.push(fill(t.divide[lang], { b: show(b), right: fmt(rightSide), x: fmt(x) }));
+        return { kind: "equation", result: `x = ${fmt(x)}`, steps };
+      }
+      const d = check(b * b - 4 * a * c);
+      const a2 = check(2 * a);
+      const nb = check(-b);
+      steps.push(fill(t.coefficients[lang], { a: fmt(a), b: fmt(b), c: fmt(c) }));
+      steps.push(fill(t.discriminant[lang], { a: show(a), b: show(b), c: show(c), d: fmt(d) }));
+      if (d > 0) {
+        const s = check(Math.sqrt(d));
+        const x1 = check((nb + s) / a2);
+        const x2 = check((nb - s) / a2);
+        steps.push(fill(t.sqrt_d[lang], { s: fmt(s) }));
+        steps.push(fill(t.root1[lang], { nb: fmt(nb), s: fmt(s), a2: show(a2), x: fmt(x1) }));
+        steps.push(fill(t.root2[lang], { nb: fmt(nb), s: fmt(s), a2: show(a2), x: fmt(x2) }));
+        return { kind: "equation", result: `x₁ = ${fmt(x1)}, x₂ = ${fmt(x2)}`, steps };
+      }
+      if (d === 0) {
+        const x = check(nb / a2);
+        steps.push(fill(t.double_root[lang], { nb: fmt(nb), a2: show(a2), x: fmt(x) }));
+        return { kind: "equation", result: `x = ${fmt(x)}`, steps };
+      }
+      const re = check(nb / a2);
+      const im = check(Math.sqrt(-d) / Math.abs(a2));
+      steps.push(fill(t.complex[lang], { re: fmt(re), im: fmt(im) }));
+      return { kind: "equation", result: fill(t.complex_result[lang], { re: fmt(re), im: fmt(im) }), steps };
+    }
+
+    function run(query, cfg, language) {
+      const stripped = String(query || "").split(/\s+/).filter(Boolean).join(" ");
+      const led = lead(stripped, cfg.commands);
+      const body = stripChars(led ? led[1] : stripped, " :,");
+      const out = { command: led !== null, input: body, kind: null, result: null, steps: [], error: null, values: {} };
+      try {
+        if (!body) throw new CalcError("no_expression");
+        const converted = convert(body, cfg, language);
+        if (converted !== null) Object.assign(out, { kind: "convert" }, converted);
+        else Object.assign(out, solve(body, cfg, language));
+      } catch (e) {
+        if (!(e instanceof CalcError)) throw e;
+        Object.assign(out, { kind: null, result: null, steps: [], error: e.key, values: e.values });
+      }
+      return out;
+    }
+
+    function mathOnly(message) {
+      let text = symbols(message).trim();
+      if (!text || DATE.test(text) || ![...text].some((c) => DIGITS.includes(c))) return false;
+      if (!text.includes("=")) text = text.replace(TIMES_X, "*");
+      const operation = [...text].some((c) => "+-*/^%!=".includes(c)) || FUNCTIONS.some((f) => text.includes(f));
+      for (const word of byLength([...FUNCTIONS, "pi", "x"])) text = text.split(word).join(" ");
+      return operation && [...text].every((c) => DIGITS.includes(c) || OPS.includes(c) || " .,".includes(c));
+    }
+
+    function auto(message, cfg) {
+      const done = run(message, cfg, "HEBREW");
+      if (done.error !== null) return false;
+      if (done.command) return true;
+      return mathOnly(message) && (done.steps.length > 0 || done.kind === "equation" || done.kind === "check");
+    }
+
+    function answer(query, language, cfg, icon, name) {
+      const lang = language === "ENGLISH" ? "ENGLISH" : "HEBREW";
+      const t = cfg.text;
+      const done = run(query, cfg, lang);
+      if (done.error !== null) return { text: fill(t[done.error][lang], { icon, ...done.values }), sources: [], copy: null };
+      const lines = [fill(t.head[lang], { icon, name, kind: t.kinds[done.kind][lang] }), fill(t.input[lang], { input: done.input }),
+        fill(t.result[lang], { result: done.result }), ""];
+      const shown = done.steps.slice(0, cfg.max_steps);
+      if (shown.length) {
+        lines.push(t.steps[lang], ...shown.map((s, i) => `${i + 1}. ${s}`));
+        if (done.steps.length > shown.length) lines.push(fill(t.more_steps[lang], { count: done.steps.length - shown.length }));
+      } else lines.push(t.no_steps[lang]);
+      lines.push("", t.footer[lang]);
+      return { text: lines.join("\n"), sources: [], copy: done.result };
+    }
+
+    return { fmt, run, auto, answer, mathOnly };
+  })();
+
+  const calcConfig = (reg) => byId("calc", reg).calc;
+
+  function calcAnswer(query, language, reg) {
+    const skill = byId("calc", reg);
+    return Calc.answer(query, language, skill.calc, skill.icon, name(skill, language));
+  }
+
+  const calcText = (key, language, reg) => calcConfig(reg).text[key][language === "ENGLISH" ? "ENGLISH" : "HEBREW"];
+
   window.FlomaSkills = {
     norm, variants, levenshtein, analyze, search, reply, resolve, answer, activatedText, mentionMatches, mentionToken,
     findNumber, phoneInfo, phoneMatches, translateRequest, translateCaption, translateText, textLanguage,
+    calcAnswer, calcText, calcFmt: Calc.fmt, calcRun: Calc.run, urlKey, exactMatches,
     skills, byId, name, description, text, vault: vaultData,
   };
 })();

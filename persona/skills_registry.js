@@ -710,6 +710,873 @@ window.FLOMA_SKILLS = {
      }
     }
    }
+  },
+  {
+   "id": "calc",
+   "handle": "@calc",
+   "aliases": [
+    "@מחשבון"
+   ],
+   "names": [
+    "מחשבון חכם",
+    "מחשבון",
+    "calculator",
+    "calc"
+   ],
+   "name_he": "מחשבון חכם",
+   "name_en": "Smart calculator",
+   "icon": "🧮",
+   "description_he": "פותר תרגילים, משוואות ממעלה ראשונה ושנייה והמרות יחידות, ומראה את התוצאה עם כפתור העתקה ואת כל שלבי הפתרון ממוספרים: סדר פעולות, סוגריים, חזקות, שורשים, לוגריתמים, טריגונומטריה (במעלות או ברדיאנים) ואחוזים. הכול מקומי - בלי Gemini ובלי אינטרנט.",
+   "description_en": "Solves arithmetic, linear and quadratic equations and unit conversions, showing the result with a copy button and every step numbered: order of operations, parentheses, powers, roots, logarithms, trigonometry (degrees or radians) and percentages. All local - no Gemini, no internet.",
+   "auto_triggers": [],
+   "platforms": [
+    "desktop",
+    "web",
+    "android"
+   ],
+   "calc": {
+    "max_steps": 40,
+    "commands": [
+     "חשב לי את",
+     "חשב לי",
+     "חשבי לי",
+     "תחשב לי",
+     "תחשבי לי",
+     "חשב את",
+     "חשב",
+     "חשבי",
+     "תחשב",
+     "תחשבי",
+     "פתור לי את המשוואה",
+     "פתור את המשוואה",
+     "פתור משוואה",
+     "פתרי את המשוואה",
+     "פתור לי",
+     "פתור את",
+     "פתור",
+     "פתרי",
+     "תפתור",
+     "תפתרי",
+     "המר לי",
+     "המר",
+     "המירי",
+     "תמיר",
+     "תמירי",
+     "כמה זה יוצא",
+     "כמה יוצא",
+     "כמה זה",
+     "כמה",
+     "מה התוצאה של",
+     "מה זה",
+     "calculate",
+     "calc",
+     "compute",
+     "evaluate",
+     "solve for x",
+     "solve",
+     "convert",
+     "what is",
+     "what's",
+     "how much is",
+     "how many"
+    ],
+    "words": {
+     "ועוד": "+",
+     "פלוס": "+",
+     "plus": "+",
+     "פחות": "-",
+     "מינוס": "-",
+     "minus": "-",
+     "כפול": "*",
+     "times": "*",
+     "multiplied by": "*",
+     "חלקי": "/",
+     "לחלק ב": "/",
+     "מחולק ב": "/",
+     "divided by": "/",
+     "בחזקת": "^",
+     "to the power of": "^",
+     "שורש ריבועי של": "sqrt",
+     "השורש של": "sqrt",
+     "square root of": "sqrt",
+     "אחוזים": "%",
+     "אחוז": "%",
+     "percent": "%",
+     "שווה ל": "=",
+     "שווה": "=",
+     "equals": "=",
+     "פאי": "pi"
+    },
+    "functions": {
+     "sqrt": "sqrt",
+     "root": "sqrt",
+     "שורש": "sqrt",
+     "log": "log",
+     "לוג": "log",
+     "ln": "ln",
+     "sin": "sin",
+     "סינוס": "sin",
+     "cos": "cos",
+     "קוסינוס": "cos",
+     "tan": "tan",
+     "טנגנס": "tan",
+     "abs": "abs"
+    },
+    "filler": [
+     "בבקשה",
+     "please",
+     "את",
+     "לי",
+     "של",
+     "the",
+     "of",
+     "is"
+    ],
+    "radian_words": [
+     "רדיאנים",
+     "רדיאן",
+     "ברדיאנים",
+     "radians",
+     "radian",
+     "rad"
+    ],
+    "degree_words": [
+     "מעלות",
+     "במעלות",
+     "degrees",
+     "degree",
+     "deg"
+    ],
+    "rate_words": [
+     "בשער",
+     "שער",
+     "rate",
+     "at"
+    ],
+    "units": {
+     "mm": {
+      "kind": "length",
+      "factor": 0.001,
+      "label": {
+       "HEBREW": "מ\"מ",
+       "ENGLISH": "mm"
+      },
+      "names": [
+       "mm",
+       "ממ",
+       "מילימטר",
+       "מילימטרים",
+       "millimeter",
+       "millimeters"
+      ]
+     },
+     "cm": {
+      "kind": "length",
+      "factor": 0.01,
+      "label": {
+       "HEBREW": "ס\"מ",
+       "ENGLISH": "cm"
+      },
+      "names": [
+       "cm",
+       "סמ",
+       "סנטימטר",
+       "סנטימטרים",
+       "centimeter",
+       "centimeters"
+      ]
+     },
+     "m": {
+      "kind": "length",
+      "factor": 1,
+      "label": {
+       "HEBREW": "מטר",
+       "ENGLISH": "m"
+      },
+      "names": [
+       "m",
+       "מטר",
+       "מטרים",
+       "meter",
+       "meters",
+       "metre",
+       "metres"
+      ]
+     },
+     "km": {
+      "kind": "length",
+      "factor": 1000,
+      "label": {
+       "HEBREW": "ק\"מ",
+       "ENGLISH": "km"
+      },
+      "names": [
+       "km",
+       "קמ",
+       "קילומטר",
+       "קילומטרים",
+       "kilometer",
+       "kilometers"
+      ]
+     },
+     "inch": {
+      "kind": "length",
+      "factor": 0.0254,
+      "label": {
+       "HEBREW": "אינץ'",
+       "ENGLISH": "inches"
+      },
+      "names": [
+       "אינץ",
+       "inch",
+       "inches"
+      ]
+     },
+     "ft": {
+      "kind": "length",
+      "factor": 0.3048,
+      "label": {
+       "HEBREW": "רגל",
+       "ENGLISH": "feet"
+      },
+      "names": [
+       "ft",
+       "רגל",
+       "feet",
+       "foot"
+      ]
+     },
+     "yd": {
+      "kind": "length",
+      "factor": 0.9144,
+      "label": {
+       "HEBREW": "יארד",
+       "ENGLISH": "yards"
+      },
+      "names": [
+       "yd",
+       "יארד",
+       "יארדים",
+       "yard",
+       "yards"
+      ]
+     },
+     "mi": {
+      "kind": "length",
+      "factor": 1609.344,
+      "label": {
+       "HEBREW": "מייל",
+       "ENGLISH": "miles"
+      },
+      "names": [
+       "mi",
+       "מייל",
+       "מיילים",
+       "mile",
+       "miles"
+      ]
+     },
+     "mg": {
+      "kind": "weight",
+      "factor": 1e-06,
+      "label": {
+       "HEBREW": "מ\"ג",
+       "ENGLISH": "mg"
+      },
+      "names": [
+       "mg",
+       "מג",
+       "מיליגרם",
+       "milligram",
+       "milligrams"
+      ]
+     },
+     "g": {
+      "kind": "weight",
+      "factor": 0.001,
+      "label": {
+       "HEBREW": "גרם",
+       "ENGLISH": "g"
+      },
+      "names": [
+       "g",
+       "גרם",
+       "גרמים",
+       "gram",
+       "grams"
+      ]
+     },
+     "kg": {
+      "kind": "weight",
+      "factor": 1,
+      "label": {
+       "HEBREW": "ק\"ג",
+       "ENGLISH": "kg"
+      },
+      "names": [
+       "kg",
+       "קג",
+       "קילו",
+       "קילוגרם",
+       "קילוגרמים",
+       "kilogram",
+       "kilograms",
+       "kilo",
+       "kilos"
+      ]
+     },
+     "ton": {
+      "kind": "weight",
+      "factor": 1000,
+      "label": {
+       "HEBREW": "טון",
+       "ENGLISH": "tons"
+      },
+      "names": [
+       "ton",
+       "טון",
+       "tons",
+       "tonne",
+       "tonnes"
+      ]
+     },
+     "lb": {
+      "kind": "weight",
+      "factor": 0.45359237,
+      "label": {
+       "HEBREW": "פאונד",
+       "ENGLISH": "lb"
+      },
+      "names": [
+       "lb",
+       "lbs",
+       "פאונד",
+       "ליברה",
+       "pound",
+       "pounds"
+      ]
+     },
+     "oz": {
+      "kind": "weight",
+      "factor": 0.028349523125,
+      "label": {
+       "HEBREW": "אונקיות",
+       "ENGLISH": "oz"
+      },
+      "names": [
+       "oz",
+       "אונקיה",
+       "אונקיות",
+       "ounce",
+       "ounces"
+      ]
+     },
+     "ml": {
+      "kind": "volume",
+      "factor": 0.001,
+      "label": {
+       "HEBREW": "מ\"ל",
+       "ENGLISH": "ml"
+      },
+      "names": [
+       "ml",
+       "מל",
+       "מיליליטר",
+       "milliliter",
+       "milliliters"
+      ]
+     },
+     "l": {
+      "kind": "volume",
+      "factor": 1,
+      "label": {
+       "HEBREW": "ליטר",
+       "ENGLISH": "liters"
+      },
+      "names": [
+       "l",
+       "ליטר",
+       "ליטרים",
+       "liter",
+       "liters",
+       "litre",
+       "litres"
+      ]
+     },
+     "gal": {
+      "kind": "volume",
+      "factor": 3.785411784,
+      "label": {
+       "HEBREW": "גלון",
+       "ENGLISH": "gallons"
+      },
+      "names": [
+       "gal",
+       "גלון",
+       "גלונים",
+       "gallon",
+       "gallons"
+      ]
+     },
+     "bit": {
+      "kind": "data",
+      "factor": 0.125,
+      "label": {
+       "HEBREW": "ביט",
+       "ENGLISH": "bits"
+      },
+      "names": [
+       "bit",
+       "bits",
+       "ביט",
+       "ביטים"
+      ]
+     },
+     "byte": {
+      "kind": "data",
+      "factor": 1,
+      "label": {
+       "HEBREW": "בייט",
+       "ENGLISH": "bytes"
+      },
+      "names": [
+       "byte",
+       "bytes",
+       "בייט",
+       "בתים"
+      ]
+     },
+     "kb": {
+      "kind": "data",
+      "factor": 1024,
+      "label": {
+       "HEBREW": "KB",
+       "ENGLISH": "KB"
+      },
+      "names": [
+       "kb",
+       "קילובייט",
+       "kilobyte",
+       "kilobytes"
+      ]
+     },
+     "mb": {
+      "kind": "data",
+      "factor": 1048576,
+      "label": {
+       "HEBREW": "MB",
+       "ENGLISH": "MB"
+      },
+      "names": [
+       "mb",
+       "מגה",
+       "מגהבייט",
+       "megabyte",
+       "megabytes"
+      ]
+     },
+     "gb": {
+      "kind": "data",
+      "factor": 1073741824,
+      "label": {
+       "HEBREW": "GB",
+       "ENGLISH": "GB"
+      },
+      "names": [
+       "gb",
+       "גיגה",
+       "גיגהבייט",
+       "גיגבייט",
+       "gigabyte",
+       "gigabytes"
+      ]
+     },
+     "tb": {
+      "kind": "data",
+      "factor": 1099511627776,
+      "label": {
+       "HEBREW": "TB",
+       "ENGLISH": "TB"
+      },
+      "names": [
+       "tb",
+       "טרה",
+       "טרהבייט",
+       "terabyte",
+       "terabytes"
+      ]
+     },
+     "s": {
+      "kind": "time",
+      "factor": 1,
+      "label": {
+       "HEBREW": "שניות",
+       "ENGLISH": "seconds"
+      },
+      "names": [
+       "sec",
+       "שניה",
+       "שנייה",
+       "שניות",
+       "second",
+       "seconds"
+      ]
+     },
+     "min": {
+      "kind": "time",
+      "factor": 60,
+      "label": {
+       "HEBREW": "דקות",
+       "ENGLISH": "minutes"
+      },
+      "names": [
+       "min",
+       "דקה",
+       "דקות",
+       "minute",
+       "minutes"
+      ]
+     },
+     "h": {
+      "kind": "time",
+      "factor": 3600,
+      "label": {
+       "HEBREW": "שעות",
+       "ENGLISH": "hours"
+      },
+      "names": [
+       "hr",
+       "שעה",
+       "שעות",
+       "hour",
+       "hours"
+      ]
+     },
+     "day": {
+      "kind": "time",
+      "factor": 86400,
+      "label": {
+       "HEBREW": "ימים",
+       "ENGLISH": "days"
+      },
+      "names": [
+       "יום",
+       "ימים",
+       "day",
+       "days"
+      ]
+     },
+     "week": {
+      "kind": "time",
+      "factor": 604800,
+      "label": {
+       "HEBREW": "שבועות",
+       "ENGLISH": "weeks"
+      },
+      "names": [
+       "שבוע",
+       "שבועות",
+       "week",
+       "weeks"
+      ]
+     },
+     "c": {
+      "kind": "temperature",
+      "factor": null,
+      "label": {
+       "HEBREW": "°C",
+       "ENGLISH": "°C"
+      },
+      "names": [
+       "c",
+       "צלזיוס",
+       "celsius"
+      ]
+     },
+     "f": {
+      "kind": "temperature",
+      "factor": null,
+      "label": {
+       "HEBREW": "°F",
+       "ENGLISH": "°F"
+      },
+      "names": [
+       "f",
+       "פרנהייט",
+       "fahrenheit"
+      ]
+     },
+     "k": {
+      "kind": "temperature",
+      "factor": null,
+      "label": {
+       "HEBREW": "K",
+       "ENGLISH": "K"
+      },
+      "names": [
+       "k",
+       "קלווין",
+       "kelvin"
+      ]
+     },
+     "ils": {
+      "kind": "currency",
+      "factor": null,
+      "label": {
+       "HEBREW": "₪",
+       "ENGLISH": "ILS"
+      },
+      "names": [
+       "ils",
+       "nis",
+       "שקל",
+       "שקלים",
+       "שח",
+       "shekel",
+       "shekels"
+      ]
+     },
+     "usd": {
+      "kind": "currency",
+      "factor": null,
+      "label": {
+       "HEBREW": "דולר",
+       "ENGLISH": "USD"
+      },
+      "names": [
+       "usd",
+       "דולר",
+       "דולרים",
+       "dollar",
+       "dollars"
+      ]
+     },
+     "eur": {
+      "kind": "currency",
+      "factor": null,
+      "label": {
+       "HEBREW": "יורו",
+       "ENGLISH": "EUR"
+      },
+      "names": [
+       "eur",
+       "יורו",
+       "euro",
+       "euros"
+      ]
+     },
+     "gbp": {
+      "kind": "currency",
+      "factor": null,
+      "label": {
+       "HEBREW": "ליש\"ט",
+       "ENGLISH": "GBP"
+      },
+      "names": [
+       "gbp",
+       "לישט",
+       "שטרלינג",
+       "sterling"
+      ]
+     }
+    },
+    "text": {
+     "head": {
+      "HEBREW": "{icon} {name} · {kind}",
+      "ENGLISH": "{icon} {name} · {kind}"
+     },
+     "kinds": {
+      "expression": {
+       "HEBREW": "חישוב",
+       "ENGLISH": "Calculation"
+      },
+      "equation": {
+       "HEBREW": "פתרון משוואה",
+       "ENGLISH": "Solving an equation"
+      },
+      "check": {
+       "HEBREW": "בדיקת שוויון",
+       "ENGLISH": "Checking an equality"
+      },
+      "convert": {
+       "HEBREW": "המרת יחידות",
+       "ENGLISH": "Unit conversion"
+      }
+     },
+     "input": {
+      "HEBREW": "📝 {input}",
+      "ENGLISH": "📝 {input}"
+     },
+     "result": {
+      "HEBREW": "✅ התוצאה: {result}",
+      "ENGLISH": "✅ Result: {result}"
+     },
+     "steps": {
+      "HEBREW": "שלבי הפתרון:",
+      "ENGLISH": "Step by step:"
+     },
+     "no_steps": {
+      "HEBREW": "אין שלבי ביניים - זה כבר המספר עצמו.",
+      "ENGLISH": "No steps in between - that's already the number itself."
+     },
+     "more_steps": {
+      "HEBREW": "…ועוד {count} שלבים.",
+      "ENGLISH": "…and {count} more steps."
+     },
+     "footer": {
+      "HEBREW": "🔒 חושב מקומית - בלי Gemini ובלי אינטרנט.",
+      "ENGLISH": "🔒 Worked out locally - no Gemini, no internet."
+     },
+     "copy": {
+      "HEBREW": "📋 העתקת התוצאה",
+      "ENGLISH": "📋 Copy the result"
+     },
+     "copied": {
+      "HEBREW": "התוצאה הועתקה",
+      "ENGLISH": "Result copied"
+     },
+     "arrange": {
+      "HEBREW": "מעבירים את כל האיברים לאגף אחד: {equation}",
+      "ENGLISH": "Move every term to one side: {equation}"
+     },
+     "isolate": {
+      "HEBREW": "מעבירים את המספר לאגף השני: {left} = {right}",
+      "ENGLISH": "Move the number to the other side: {left} = {right}"
+     },
+     "divide": {
+      "HEBREW": "מחלקים את שני האגפים ב-{b}: x = {right} ÷ {b} = {x}",
+      "ENGLISH": "Divide both sides by {b}: x = {right} ÷ {b} = {x}"
+     },
+     "coefficients": {
+      "HEBREW": "מזהים את המקדמים: a = {a}, b = {b}, c = {c}",
+      "ENGLISH": "Read the coefficients: a = {a}, b = {b}, c = {c}"
+     },
+     "discriminant": {
+      "HEBREW": "מחשבים את הדיסקרימיננטה: Δ = b² - 4ac = {b}² - 4 × {a} × {c} = {d}",
+      "ENGLISH": "Work out the discriminant: Δ = b² - 4ac = {b}² - 4 × {a} × {c} = {d}"
+     },
+     "sqrt_d": {
+      "HEBREW": "Δ חיובית, ולכן יש שני פתרונות. שורש הדיסקרימיננטה: √Δ = {s}",
+      "ENGLISH": "Δ is positive, so there are two solutions. Its square root: √Δ = {s}"
+     },
+     "root1": {
+      "HEBREW": "x₁ = (-b + √Δ) ÷ 2a = ({nb} + {s}) ÷ {a2} = {x}",
+      "ENGLISH": "x₁ = (-b + √Δ) ÷ 2a = ({nb} + {s}) ÷ {a2} = {x}"
+     },
+     "root2": {
+      "HEBREW": "x₂ = (-b - √Δ) ÷ 2a = ({nb} - {s}) ÷ {a2} = {x}",
+      "ENGLISH": "x₂ = (-b - √Δ) ÷ 2a = ({nb} - {s}) ÷ {a2} = {x}"
+     },
+     "double_root": {
+      "HEBREW": "Δ = 0, ולכן יש פתרון אחד: x = -b ÷ 2a = {nb} ÷ {a2} = {x}",
+      "ENGLISH": "Δ = 0, so there is one solution: x = -b ÷ 2a = {nb} ÷ {a2} = {x}"
+     },
+     "complex": {
+      "HEBREW": "Δ שלילית, ולכן אין פתרון ממשי. הפתרונות המרוכבים: x = {re} ± {im}i",
+      "ENGLISH": "Δ is negative, so there is no real solution. The complex ones: x = {re} ± {im}i"
+     },
+     "complex_result": {
+      "HEBREW": "אין פתרון ממשי (x = {re} ± {im}i)",
+      "ENGLISH": "no real solution (x = {re} ± {im}i)"
+     },
+     "identity": {
+      "HEBREW": "כל מספר x הוא פתרון (זהות)",
+      "ENGLISH": "every x is a solution (an identity)"
+     },
+     "contradiction": {
+      "HEBREW": "אין פתרון ({c} = 0 היא סתירה)",
+      "ENGLISH": "no solution ({c} = 0 is a contradiction)"
+     },
+     "true": {
+      "HEBREW": "נכון: {left} = {right}",
+      "ENGLISH": "true: {left} = {right}"
+     },
+     "false": {
+      "HEBREW": "לא נכון: {left} ≠ {right}",
+      "ENGLISH": "false: {left} ≠ {right}"
+     },
+     "factor": {
+      "HEBREW": "1 {source} = {factor} {to}",
+      "ENGLISH": "1 {source} = {factor} {to}"
+     },
+     "multiply": {
+      "HEBREW": "{n} × {factor} = {r} {to}",
+      "ENGLISH": "{n} × {factor} = {r} {to}"
+     },
+     "f_to_c": {
+      "HEBREW": "מפרנהייט לצלזיוס: ({n} - 32) × 5 ÷ 9 = {r}°C",
+      "ENGLISH": "Fahrenheit to Celsius: ({n} - 32) × 5 ÷ 9 = {r}°C"
+     },
+     "k_to_c": {
+      "HEBREW": "מקלווין לצלזיוס: {n} - 273.15 = {r}°C",
+      "ENGLISH": "Kelvin to Celsius: {n} - 273.15 = {r}°C"
+     },
+     "c_to_f": {
+      "HEBREW": "מצלזיוס לפרנהייט: {n} × 9 ÷ 5 + 32 = {r}°F",
+      "ENGLISH": "Celsius to Fahrenheit: {n} × 9 ÷ 5 + 32 = {r}°F"
+     },
+     "c_to_k": {
+      "HEBREW": "מצלזיוס לקלווין: {n} + 273.15 = {r}K",
+      "ENGLISH": "Celsius to Kelvin: {n} + 273.15 = {r}K"
+     },
+     "rate_multiply": {
+      "HEBREW": "לפי השער שנתת: {n} × {rate} = {r} {to}",
+      "ENGLISH": "At the rate you gave: {n} × {rate} = {r} {to}"
+     },
+     "rate_divide": {
+      "HEBREW": "לפי השער שנתת: {n} ÷ {rate} = {r} {to}",
+      "ENGLISH": "At the rate you gave: {n} ÷ {rate} = {r} {to}"
+     },
+     "no_expression": {
+      "HEBREW": "{icon} שלחו לי תרגיל, משוואה או המרה - למשל \"(3 + 4) × 2\", \"√144\", \"2x + 3 = 7\", \"x^2 - 5x + 6 = 0\", \"15% מ-200\" או \"5 ק\"מ למייל\" - ואפתור עם כל השלבים, בלי Gemini.",
+      "ENGLISH": "{icon} Send me a sum, an equation or a conversion - like \"(3 + 4) × 2\", \"√144\", \"2x + 3 = 7\", \"x^2 - 5x + 6 = 0\", \"15% of 200\" or \"5 km to miles\" - and I'll solve it step by step, without Gemini."
+     },
+     "div_zero": {
+      "HEBREW": "{icon} אי אפשר לחלק באפס.",
+      "ENGLISH": "{icon} You can't divide by zero."
+     },
+     "sqrt_negative": {
+      "HEBREW": "{icon} לשורש ריבועי של מספר שלילי אין תוצאה ממשית.",
+      "ENGLISH": "{icon} A negative number has no real square root."
+     },
+     "pow_negative": {
+      "HEBREW": "{icon} חזקה שאינה שלמה של מספר שלילי אינה ממשית.",
+      "ENGLISH": "{icon} A negative number to a non-whole power isn't real."
+     },
+     "log_domain": {
+      "HEBREW": "{icon} לוגריתם מוגדר רק למספרים חיוביים.",
+      "ENGLISH": "{icon} A logarithm is defined only for positive numbers."
+     },
+     "tan_undefined": {
+      "HEBREW": "{icon} הטנגנס לא מוגדר בזווית הזו (הקוסינוס שלה 0).",
+      "ENGLISH": "{icon} The tangent isn't defined at that angle (its cosine is 0)."
+     },
+     "factorial": {
+      "HEBREW": "{icon} עצרת מוגדרת למספרים שלמים מ-0 עד 170.",
+      "ENGLISH": "{icon} A factorial is defined for whole numbers from 0 to 170."
+     },
+     "too_big": {
+      "HEBREW": "{icon} התוצאה גדולה מדי לחישוב.",
+      "ENGLISH": "{icon} The result is too large to compute."
+     },
+     "degree": {
+      "HEBREW": "{icon} אני פותר משוואות עד מעלה שנייה (x²).",
+      "ENGLISH": "{icon} I solve equations up to the second degree (x²)."
+     },
+     "not_polynomial": {
+      "HEBREW": "{icon} אפשר לפתור רק משוואה פולינומית ב-x (בלי x במכנה או בתוך פונקציה).",
+      "ENGLISH": "{icon} I can only solve a polynomial equation in x (no x in a denominator or inside a function)."
+     },
+     "unit_mismatch": {
+      "HEBREW": "{icon} אי אפשר להמיר {source} ל{target} - אלה סוגי יחידות שונים.",
+      "ENGLISH": "{icon} {source} can't be converted to {target} - they measure different things."
+     },
+     "needs_rate": {
+      "HEBREW": "{icon} בלי אינטרנט אין לי שער מטבע עדכני. כתבו את השער בהודעה, למשל \"100 דולר לשקל בשער 3.7\".",
+      "ENGLISH": "{icon} Offline I have no live exchange rate. Put the rate in the message, like \"100 USD to ILS at 3.7\"."
+     }
+    }
+   }
   }
  ]
 };

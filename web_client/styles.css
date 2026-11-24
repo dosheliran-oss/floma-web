@@ -121,6 +121,8 @@ html, body { overflow: hidden; }
   font-size: 0.8rem;
   cursor: pointer;
 }
+/* @calc (Step 64): the result's copy button is the bubble's main action. */
+.bubble .copy-result { background: var(--primary); color: var(--on-primary); font-weight: 600; }
 
 /* Offline notice under the header. */
 .offline-banner {

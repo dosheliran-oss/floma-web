@@ -381,6 +381,17 @@
       });
       bubble.append(copy);
     }
+    if (message.copyValue) {  // @calc (Step 64): one tap copies the result
+      const copy = document.createElement("button");
+      copy.type = "button";
+      copy.className = "copy-details copy-result";
+      copy.textContent = Skills.calcText("copy", lang());
+      copy.addEventListener("click", async () => {
+        await copyText(message.copyValue);
+        showToast(Skills.calcText("copied", lang()));
+      });
+      bubble.append(copy);
+    }
     if (message.caption) {
       const caption = document.createElement("small");
       caption.className = "bubble-caption";
@@ -787,7 +798,7 @@
       const answer = Skills.answer(decision.skill, decision.query, lang());
       // @phone's links get the launcher's badge and "copy the details" button (Step 61).
       addMessage({ role: "assistant", text: answer.text, sources: answer.sources, local: true, skill: decision.skill,
-        launcher: decision.skill === "phone" && answer.sources.length > 0 });
+        launcher: decision.skill === "phone" && answer.sources.length > 0, copyValue: answer.copy || null });
     }
     setEmotion(Core.avatarFor("action_done"));
   }
