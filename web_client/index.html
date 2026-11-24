@@ -10,12 +10,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Floma">
-  <meta name="floma-build" content="1.64.0-61aab68bf17d-2ced45b5">
+  <meta name="floma-build" content="1.65.0-a77203a5c80b-bcf1a159">
   <title>Floma</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png?v=71c418f008">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=5eefe63104">
-  <link rel="stylesheet" href="styles.css?v=93513c734b">
+  <link rel="stylesheet" href="styles.css?v=c94aa15cb6">
 </head>
 <body>
   <div class="app">
@@ -183,6 +183,20 @@
       <div class="buttons"><button type="button" id="siteAdd" data-i18n="sitesAdd"></button></div>
     </section>
 
+    <section id="agentSection">
+      <h3 data-i18n="sectionAgent"></h3>
+      <p class="hint" data-i18n="agentHint"></p>
+      <p class="hint" id="agentStatus" role="status"><span class="agent-dot" id="agentDot"></span><span id="agentStatusText"></span></p>
+      <label><span data-i18n="relayUrl"></span><input id="relayUrl" type="url" dir="ltr" spellcheck="false" placeholder="https://floma-relay.….workers.dev"></label>
+      <label><span data-i18n="relayKey"></span><input id="relayKey" type="password" autocomplete="off" spellcheck="false" dir="ltr"></label>
+      <p class="error" id="relayProblem" role="alert"></p>
+      <div class="buttons">
+        <button type="button" id="relaySave" data-i18n="relaySave"></button>
+        <button type="button" id="relayTest" data-i18n="relayTest"></button>
+        <button type="button" id="relayRemove" class="danger" data-i18n="relayRemove"></button>
+      </div>
+    </section>
+
     <section>
       <h3 data-i18n="sectionApp"></h3>
       <p class="hint" id="installStatus"></p>
@@ -253,13 +267,14 @@
   <!-- The Floma platform and its assistant personas, shared with Android and the desktop app. -->
   <script src="../persona/floma_platform.js?v=3725997811"></script>
   <script src="../persona/personas.js?v=76720a2a25"></script>
-  <script src="../persona/system_guide.js?v=4ff2d7c3dd"></script>
+  <script src="../persona/system_guide.js?v=40b9985776"></script>
   <script src="core.js?v=0f63ad6a39"></script>
   <script src="memory.js?v=815a888df9"></script>
   <script src="sites.js?v=27de92a66b"></script>
   <script src="../persona/sites_catalog.js?v=7f9b2bfb52"></script>
   <script src="catalog.js?v=e43e86c6c7"></script>
   <script src="launcher.js?v=fb38d086fa"></script>
+  <script src="agent.js?v=10c2d7e79e"></script>
   <script src="quota.js?v=207f9c9e4a"></script>
   <script src="voice.js?v=2f6dab09b6"></script>
   <script src="documents.js?v=49f1dd2c9f"></script>
@@ -267,6 +282,6 @@
   <script src="../persona/knowledge_vault.js?v=a2dd6cc98c"></script>
   <script src="skills.js?v=cf5cf94356"></script>
   <script src="update.js?v=dc7b6934b3"></script>
-  <script src="app.js?v=ff956109c5"></script>
+  <script src="app.js?v=3373b33615"></script>
 </body>
 </html>

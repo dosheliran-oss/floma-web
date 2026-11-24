@@ -24,6 +24,7 @@ const SHELL = [
   "sites.js",
   "catalog.js",
   "launcher.js",
+  "agent.js",
   "quota.js",
   "../persona/sites_catalog.js",
   "../persona/skills_registry.js",

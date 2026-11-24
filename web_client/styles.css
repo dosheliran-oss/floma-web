@@ -121,6 +121,11 @@ html, body { overflow: hidden; }
   font-size: 0.8rem;
   cursor: pointer;
 }
+/* Step 66: the relay's status dot. */
+.agent-dot { display: inline-block; width: 9px; height: 9px; margin-inline-end: 6px; border-radius: 50%; background: var(--muted); vertical-align: middle; }
+.agent-dot[data-state="set"] { background: var(--primary); }
+.agent-dot[data-state="up"] { background: #3fb950; }
+.agent-dot[data-state="down"] { background: #f85149; }
 /* @calc (Step 64): the result's copy button is the bubble's main action. */
 .bubble .copy-result { background: var(--primary); color: var(--on-primary); font-weight: 600; }
 

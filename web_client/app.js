@@ -49,6 +49,12 @@
       sectionToby: "שם וסגנון", name: "שם", personality: "אישיות", humor: "רמת הומור", language: "שפה",
       serious: "מצב רציני (בלי בדיחות)", instructions: "הוראות משלכם",
       pFriendly: "הומוריסטי וחברותי", pPlayful: "הומוריסטי מאוד", pProfessional: "רציני ומקצועי", pConcise: "רציני ותמציתי",
+      sectionAgent: "רשת מבודדת וזהות סוכן (Isolated Agent Network & Identity)",
+      agentHint: "חיפושי הסוכן ברשת עוברים קודם בממסר Cloudflare החינמי שלך (relay/cloudflare_worker.js), ואם הוא לא זמין - בבקשה ישירה זמנית בלי עוגיות. אתרים מוגבלים לא נגישים בשום שכבה. פרוקסי, Tor, זהות הסוכן והתחזוקה הלילית - באפליקציית המחשב.",
+      relayUrl: "כתובת הממסר (Relay URL)", relayKey: "מפתח הממסר (X-Floma-Relay-Key)", relaySave: "שמירה", relayTest: "בדיקת חיבור",
+      relayRemove: "הסרה", relayHttps: "כתובת הממסר חייבת להתחיל ב-https://", relaySaved: "הממסר נשמר בדפדפן הזה",
+      agentOff: "שכבה 1 לא מוגדרת: בקשות ישירות זמניות (שכבה 3).", agentOn: "שכבה 1 - ממסר: {host}", agentChecking: "בודק את הממסר…",
+      agentUp: "הממסר פעיל ✓ ({host})", agentDown: "הממסר לא עונה - הבקשות יעברו ישירות (שכבה 3).", agentLast: " · בקשה אחרונה: {tier}",
       sectionModel: "מודל (Gemini)", keySaved: "מפתח שמור בדפדפן הזה.", keyMissing: "אין מפתח: עונה במצב מקומי. המפתח אופציונלי.",
       changeKey: "החלפת מפתח", removeKey: "מחיקת מפתח", addKey: "הוספת מפתח",
       sectionMemory: "זיכרון", memoryHint: "השיחות נשמרות בדפדפן הזה בלבד. מחיקת שיחות לא מוחקת את מה שלמדתי עליך.", clearChat: "מחיקת כל השיחות",
@@ -120,6 +126,12 @@
       sectionToby: "Name & style", name: "Name", personality: "Personality", humor: "Humor level", language: "Language",
       serious: "Serious mode (no jokes)", instructions: "Your own instructions",
       pFriendly: "Humorous and friendly", pPlayful: "Very humorous", pProfessional: "Serious and professional", pConcise: "Serious and concise",
+      sectionAgent: "Isolated Agent Network & Identity",
+      agentHint: "The agent's web lookups go through your free Cloudflare relay first (relay/cloudflare_worker.js), and when it's down through a one-off direct request with no cookies. Restricted sites are reached on no tier. The proxy, Tor, the agent identity and the nightly maintenance are in the desktop app.",
+      relayUrl: "Relay URL", relayKey: "Relay key (X-Floma-Relay-Key)", relaySave: "Save", relayTest: "Test connection",
+      relayRemove: "Remove", relayHttps: "The relay URL must start with https://", relaySaved: "The relay is saved in this browser",
+      agentOff: "Tier 1 isn't set: one-off direct requests (Tier 3).", agentOn: "Tier 1 - relay: {host}", agentChecking: "Checking the relay…",
+      agentUp: "The relay is up ✓ ({host})", agentDown: "The relay isn't answering - requests go direct (Tier 3).", agentLast: " · last request: {tier}",
       sectionModel: "Model (Gemini)", keySaved: "A key is saved in this browser.", keyMissing: "No key: answering in local mode. The key is optional.",
       changeKey: "Change key", removeKey: "Remove key", addKey: "Add key",
       sectionMemory: "Memory", memoryHint: "Chats are kept in this browser only. Deleting chats never deletes what I learned about you.", clearChat: "Delete all chats",
@@ -1162,18 +1174,37 @@
     updateMemory();
   }
 
-  /** GET [url] as text, unless it's a restricted domain (never contacted); 15 s at most. */
+  /**
+   * GET [url] as text, unless it's a restricted domain (never contacted); 15 s a tier. Step 66: through the agent's
+   * isolated network - the user's relay first when set, then a one-off direct request (agent.js).
+   */
   async function fetchText(url) {
-    if (Launcher.blockedHost(new URL(url).hostname)) throw new Error("restricted");
-    const abort = new AbortController();
-    const timer = setTimeout(() => abort.abort(), 15000);
-    try {
-      const response = await fetch(url, { cache: "no-store", signal: abort.signal });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return await response.text();
-    } finally {
-      clearTimeout(timer);
-    }
+    const text = await window.FlomaAgent.fetchText(url);
+    renderAgentStatus();
+    return text;
+  }
+
+  // --- Isolated agent network (Step 66): the relay URL, its key and a status dot. ---
+
+  function renderAgentStatus(probe) {
+    const relay = window.FlomaAgent.relays()[0];
+    const host = relay ? new URL(relay.url).hostname : "";
+    const last = window.FlomaAgent.lastTier();
+    let text = relay ? t("agentOn").replace("{host}", host) : t("agentOff");
+    let dot = relay ? "set" : "off";
+    if (probe === "checking") [text, dot] = [t("agentChecking"), "set"];
+    else if (probe === true) [text, dot] = [t("agentUp").replace("{host}", host), "up"];
+    else if (probe === false) [text, dot] = [t("agentDown"), "down"];
+    if (last && probe === undefined) text += t("agentLast").replace("{tier}", last);
+    $("agentStatusText").textContent = text;
+    $("agentDot").dataset.state = dot;
+  }
+
+  async function testRelay() {
+    const relay = window.FlomaAgent.relays()[0];
+    if (!relay) return renderAgentStatus();
+    renderAgentStatus("checking");
+    renderAgentStatus(await window.FlomaAgent.health(relay));
   }
 
   /**
@@ -1755,6 +1786,10 @@
     $("setInstructions").value = s.customInstructions;
     $("setWebSearch").checked = s.webSearch;
     $("setAutoSkills").checked = s.autoSwitchSkills !== false;
+    const relay = window.FlomaAgent.relays()[0];
+    $("relayUrl").value = relay ? relay.url : "";
+    $("relayKey").placeholder = relay && relay.key ? "••••••" : "";
+    renderAgentStatus();
     $("autoSkillsLabel").textContent = skillText("auto_switch");
     $("autoSkillsHint").textContent = skillText("auto_switch_hint");
     $("openSkills").setAttribute("aria-label", skillText("button"));
@@ -2235,6 +2270,25 @@
     bindSetting("setInstructions", "customInstructions", (el) => el.value);
     bindSetting("setWebSearch", "webSearch", (el) => el.checked);
     bindSetting("setAutoSkills", "autoSwitchSkills", (el) => el.checked);
+    $("relaySave").addEventListener("click", () => {
+      $("relayProblem").textContent = "";
+      try {
+        const current = window.FlomaAgent.relays()[0];
+        const key = $("relayKey").value || (current ? current.key : "");
+        window.FlomaAgent.setRelay($("relayUrl").value, key);
+        $("relayKey").value = "";
+        showToast(t("relaySaved"));
+        testRelay();
+      } catch (e) {
+        $("relayProblem").textContent = t("relayHttps");
+      }
+    });
+    $("relayTest").addEventListener("click", testRelay);
+    $("relayRemove").addEventListener("click", () => {
+      window.FlomaAgent.clearRelay();
+      $("relayUrl").value = $("relayKey").value = "";
+      renderAgentStatus();
+    });
     bindSetting("setSpeak", "speakReplies", (el) => el.checked);
     bindSetting("setModel", "modelChoice", (el) => el.value);
     bindSetting("setRate", "voiceRate", (el) => Number(el.value));
