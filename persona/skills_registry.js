@@ -247,7 +247,14 @@ window.FLOMA_SKILLS = {
      "urls",
      "knowledge",
      "everything",
-     "stuff"
+     "stuff",
+     "קובץ",
+     "קבצי",
+     "קובצי",
+     "קבצים",
+     "קובצים",
+     "file",
+     "files"
     ],
     "text": {
      "found": {
