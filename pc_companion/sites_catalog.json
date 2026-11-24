@@ -1,0 +1,1481 @@
+{
+ "version": 1,
+ "categories": {
+  "open_apis": {
+   "HEBREW": "ממשקי API פתוחים",
+   "ENGLISH": "Open APIs"
+  },
+  "books": {
+   "HEBREW": "ספרים",
+   "ENGLISH": "Books"
+  },
+  "news": {
+   "HEBREW": "חדשות",
+   "ENGLISH": "News"
+  },
+  "people_lookup": {
+   "HEBREW": "איתור אנשים וטלפונים",
+   "ENGLISH": "People / phone lookup"
+  },
+  "flights": {
+   "HEBREW": "טיסות ומכ\"ם",
+   "ENGLISH": "Flights & radar"
+  },
+  "shopping": {
+   "HEBREW": "קניות",
+   "ENGLISH": "Shopping"
+  },
+  "real_estate": {
+   "HEBREW": "נדל״ן ומבנים",
+   "ENGLISH": "Real estate & buildings"
+  },
+  "phone_spam": {
+   "HEBREW": "טלפונים, עסקים ודיווחי ספאם",
+   "ENGLISH": "Phone, business & spam directories"
+  },
+  "email_profiles": {
+   "HEBREW": "בדיקת מיילים ופרופילים ציבוריים",
+   "ENGLISH": "Email & public profile checks"
+  },
+  "corporate": {
+   "HEBREW": "תאגידים ופרופילים מקצועיים",
+   "ENGLISH": "Corporate & professional portals"
+  }
+ },
+ "sites": [
+  {
+   "id": "pokeapi",
+   "name": "PokeAPI",
+   "category": "open_apis",
+   "url": "https://pokeapi.co/api/v2/pokemon?limit=60",
+   "query_template": "https://pokeapi.co/api/v2/pokemon/{q}",
+   "type": "open_api",
+   "connectable": true,
+   "status_icon": "✅",
+   "keywords": [
+    "pokemon",
+    "pokémon",
+    "pokedex",
+    "פוקימון",
+    "פוקימונים",
+    "פוקדקס"
+   ],
+   "note": "",
+   "parser": "pokeapi",
+   "launcher_url_template": null
+  },
+  {
+   "id": "tvmaze",
+   "name": "TVMaze",
+   "category": "open_apis",
+   "url": "https://api.tvmaze.com/shows",
+   "query_template": "https://api.tvmaze.com/search/shows?q={q}",
+   "type": "open_api",
+   "connectable": true,
+   "status_icon": "✅",
+   "keywords": [
+    "tv show",
+    "tv series",
+    "series",
+    "episode",
+    "sitcom",
+    "סדרה",
+    "סדרת",
+    "סדרות",
+    "סדרת טלוויזיה",
+    "פרקים",
+    "עונה"
+   ],
+   "note": "",
+   "parser": "tvmaze",
+   "launcher_url_template": null
+  },
+  {
+   "id": "rickandmorty",
+   "name": "Rick and Morty API",
+   "category": "open_apis",
+   "url": "https://rickandmortyapi.com/api/character",
+   "query_template": "https://rickandmortyapi.com/api/character/?name={q}",
+   "type": "open_api",
+   "connectable": true,
+   "status_icon": "✅",
+   "keywords": [
+    "rick and morty",
+    "ריק ומורטי"
+   ],
+   "note": "",
+   "parser": "rickandmorty",
+   "launcher_url_template": null
+  },
+  {
+   "id": "themealdb",
+   "name": "TheMealDB",
+   "category": "open_apis",
+   "url": "https://www.themealdb.com/api/json/v1/1/search.php?s={q}",
+   "query_template": "https://www.themealdb.com/api/json/v1/1/search.php?s={q}",
+   "type": "open_api",
+   "connectable": true,
+   "status_icon": "✅",
+   "keywords": [
+    "recipe",
+    "recipes",
+    "meal",
+    "dish",
+    "how to cook",
+    "מתכון",
+    "מתכונים",
+    "מנה",
+    "לבשל",
+    "איך מכינים"
+   ],
+   "note": "",
+   "parser": "themealdb",
+   "launcher_url_template": null
+  },
+  {
+   "id": "openlibrary",
+   "name": "Open Library",
+   "category": "open_apis",
+   "url": "https://openlibrary.org/search.json?q={q}",
+   "query_template": "https://openlibrary.org/search.json?q={q}&limit=5",
+   "type": "open_api",
+   "connectable": true,
+   "status_icon": "✅",
+   "keywords": [
+    "book",
+    "books",
+    "author",
+    "novel",
+    "isbn",
+    "ספר",
+    "ספרים",
+    "סופר",
+    "סופרת",
+    "רומן",
+    "מחבר"
+   ],
+   "note": "",
+   "parser": "openlibrary",
+   "launcher_url_template": null
+  },
+  {
+   "id": "artic",
+   "name": "Art Institute of Chicago",
+   "category": "open_apis",
+   "url": "https://api.artic.edu/api/v1/artworks",
+   "query_template": "https://api.artic.edu/api/v1/artworks/search?q={q}&limit=5&fields=title,artist_display,date_display,medium_display,place_of_origin",
+   "type": "open_api",
+   "connectable": true,
+   "status_icon": "✅",
+   "keywords": [
+    "artwork",
+    "painting",
+    "painter",
+    "museum",
+    "art institute",
+    "יצירת אמנות",
+    "ציור",
+    "צייר",
+    "ציירת",
+    "מוזיאון"
+   ],
+   "note": "",
+   "parser": "artic",
+   "launcher_url_template": null
+  },
+  {
+   "id": "dogceo",
+   "name": "Dog CEO",
+   "category": "open_apis",
+   "url": "https://dog.ceo/api/breeds/list/all",
+   "query_template": null,
+   "type": "open_api",
+   "connectable": true,
+   "status_icon": "✅",
+   "keywords": [
+    "dog breed",
+    "dog breeds",
+    "breed",
+    "breeds of dogs",
+    "גזע כלבים",
+    "גזעי כלבים",
+    "גזע של כלב",
+    "כלבים"
+   ],
+   "note": "",
+   "parser": "dogceo",
+   "launcher_url_template": null
+  },
+  {
+   "id": "jikan",
+   "name": "Jikan (MyAnimeList)",
+   "category": "open_apis",
+   "url": "https://api.jikan.moe/v4/top/anime",
+   "query_template": "https://api.jikan.moe/v4/anime?q={q}&limit=5",
+   "type": "open_api",
+   "connectable": true,
+   "status_icon": "✅",
+   "keywords": [
+    "anime",
+    "manga",
+    "myanimelist",
+    "אנימה",
+    "מאנגה"
+   ],
+   "note": "",
+   "parser": "jikan",
+   "launcher_url_template": null
+  },
+  {
+   "id": "swapi",
+   "name": "SWAPI (Star Wars)",
+   "category": "open_apis",
+   "url": "https://swapi.info/api/people",
+   "query_template": null,
+   "type": "open_api",
+   "connectable": true,
+   "status_icon": "✅",
+   "keywords": [
+    "star wars",
+    "jedi",
+    "sith",
+    "מלחמת הכוכבים",
+    "ג'דיי"
+   ],
+   "note": "",
+   "parser": "swapi",
+   "launcher_url_template": null
+  },
+  {
+   "id": "hpapi",
+   "name": "HP-API (Harry Potter)",
+   "category": "open_apis",
+   "url": "https://hp-api.onrender.com/api/characters",
+   "query_template": null,
+   "type": "open_api",
+   "connectable": true,
+   "status_icon": "✅",
+   "keywords": [
+    "harry potter",
+    "hogwarts",
+    "gryffindor",
+    "slytherin",
+    "הארי פוטר",
+    "הוגוורטס",
+    "גריפינדור",
+    "סלית'רין"
+   ],
+   "note": "",
+   "parser": "hpapi",
+   "launcher_url_template": null
+  },
+  {
+   "id": "scryfall",
+   "name": "Scryfall (Magic Cards)",
+   "category": "open_apis",
+   "url": "https://api.scryfall.com/cards/search?q={q}",
+   "query_template": "https://api.scryfall.com/cards/search?q={q}",
+   "type": "open_api",
+   "connectable": true,
+   "status_icon": "✅",
+   "keywords": [
+    "magic the gathering",
+    "mtg",
+    "magic card",
+    "scryfall",
+    "קלף מג'יק",
+    "מג'יק"
+   ],
+   "note": "",
+   "parser": "scryfall",
+   "launcher_url_template": null
+  },
+  {
+   "id": "disney",
+   "name": "Disney API",
+   "category": "open_apis",
+   "url": "https://api.disneyapi.dev/character",
+   "query_template": "https://api.disneyapi.dev/character?name={q}",
+   "type": "open_api",
+   "connectable": true,
+   "status_icon": "✅",
+   "keywords": [
+    "disney",
+    "דיסני"
+   ],
+   "note": "",
+   "parser": "disney",
+   "launcher_url_template": null
+  },
+  {
+   "id": "openmeteo",
+   "name": "Open-Meteo (Weather)",
+   "category": "open_apis",
+   "url": "https://api.open-meteo.com/v1/forecast?latitude=32.08&longitude=34.78&current_weather=true",
+   "query_template": null,
+   "type": "open_api",
+   "connectable": true,
+   "status_icon": "✅",
+   "keywords": [
+    "weather",
+    "temperature",
+    "forecast",
+    "rain",
+    "wind",
+    "מזג אוויר",
+    "מזג האוויר",
+    "טמפרטורה",
+    "תחזית",
+    "גשם",
+    "רוח",
+    "כמה מעלות",
+    "חם היום",
+    "קר היום"
+   ],
+   "note": "",
+   "parser": "openmeteo",
+   "always_local": true,
+   "launcher_url_template": null
+  },
+  {
+   "id": "jsonplaceholder",
+   "name": "JSONPlaceholder (Demo Users)",
+   "category": "open_apis",
+   "url": "https://jsonplaceholder.typicode.com/users",
+   "query_template": null,
+   "type": "open_api",
+   "connectable": true,
+   "status_icon": "✅",
+   "keywords": [
+    "jsonplaceholder",
+    "demo users",
+    "test users",
+    "משתמשי דמו",
+    "משתמשי בדיקה"
+   ],
+   "note": "",
+   "parser": "jsonplaceholder",
+   "launcher_url_template": null
+  },
+  {
+   "id": "rebooks",
+   "name": "סיפור חוזר (Rebooks)",
+   "category": "books",
+   "url": "https://rebooks.org.il",
+   "query_template": null,
+   "type": "parsable_web",
+   "connectable": true,
+   "status_icon": "✅",
+   "keywords": [
+    "סיפור חוזר",
+    "rebooks",
+    "ספרים יד שנייה",
+    "ספר יד שנייה",
+    "used books"
+   ],
+   "note": "",
+   "launcher_url_template": "https://rebooks.org.il/?s={q}&post_type=product",
+   "launcher_kind": "books",
+   "launcher_fields": [
+    "book"
+   ]
+  },
+  {
+   "id": "booknet",
+   "name": "צומת ספרים (Booknet)",
+   "category": "books",
+   "url": "https://www.booknet.co.il",
+   "query_template": null,
+   "type": "parsable_web",
+   "connectable": true,
+   "status_icon": "✅",
+   "keywords": [
+    "צומת ספרים",
+    "בוקנט",
+    "booknet",
+    "tzomet sfarim",
+    "רבי מכר",
+    "רב מכר",
+    "bestseller",
+    "bestsellers"
+   ],
+   "note": "",
+   "launcher_url_template": "https://www.booknet.co.il/%D7%97%D7%99%D7%A4%D7%95%D7%A9?q={q}",
+   "launcher_kind": "books",
+   "launcher_fields": [
+    "book"
+   ]
+  },
+  {
+   "id": "googlenews",
+   "name": "Google News ישראל",
+   "category": "news",
+   "url": "https://news.google.co.il/",
+   "query_template": "https://news.google.com/rss/search?q={q}&hl=he&gl=IL&ceid=IL:he",
+   "type": "parsable_web",
+   "connectable": true,
+   "status_icon": "✅",
+   "keywords": [
+    "חדשות",
+    "מבזק",
+    "מבזקים",
+    "כותרות",
+    "news",
+    "headlines",
+    "breaking news",
+    "google news"
+   ],
+   "note": "",
+   "parser": "rss",
+   "always_local": true,
+   "launcher_url_template": null
+  },
+  {
+   "id": "n12",
+   "name": "N12 חדשות",
+   "category": "news",
+   "url": "https://www.n12.co.il/",
+   "query_template": null,
+   "type": "parsable_web",
+   "connectable": true,
+   "status_icon": "✅",
+   "keywords": [
+    "n12",
+    "חדשות 12",
+    "ערוץ 12",
+    "מאקו",
+    "mako"
+   ],
+   "note": "",
+   "launcher_url_template": null
+  },
+  {
+   "id": "kan",
+   "name": "כאן תאגיד השידור",
+   "category": "news",
+   "url": "https://www.kan.org.il/",
+   "query_template": null,
+   "type": "parsable_web",
+   "connectable": true,
+   "status_icon": "✅",
+   "keywords": [
+    "כאן 11",
+    "כאן חדשות",
+    "תאגיד השידור",
+    "kan news",
+    "kan 11"
+   ],
+   "note": "",
+   "launcher_url_template": null
+  },
+  {
+   "id": "kore",
+   "name": "כל רגע (Kore)",
+   "category": "news",
+   "url": "https://www.kore.co.il/",
+   "query_template": null,
+   "type": "parsable_web",
+   "connectable": true,
+   "status_icon": "✅",
+   "keywords": [
+    "כל רגע",
+    "kore"
+   ],
+   "note": "",
+   "launcher_url_template": null
+  },
+  {
+   "id": "steimatzky",
+   "name": "סטימצקי",
+   "category": "books",
+   "url": "https://www.steimatzky.co.il",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "סטימצקי",
+    "steimatzky"
+   ],
+   "note": "Anti-bot protection / dynamic JS store",
+   "launcher_url_template": "https://www.steimatzky.co.il/catalogsearch/result/?q={q}",
+   "launcher_kind": "books",
+   "launcher_fields": [
+    "book"
+   ]
+  },
+  {
+   "id": "e_vrit",
+   "name": "עברית · e-vrit",
+   "category": "books",
+   "url": "https://www.e-vrit.co.il",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "e-vrit",
+    "evrit",
+    "ספרים דיגיטליים",
+    "ספר דיגיטלי",
+    "ספרים אלקטרוניים",
+    "ספר אלקטרוני"
+   ],
+   "note": "Dynamic JS store (e-books)",
+   "launcher_url_template": "https://www.e-vrit.co.il/Search/{q}",
+   "launcher_kind": "books",
+   "launcher_fields": [
+    "book"
+   ]
+  },
+  {
+   "id": "simania",
+   "name": "סימניה (Simania)",
+   "category": "books",
+   "url": "https://simania.co.il",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "סימניה",
+    "simania"
+   ],
+   "note": "Book community and catalog (no public API)",
+   "launcher_url_template": "https://simania.co.il/searchBooks.php?query={q}",
+   "launcher_kind": "books",
+   "launcher_fields": [
+    "book"
+   ]
+  },
+  {
+   "id": "cellcom_locate",
+   "name": "סלקום איתור מספרים",
+   "category": "people_lookup",
+   "url": "https://private.cellcom.co.il/support/general_info/locating/#default",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "סלקום",
+    "cellcom"
+   ],
+   "note": "Login / personal data: not for automated lookup",
+   "launcher_url_template": null,
+   "launcher_kind": "people",
+   "launcher_fields": [
+    "first_name",
+    "last_name",
+    "city",
+    "street",
+    "phone"
+   ]
+  },
+  {
+   "id": "location_tool",
+   "name": "Location-Tool",
+   "category": "people_lookup",
+   "url": "https://location-tool.com/he/trace",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "location tool",
+    "איתור מיקום"
+   ],
+   "note": "Personal location data: not automated",
+   "launcher_url_template": null,
+   "launcher_kind": "people",
+   "launcher_fields": [
+    "phone"
+   ]
+  },
+  {
+   "id": "ofrix",
+   "name": "עופריקס / פון אינדקס",
+   "category": "people_lookup",
+   "url": "https://ofrix.co.il",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "עופריקס",
+    "פון אינדקס",
+    "ofrix"
+   ],
+   "note": "Anti-bot / CAPTCHA; personal data",
+   "launcher_url_template": null,
+   "launcher_kind": "people",
+   "launcher_fields": [
+    "first_name",
+    "last_name",
+    "city",
+    "street",
+    "phone"
+   ]
+  },
+  {
+   "id": "b144",
+   "name": "B144 בזק",
+   "category": "people_lookup",
+   "url": "https://private.b144.co.il",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "b144",
+    "בזק 144",
+    "בי 144"
+   ],
+   "note": "Anti-bot / dynamic JS; personal data",
+   "launcher_url_template": null,
+   "launcher_kind": "people",
+   "launcher_fields": [
+    "first_name",
+    "last_name",
+    "city",
+    "street",
+    "phone"
+   ]
+  },
+  {
+   "id": "pelephone_find",
+   "name": "פלאפון איתור מספרים",
+   "category": "people_lookup",
+   "url": "https://www.pelephone.co.il/ds/heb/support/general_info/find-number/",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "pelephone",
+    "חברת פלאפון",
+    "פלאפון איתור"
+   ],
+   "note": "Login / personal data: not for automated lookup",
+   "launcher_url_template": null,
+   "launcher_kind": "people",
+   "launcher_fields": [
+    "first_name",
+    "last_name",
+    "city",
+    "phone"
+   ]
+  },
+  {
+   "id": "tel4u",
+   "name": "TEL-4U",
+   "category": "people_lookup",
+   "url": "https://tel-4u.com",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "tel-4u",
+    "tel4u"
+   ],
+   "note": "Anti-bot; personal data",
+   "launcher_url_template": null,
+   "launcher_kind": "people",
+   "launcher_fields": [
+    "phone",
+    "first_name",
+    "last_name",
+    "city"
+   ]
+  },
+  {
+   "id": "fingerprint",
+   "name": "Fingerprint",
+   "category": "people_lookup",
+   "url": "https://fingerprint.to",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "fingerprint"
+   ],
+   "note": "Personal data: not automated",
+   "launcher_url_template": null,
+   "launcher_kind": "people",
+   "launcher_fields": [
+    "phone"
+   ]
+  },
+  {
+   "id": "skyscanner",
+   "name": "Skyscanner",
+   "category": "flights",
+   "url": "https://www.skyscanner.co.il",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "skyscanner",
+    "סקייסקנר"
+   ],
+   "note": "Anti-bot / dynamic JS",
+   "launcher_url_template": "https://www.skyscanner.co.il/transport/flights/{origin_code}/{destination_code}/{date_yymmdd}/",
+   "launcher_kind": "flights",
+   "launcher_fields": [
+    "origin",
+    "destination",
+    "date"
+   ]
+  },
+  {
+   "id": "bgu_board",
+   "name": "נתב\"ג לוח טיסות",
+   "category": "flights",
+   "url": "https://www.iaa.gov.il/airports/ben-gurion/flight-board/",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "נתב\"ג",
+    "נתבג",
+    "לוח טיסות",
+    "ben gurion"
+   ],
+   "note": "Dynamic JS board (needs a headless browser or the IAA API)",
+   "launcher_url_template": null,
+   "launcher_kind": "flights",
+   "launcher_fields": [
+    "flight",
+    "origin",
+    "destination",
+    "date"
+   ]
+  },
+  {
+   "id": "flightaware",
+   "name": "FlightAware",
+   "category": "flights",
+   "url": "https://he.flightaware.com/live/",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "flightaware",
+    "פלייטאוור"
+   ],
+   "note": "Dynamic JS; API needs a paid key",
+   "launcher_url_template": "https://he.flightaware.com/live/flight/{flight}",
+   "launcher_kind": "flights",
+   "launcher_fields": [
+    "flight"
+   ]
+  },
+  {
+   "id": "elal",
+   "name": "אל על",
+   "category": "flights",
+   "url": "https://www.elal.com/heb/israel",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "אל על",
+    "el al",
+    "elal"
+   ],
+   "note": "Anti-bot / dynamic JS",
+   "launcher_url_template": null,
+   "launcher_kind": "flights",
+   "launcher_fields": [
+    "flight",
+    "origin",
+    "destination",
+    "date"
+   ]
+  },
+  {
+   "id": "google_flights",
+   "name": "Google Flights",
+   "category": "flights",
+   "url": "https://www.google.com/travel/flights?gl=IL&hl=iw",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "google flights",
+    "גוגל טיסות"
+   ],
+   "note": "Dynamic JS; automated access not allowed",
+   "launcher_url_template": "https://www.google.com/travel/flights?q={flights_query}&hl=iw&gl=IL",
+   "launcher_kind": "flights",
+   "launcher_fields": [
+    "origin",
+    "destination",
+    "date"
+   ]
+  },
+  {
+   "id": "arkia",
+   "name": "ארקיע",
+   "category": "flights",
+   "url": "https://www.arkia.co.il/ski-results",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "ארקיע",
+    "arkia"
+   ],
+   "note": "Dynamic JS",
+   "launcher_url_template": null,
+   "launcher_kind": "flights",
+   "launcher_fields": [
+    "flight",
+    "origin",
+    "destination",
+    "date"
+   ]
+  },
+  {
+   "id": "xplorer_board",
+   "name": "אקספלורר לוח טיסות",
+   "category": "flights",
+   "url": "https://www.xplorer.co.il/tools/flights_board",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "אקספלורר",
+    "xplorer"
+   ],
+   "note": "Dynamic JS board",
+   "launcher_url_template": null,
+   "launcher_kind": "flights",
+   "launcher_fields": [
+    "flight",
+    "origin",
+    "destination"
+   ]
+  },
+  {
+   "id": "etihad",
+   "name": "Etihad",
+   "category": "flights",
+   "url": "https://www.etihad.com/he-il/manage/flight-status",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "etihad",
+    "איתיחאד"
+   ],
+   "note": "Anti-bot / dynamic JS",
+   "launcher_url_template": null,
+   "launcher_kind": "flights",
+   "launcher_fields": [
+    "flight",
+    "date"
+   ]
+  },
+  {
+   "id": "kayak",
+   "name": "Kayak",
+   "category": "flights",
+   "url": "https://www.he.kayak.com/flights",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "kayak",
+    "קייאק טיסות"
+   ],
+   "note": "Anti-bot / dynamic JS",
+   "launcher_url_template": "https://www.he.kayak.com/flights/{ORIGIN_CODE}-{DESTINATION_CODE}/{date}",
+   "launcher_kind": "flights",
+   "launcher_fields": [
+    "origin",
+    "destination",
+    "date"
+   ]
+  },
+  {
+   "id": "adsbexchange",
+   "name": "ADS-B Exchange",
+   "category": "flights",
+   "url": "https://www.adsbexchange.com/",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "ads-b",
+    "adsb",
+    "adsbexchange"
+   ],
+   "note": "Live map in JS; API needs a key",
+   "launcher_url_template": null,
+   "launcher_kind": "flights",
+   "launcher_fields": [
+    "flight"
+   ]
+  },
+  {
+   "id": "airnavradar",
+   "name": "AirNav Radar",
+   "category": "flights",
+   "url": "https://www.airnavradar.com/",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "airnav",
+    "airnav radar"
+   ],
+   "note": "Live map in JS",
+   "launcher_url_template": "https://www.airnavradar.com/data/flights/{flight}",
+   "launcher_kind": "flights",
+   "launcher_fields": [
+    "flight"
+   ]
+  },
+  {
+   "id": "planefinder",
+   "name": "Plane Finder",
+   "category": "flights",
+   "url": "https://planefinder.net/",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "plane finder",
+    "planefinder"
+   ],
+   "note": "Live map in JS",
+   "launcher_url_template": null,
+   "launcher_kind": "flights",
+   "launcher_fields": [
+    "flight"
+   ]
+  },
+  {
+   "id": "flytlv",
+   "name": "Fly-TLV",
+   "category": "flights",
+   "url": "https://fly-tlv.com/live-radar?lang=he",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "fly-tlv",
+    "fly tlv"
+   ],
+   "note": "Live map in JS",
+   "launcher_url_template": null,
+   "launcher_kind": "flights",
+   "launcher_fields": [
+    "flight"
+   ]
+  },
+  {
+   "id": "amazon",
+   "name": "Amazon",
+   "category": "shopping",
+   "url": "https://www.amazon.com/-/he/",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "amazon",
+    "אמזון"
+   ],
+   "note": "Anti-bot / CAPTCHA",
+   "launcher_url_template": "https://www.amazon.com/s?k={q}",
+   "launcher_kind": "shopping",
+   "launcher_fields": [
+    "product"
+   ]
+  },
+  {
+   "id": "aliexpress",
+   "name": "AliExpress",
+   "category": "shopping",
+   "url": "https://he.aliexpress.com/",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "aliexpress",
+    "עליאקספרס",
+    "אליאקספרס"
+   ],
+   "note": "Anti-bot / dynamic JS",
+   "launcher_url_template": "https://he.aliexpress.com/wholesale?SearchText={q}",
+   "launcher_kind": "shopping",
+   "launcher_fields": [
+    "product"
+   ]
+  },
+  {
+   "id": "shein",
+   "name": "SHEIN",
+   "category": "shopping",
+   "url": "https://il.shein.com/",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "shein",
+    "שיין"
+   ],
+   "note": "Anti-bot / dynamic JS",
+   "launcher_url_template": "https://il.shein.com/pdsearch/{q}/",
+   "launcher_kind": "shopping",
+   "launcher_fields": [
+    "product"
+   ]
+  },
+  {
+   "id": "ebay",
+   "name": "eBay",
+   "category": "shopping",
+   "url": "https://www.ebay.com/",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "ebay",
+    "איביי"
+   ],
+   "note": "Anti-bot; API needs a developer key",
+   "launcher_url_template": "https://www.ebay.com/sch/i.html?_nkw={q}",
+   "launcher_kind": "shopping",
+   "launcher_fields": [
+    "product"
+   ]
+  },
+  {
+   "id": "ksp",
+   "name": "KSP",
+   "category": "shopping",
+   "url": "https://ksp.co.il/web/",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "ksp",
+    "קיי אס פי"
+   ],
+   "note": "Dynamic JS store",
+   "launcher_url_template": "https://ksp.co.il/web/cat/?search={q}",
+   "launcher_kind": "shopping",
+   "launcher_fields": [
+    "product"
+   ]
+  },
+  {
+   "id": "bug",
+   "name": "Bug",
+   "category": "shopping",
+   "url": "https://www.bug.co.il/",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "bug.co.il",
+    "חנות באג",
+    "באג מחשבים"
+   ],
+   "note": "Anti-bot / dynamic JS",
+   "launcher_url_template": "https://www.bug.co.il/search?q={q}",
+   "launcher_kind": "shopping",
+   "launcher_fields": [
+    "product"
+   ]
+  },
+  {
+   "id": "nadlan",
+   "name": "מידע נדל״ן - רשות המסים",
+   "category": "real_estate",
+   "url": "https://www.nadlan.gov.il",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "nadlan",
+    "נדל\"ן",
+    "עסקאות נדל\"ן",
+    "רשות המסים"
+   ],
+   "note": "Official government portal (dynamic JS app); official link only, never read automatically",
+   "launcher_url_template": null,
+   "launcher_kind": "property",
+   "launcher_fields": [
+    "street",
+    "city"
+   ]
+  },
+  {
+   "id": "govmap",
+   "name": "GovMap - המרכז למיפוי ישראל",
+   "category": "real_estate",
+   "url": "https://www.govmap.gov.il",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "govmap",
+    "גוב מאפ",
+    "גוש וחלקה",
+    "גוש חלקה",
+    "המרכז למיפוי ישראל"
+   ],
+   "note": "Official government map (dynamic JS app); official search link only, never read automatically",
+   "launcher_url_template": "https://www.govmap.gov.il/?q={address}",
+   "launcher_kind": "property",
+   "launcher_fields": [
+    "street",
+    "city"
+   ]
+  },
+  {
+   "id": "mi_hitkasher",
+   "name": "מי התקשר אליי",
+   "category": "phone_spam",
+   "url": "https://www.mi-hitkasher.co.il",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "mi-hitkasher",
+    "mi hitkasher"
+   ],
+   "note": "Spam-call reports by number; official link only, never read automatically",
+   "launcher_url_template": null,
+   "launcher_kind": "people",
+   "launcher_fields": [
+    "phone"
+   ]
+  },
+  {
+   "id": "truecaller",
+   "name": "Truecaller Web",
+   "category": "phone_spam",
+   "url": "https://www.truecaller.com",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "truecaller",
+    "טרוקולר",
+    "טרו קולר"
+   ],
+   "note": "Caller ID (login required); personal data; official link only, never read automatically",
+   "launcher_url_template": null,
+   "launcher_kind": "people",
+   "launcher_fields": [
+    "phone",
+    "first_name",
+    "last_name"
+   ]
+  },
+  {
+   "id": "dapei_zahav",
+   "name": "דפי זהב Zap",
+   "category": "phone_spam",
+   "url": "https://www.d.co.il",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "דפי זהב",
+    "dapei zahav"
+   ],
+   "note": "Business directory (dynamic JS); official link only, never read automatically",
+   "launcher_url_template": null,
+   "launcher_kind": "people",
+   "launcher_fields": [
+    "first_name",
+    "last_name",
+    "city",
+    "phone"
+   ]
+  },
+  {
+   "id": "onelookup_il",
+   "name": "1Lookup Israel",
+   "category": "phone_spam",
+   "url": "https://www.1lookup.io/tools/phone-validator/israel",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "1lookup",
+    "1 lookup",
+    "וואן לוקאפ"
+   ],
+   "note": "Israeli phone validator (also https://www.1lookup.io); official link only, never read automatically (Step 61, @phone)",
+   "launcher_url_template": null,
+   "launcher_kind": "people",
+   "launcher_fields": [
+    "phone"
+   ]
+  },
+  {
+   "id": "phonevalidator_il",
+   "name": "PhoneValidator Israel",
+   "category": "phone_spam",
+   "url": "https://www.phonevalidator.com/israel-phone-validator",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "phonevalidator",
+    "phone validator",
+    "פון ולידייטור"
+   ],
+   "note": "Israeli phone validator (also https://www.phonevalidator.com); official link only, never read automatically (Step 61, @phone)",
+   "launcher_url_template": null,
+   "launcher_kind": "people",
+   "launcher_fields": [
+    "phone"
+   ]
+  },
+  {
+   "id": "emobiletracker",
+   "name": "EmobileTracker",
+   "category": "phone_spam",
+   "url": "https://www.emobiletracker.com/",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "emobiletracker",
+    "emobile tracker",
+    "mobile tracker"
+   ],
+   "note": "Mobile number tracker by prefix; official link only, never read automatically (Step 61, @phone)",
+   "launcher_url_template": null,
+   "launcher_kind": "people",
+   "launcher_fields": [
+    "phone"
+   ]
+  },
+  {
+   "id": "phonebook_world_il",
+   "name": "Phone Book of the World - Israel",
+   "category": "phone_spam",
+   "url": "https://phonebookoftheworld.com/israel/",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "phone book of the world",
+    "phonebookoftheworld",
+    "phonebook of the world"
+   ],
+   "note": "Israeli numbering plan and directory (also https://phonebookoftheworld.com); official link only, never read automatically (Step 61, @phone)",
+   "launcher_url_template": null,
+   "launcher_kind": "people",
+   "launcher_fields": [
+    "phone"
+   ]
+  },
+  {
+   "id": "scribd_il_numbers",
+   "name": "Scribd - Israel Phone Number List",
+   "category": "phone_spam",
+   "url": "https://www.scribd.com/document/422548710/Phone-Numbers-List",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "scribd phone numbers list",
+    "scribd רשימת מספרים"
+   ],
+   "note": "A public phone number list document on Scribd; official link only, never read automatically (Step 61, @phone)",
+   "launcher_url_template": null,
+   "launcher_kind": "people",
+   "launcher_fields": [
+    "phone"
+   ]
+  },
+  {
+   "id": "scribd_il_numbers_15000",
+   "name": "Scribd - Israel Phone Number List 1-15000",
+   "category": "phone_spam",
+   "url": "https://www.scribd.com/doc/225784685/List-of-Numbers-2",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "scribd list of numbers",
+    "scribd 15000"
+   ],
+   "note": "A public 1-15000 number list document on Scribd; official link only, never read automatically (Step 61, @phone)",
+   "launcher_url_template": null,
+   "launcher_kind": "people",
+   "launcher_fields": [
+    "phone"
+   ]
+  },
+  {
+   "id": "hibp",
+   "name": "Have I Been Pwned",
+   "category": "email_profiles",
+   "url": "https://haveibeenpwned.com",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "haveibeenpwned",
+    "hibp",
+    "been pwned"
+   ],
+   "note": "Data-breach check (the user types the address on the site); official link only, never read automatically",
+   "launcher_url_template": null,
+   "launcher_kind": "email",
+   "launcher_fields": [
+    "email"
+   ]
+  },
+  {
+   "id": "hunter_io",
+   "name": "Hunter.io",
+   "category": "email_profiles",
+   "url": "https://hunter.io",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "hunter.io",
+    "hunter io"
+   ],
+   "note": "Domain email lookup (login required); official link only, never read automatically",
+   "launcher_url_template": "https://hunter.io/try/search/{domain}",
+   "launcher_kind": "email",
+   "launcher_fields": [
+    "email_domain"
+   ]
+  },
+  {
+   "id": "gravatar",
+   "name": "Gravatar",
+   "category": "email_profiles",
+   "url": "https://gravatar.com",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "gravatar",
+    "גרבטר",
+    "גראווטר"
+   ],
+   "note": "Public profile picture by email; official link only, never read automatically",
+   "launcher_url_template": null,
+   "launcher_kind": "email",
+   "launcher_fields": [
+    "email"
+   ]
+  },
+  {
+   "id": "ica",
+   "name": "רשם החברות",
+   "category": "corporate",
+   "url": "https://ica.justice.gov.il",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "רשם החברות",
+    "רשם העמותות",
+    "רשות התאגידים",
+    "companies registrar",
+    "ica.justice.gov.il"
+   ],
+   "note": "Israel Corporations Authority (dynamic JS app); official link only, never read automatically",
+   "launcher_url_template": null,
+   "launcher_kind": "corporate",
+   "launcher_fields": [
+    "name"
+   ]
+  },
+  {
+   "id": "guidestar",
+   "name": "גיידסטאר",
+   "category": "corporate",
+   "url": "https://www.guidestar.org.il",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "guidestar",
+    "גיידסטאר",
+    "גיידסטאר ישראל"
+   ],
+   "note": "Nonprofit registry (dynamic JS app); official link only, never read automatically",
+   "launcher_url_template": null,
+   "launcher_kind": "corporate",
+   "launcher_fields": [
+    "name"
+   ]
+  },
+  {
+   "id": "linkedin",
+   "name": "LinkedIn",
+   "category": "corporate",
+   "url": "https://www.linkedin.com",
+   "query_template": null,
+   "type": "restricted",
+   "connectable": false,
+   "status_icon": "❌",
+   "keywords": [
+    "linkedin",
+    "לינקדאין",
+    "לינקדין",
+    "לינקד אין"
+   ],
+   "note": "Professional profiles (login required); official link only, never read automatically",
+   "launcher_url_template": "https://www.linkedin.com/search/results/all/?keywords={q}",
+   "launcher_kind": "corporate",
+   "launcher_fields": [
+    "name"
+   ]
+  }
+ ]
+}
