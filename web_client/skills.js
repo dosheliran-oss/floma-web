@@ -1044,15 +1044,23 @@
       const stripped = String(query || "").split(/\s+/).filter(Boolean).join(" ");
       const led = lead(stripped, cfg.commands);
       const body = stripChars(led ? led[1] : stripped, " :,");
-      const out = { command: led !== null, input: body, kind: null, result: null, steps: [], error: null, values: {} };
+      const out = { command: led !== null, input: body, kind: null, result: null, steps: [], error: null, values: {},
+        normalized: null, table: [] };
       try {
         if (!body) throw new CalcError("no_expression");
-        const converted = convert(body, cfg, language);
-        if (converted !== null) Object.assign(out, { kind: "convert" }, converted);
-        else Object.assign(out, solve(body, cfg, language));
+        const A = window.FlomaCalcAcademic;  // Step 67
+        const text = A.normalize(body, cfg); // dictation → formal syntax
+        if (text !== A.basic(body, cfg)) out.normalized = text;
+        const academic = A.solve(text, cfg, language);
+        if (academic !== null) Object.assign(out, academic);
+        else {
+          const converted = convert(text, cfg, language);
+          if (converted !== null) Object.assign(out, { kind: "convert" }, converted);
+          else Object.assign(out, solve(text, cfg, language));
+        }
       } catch (e) {
-        if (!(e instanceof CalcError)) throw e;
-        Object.assign(out, { kind: null, result: null, steps: [], error: e.key, values: e.values });
+        if (!(e && typeof e.key === "string")) throw e; // this file's CalcError or calc_academic.js's
+        Object.assign(out, { kind: null, result: null, steps: [], error: e.key, values: e.values || {}, table: [] });
       }
       return out;
     }
@@ -1066,10 +1074,24 @@
       return operation && [...text].every((c) => DIGITS.includes(c) || OPS.includes(c) || " .,".includes(c));
     }
 
+    const ACADEMIC_KINDS = ["logic", "truth_table", "sets", "linalg", "calculus", "combinatorics"];
+    const hasKeyword = (message, cfg) => cfg.academic.keywords.some((k) => message.toLowerCase().includes(k));
+
     function auto(message, cfg) {
       const done = run(message, cfg, "HEBREW");
       if (done.error !== null) return false;
       if (done.command) return true;
+      const A = window.FlomaCalcAcademic;
+      if (ACADEMIC_KINDS.includes(done.kind)) {
+        // A typed formula, a math keyword, or dictation that became a formula entirely ("לא אמת" stays chat).
+        if (A.formalOnly(A.basic(message, cfg)) || hasKeyword(message, cfg)) return true;
+        if (done.normalized && A.formalOnly(done.normalized)) {
+          return !["logic", "truth_table"].includes(done.kind) || A.hasConnective(done.normalized);
+        }
+        return false;
+      }
+      if (hasKeyword(message, cfg)) return true;
+      if (done.normalized && mathOnly(done.normalized)) return true;
       return mathOnly(message) && (done.steps.length > 0 || done.kind === "equation" || done.kind === "check");
     }
 
@@ -1078,18 +1100,20 @@
       const t = cfg.text;
       const done = run(query, cfg, lang);
       if (done.error !== null) return { text: fill(t[done.error][lang], { icon, ...done.values }), sources: [], copy: null };
-      const lines = [fill(t.head[lang], { icon, name, kind: t.kinds[done.kind][lang] }), fill(t.input[lang], { input: done.input }),
-        fill(t.result[lang], { result: done.result }), ""];
+      const lines = [fill(t.head[lang], { icon, name, kind: t.kinds[done.kind][lang] }), fill(t.input[lang], { input: done.input })];
+      if (done.normalized) lines.push(fill(t.normalized[lang], { expr: done.normalized }));
+      lines.push(fill(t.result[lang], { result: done.result }), "");
       const shown = done.steps.slice(0, cfg.max_steps);
       if (shown.length) {
         lines.push(t.steps[lang], ...shown.map((s, i) => `${i + 1}. ${s}`));
         if (done.steps.length > shown.length) lines.push(fill(t.more_steps[lang], { count: done.steps.length - shown.length }));
       } else lines.push(t.no_steps[lang]);
+      if (done.table.length) lines.push("", t.table[lang], ...done.table);
       lines.push("", t.footer[lang]);
       return { text: lines.join("\n"), sources: [], copy: done.result };
     }
 
-    return { fmt, run, auto, answer, mathOnly };
+    return { fmt, check, run, auto, answer, mathOnly };
   })();
 
   const calcConfig = (reg) => byId("calc", reg).calc;
@@ -1104,7 +1128,7 @@
   window.FlomaSkills = {
     norm, variants, levenshtein, analyze, search, reply, resolve, answer, activatedText, mentionMatches, mentionToken,
     findNumber, phoneInfo, phoneMatches, translateRequest, translateCaption, translateText, textLanguage,
-    calcAnswer, calcText, calcFmt: Calc.fmt, calcRun: Calc.run, urlKey, exactMatches,
+    calcAnswer, calcText, calcFmt: Calc.fmt, calcCheck: Calc.check, calcRun: Calc.run, urlKey, exactMatches,
     skills, byId, name, description, text, vault: vaultData,
   };
 })();

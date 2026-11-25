@@ -29,6 +29,7 @@ const SHELL = [
   "../persona/sites_catalog.js",
   "../persona/skills_registry.js",
   "../persona/knowledge_vault.js",
+  "calc_academic.js",
   "skills.js",
   "voice.js",
   "documents.js",

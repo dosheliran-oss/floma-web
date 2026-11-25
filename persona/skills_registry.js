@@ -733,8 +733,8 @@ window.FLOMA_SKILLS = {
    "name_he": "מחשבון חכם",
    "name_en": "Smart calculator",
    "icon": "🧮",
-   "description_he": "פותר תרגילים, משוואות ממעלה ראשונה ושנייה והמרות יחידות, ומראה את התוצאה עם כפתור העתקה ואת כל שלבי הפתרון ממוספרים: סדר פעולות, סוגריים, חזקות, שורשים, לוגריתמים, טריגונומטריה (במעלות או ברדיאנים) ואחוזים. הכול מקומי - בלי Gemini ובלי אינטרנט.",
-   "description_en": "Solves arithmetic, linear and quadratic equations and unit conversions, showing the result with a copy button and every step numbered: order of operations, parentheses, powers, roots, logarithms, trigonometry (degrees or radians) and percentages. All local - no Gemini, no internet.",
+   "description_he": "מחשבון אקדמי לתואר במערכות מידע, הכול מקומי - בלי Gemini ובלי אינטרנט: חשבון וסדר פעולות, משוואות ממעלה ראשונה ושנייה, המרות יחידות, לוגיקה (T->F, טבלאות אמת, טאוטולוגיה/סתירה), תורת הקבוצות (איחוד, חיתוך, הפרש, קבוצת חזקה, מכפלה קרטזית), אלגברה ליניארית (det, הופכית, דירוג גאוס, מכפלות, נורמה), חדו\"א (נגזרות, אינטגרלים, גבולות) וקומבינטוריקה (nCr, nPr, עצרת, בינום). אפשר גם להכתיב בעברית (\"שלוש איקס ועוד חמש שווה אחת עשרה\") - והתשובה מראה את הביטוי שזוהה, את התוצאה עם כפתור העתקה ואת כל השלבים ממוספרים.",
+   "description_en": "An academic calculator for an Information Systems degree, all local - no Gemini, no internet: arithmetic, linear and quadratic equations, unit conversions, logic (T->F, truth tables, tautology/contradiction), set theory (union, intersection, difference, power set, Cartesian product), linear algebra (det, inverse, Gaussian elimination, products, norm), calculus (derivatives, integrals, limits) and combinatorics (nCr, nPr, factorial, binomial). You can also dictate in Hebrew - the reply shows how it was read, the result with a copy button and every step numbered.",
    "auto_triggers": [],
    "platforms": [
     "desktop",
@@ -1408,6 +1408,30 @@ window.FLOMA_SKILLS = {
       "convert": {
        "HEBREW": "המרת יחידות",
        "ENGLISH": "Unit conversion"
+      },
+      "logic": {
+       "HEBREW": "לוגיקה",
+       "ENGLISH": "Logic"
+      },
+      "truth_table": {
+       "HEBREW": "טבלת אמת",
+       "ENGLISH": "Truth table"
+      },
+      "sets": {
+       "HEBREW": "תורת הקבוצות",
+       "ENGLISH": "Set theory"
+      },
+      "linalg": {
+       "HEBREW": "אלגברה ליניארית",
+       "ENGLISH": "Linear algebra"
+      },
+      "calculus": {
+       "HEBREW": "חדו\"א",
+       "ENGLISH": "Calculus"
+      },
+      "combinatorics": {
+       "HEBREW": "קומבינטוריקה",
+       "ENGLISH": "Combinatorics"
       }
      },
      "input": {
@@ -1581,6 +1605,625 @@ window.FLOMA_SKILLS = {
      "needs_rate": {
       "HEBREW": "{icon} בלי אינטרנט אין לי שער מטבע עדכני. כתבו את השער בהודעה, למשל \"100 דולר לשקל בשער 3.7\".",
       "ENGLISH": "{icon} Offline I have no live exchange rate. Put the rate in the message, like \"100 USD to ILS at 3.7\"."
+     },
+     "normalized": {
+      "HEBREW": "🎙️ ביטוי מזוהה: {expr}",
+      "ENGLISH": "🎙️ Read as: {expr}"
+     },
+     "table": {
+      "HEBREW": "טבלת אמת:",
+      "ENGLISH": "Truth table:"
+     },
+     "academic_syntax": {
+      "HEBREW": "{icon} לא הצלחתי לקרוא את הביטוי. דוגמאות: \"T -> F\", \"(p -> q) <-> (~q -> ~p)\", \"{1, 2} union {2, 3}\", \"det([[1, 2], [3, 4]])\", \"derivative(x^3 + 2x)\", \"integral(x^2, x, 0, 3)\", \"limit((x^2 - 4)/(x - 2), x, 2)\", \"nCr(5, 2)\".",
+      "ENGLISH": "{icon} I couldn't read that. Examples: \"T -> F\", \"(p -> q) <-> (~q -> ~p)\", \"{1, 2} union {2, 3}\", \"det([[1, 2], [3, 4]])\", \"derivative(x^3 + 2x)\", \"integral(x^2, x, 0, 3)\", \"limit((x^2 - 4)/(x - 2), x, 2)\", \"nCr(5, 2)\"."
+     },
+     "logic_vars": {
+      "HEBREW": "{icon} טבלת אמת עד 4 משתנים.",
+      "ENGLISH": "{icon} Truth tables go up to 4 variables."
+     },
+     "set_type": {
+      "HEBREW": "{icon} הפעולה הזו מוגדרת על קבוצות.",
+      "ENGLISH": "{icon} That operation is defined on sets."
+     },
+     "set_too_big": {
+      "HEBREW": "{icon} הקבוצה גדולה מדי (קבוצת חזקה עד 6 איברים, מכפלה קרטזית עד 64 זוגות).",
+      "ENGLISH": "{icon} The set is too big (a power set up to 6 elements, a Cartesian product up to 64 pairs)."
+     },
+     "matrix_size": {
+      "HEBREW": "{icon} אני עובד עם מטריצות ווקטורים עד 4×4 (שורות באורך שווה).",
+      "ENGLISH": "{icon} I work with matrices and vectors up to 4×4 (rows of equal length)."
+     },
+     "matrix_shape": {
+      "HEBREW": "{icon} הגדלים לא מתאימים לפעולה: {a} ו-{b}.",
+      "ENGLISH": "{icon} The sizes don't fit that operation: {a} and {b}."
+     },
+     "matrix_shape_one": {
+      "HEBREW": "{icon} הפעולה הזו צריכה מטריצה (או וקטור לנורמה).",
+      "ENGLISH": "{icon} That operation needs a matrix (or a vector for the norm)."
+     },
+     "not_square": {
+      "HEBREW": "{icon} הפעולה הזו מוגדרת רק למטריצה ריבועית.",
+      "ENGLISH": "{icon} That operation is defined only for a square matrix."
+     },
+     "singular": {
+      "HEBREW": "{icon} det = 0 - המטריצה סינגולרית ואין לה הופכית.",
+      "ENGLISH": "{icon} det = 0 - the matrix is singular and has no inverse."
+     },
+     "cross_dim": {
+      "HEBREW": "{icon} מכפלה וקטורית מוגדרת לווקטורים בגודל 3.",
+      "ENGLISH": "{icon} A cross product is defined for vectors of size 3."
+     },
+     "derivative_unsupported": {
+      "HEBREW": "{icon} את הנגזרת הזו אני עוד לא יודע לגזור סימבולית.",
+      "ENGLISH": "{icon} I can't differentiate that one symbolically yet."
+     },
+     "integral_unsupported": {
+      "HEBREW": "{icon} את האינטגרל הזה אני עוד לא יודע לפתור סימבולית (פולינומים, 1/x, √x, sin, cos, tan ו-e^x של ax+b).",
+      "ENGLISH": "{icon} I can't integrate that one symbolically yet (polynomials, 1/x, √x, and sin, cos, tan, e^x of ax+b)."
+     },
+     "limit_unsupported": {
+      "HEBREW": "{icon} את הגבול הזה אני לא יכול לחשב.",
+      "ENGLISH": "{icon} I can't compute that limit."
+     },
+     "comb_range": {
+      "HEBREW": "{icon} צריך מספרים שלמים 0 ≤ r ≤ n ≤ 1000.",
+      "ENGLISH": "{icon} Use whole numbers with 0 ≤ r ≤ n ≤ 1000."
+     },
+     "expand_unsupported": {
+      "HEBREW": "{icon} אני פותח בינום (a + b)^n עם n שלם בין 1 ל-12 ואיברים פשוטים (כמו 2x או 3).",
+      "ENGLISH": "{icon} I expand a binomial (a + b)^n with a whole n from 1 to 12 and simple terms (like 2x or 3)."
+     },
+     "improper": {
+      "HEBREW": "{icon} האינטגרל לא מתכנס בתחום הזה - הפונקציה לא מוגדרת באחת הנקודות שלו (אינטגרל לא אמיתי).",
+      "ENGLISH": "{icon} The integral doesn't converge on that interval - the function is undefined at a point in it (an improper integral)."
+     }
+    },
+    "academic": {
+     "dictation": {
+      "symbols": [
+       [
+        "∪",
+        " union "
+       ],
+       [
+        "∩",
+        " intersect "
+       ],
+       [
+        "△",
+        " symdiff "
+       ],
+       [
+        "⊆",
+        " subset "
+       ],
+       [
+        "⊂",
+        " psubset "
+       ],
+       [
+        "∈",
+        " in "
+       ],
+       [
+        "∅",
+        " {} "
+       ],
+       [
+        "¬",
+        " ~ "
+       ],
+       [
+        "∧",
+        " & "
+       ],
+       [
+        "∨",
+        " | "
+       ],
+       [
+        "⇔",
+        " <-> "
+       ],
+       [
+        "↔",
+        " <-> "
+       ],
+       [
+        "⇒",
+        " -> "
+       ],
+       [
+        "→",
+        " -> "
+       ],
+       [
+        "⊕",
+        " xor "
+       ],
+       [
+        "×",
+        " * "
+       ],
+       [
+        "·",
+        " * "
+       ],
+       [
+        "÷",
+        " / "
+       ],
+       [
+        "−",
+        "-"
+       ],
+       [
+        "–",
+        "-"
+       ],
+       [
+        "—",
+        "-"
+       ],
+       [
+        "²",
+        "^2"
+       ],
+       [
+        "³",
+        "^3"
+       ],
+       [
+        "√",
+        " sqrt "
+       ],
+       [
+        "π",
+        " pi "
+       ],
+       [
+        "∞",
+        " inf "
+       ]
+      ],
+      "iff": [
+       "אם ורק אם",
+       "שקול ל",
+       "שקולה ל",
+       "שקול",
+       "if and only if",
+       "iff"
+      ],
+      "phrases": {
+       "ועוד": "+",
+       "פלוס": "+",
+       "פחות": "-",
+       "מינוס": "-",
+       "כפול": "*",
+       "חלקי": "/",
+       "לחלק ב": "/",
+       "שווה ל": "=",
+       "שווה": "=",
+       "בריבוע": "^2",
+       "בשלישית": "^3",
+       "בחזקת": "^",
+       "עצרת": "!",
+       "פאי": "pi",
+       "שורש ריבועי של": "@next:sqrt",
+       "השורש של": "@next:sqrt",
+       "שורש של": "@next:sqrt",
+       "שורש": "@next:sqrt",
+       "squared": "^2",
+       "cubed": "^3",
+       "to the power of": "^",
+       "factorial": "!",
+       "square root of": "@next:sqrt",
+       "איקס": "x",
+       "וואי": "y",
+       "זד": "z",
+       "אינסוף": "inf",
+       "infinity": "inf",
+       "אמת": "t",
+       "שקר": "f",
+       "גורר": "->",
+       "גוררת": "->",
+       "גורר את": "->",
+       "וגם": "&",
+       "או": "|",
+       "שלילה של": "~",
+       "שלילת": "~",
+       "שלילה": "~",
+       "לא": "~",
+       "קסור": "xor",
+       "implies": "->",
+       "איחוד": "union",
+       "חיתוך": "intersect",
+       "הפרש סימטרי": "symdiff",
+       "הפרש": "\\",
+       "מכפלה קרטזית": "cartesian",
+       "מוכלת ב": "subset",
+       "מוכל ב": "subset",
+       "תת קבוצה של": "subset",
+       "שייך ל": "in",
+       "קבוצה ריקה": "{}",
+       "קבוצת החזקה של": "@rest:powerset",
+       "קבוצת חזקה של": "@rest:powerset",
+       "קבוצת חזקה": "@rest:powerset",
+       "הנגזרת של": "@rest:derivative",
+       "נגזרת של": "@rest:derivative",
+       "נגזרת": "@rest:derivative",
+       "האינטגרל של": "@rest:integral",
+       "אינטגרל של": "@rest:integral",
+       "אינטגרל": "@rest:integral",
+       "derivative of": "@rest:derivative",
+       "integral of": "@rest:integral",
+       "לפי": "@by",
+       "with respect to": "@by",
+       "הדטרמיננטה של": "@rest:det",
+       "דטרמיננטה של": "@rest:det",
+       "דטרמיננטה": "@rest:det",
+       "determinant of": "@rest:det",
+       "המטריצה ההופכית של": "@rest:inv",
+       "מטריצה הופכית של": "@rest:inv",
+       "ההופכית של": "@rest:inv",
+       "הופכית של": "@rest:inv",
+       "inverse of": "@rest:inv",
+       "דירוג גאוס של": "@rest:rref",
+       "דירוג מטריצה של": "@rest:rref",
+       "דירוג מטריצה": "@rest:rref",
+       "דירוג של": "@rest:rref",
+       "דירוג": "@rest:rref",
+       "דרג את": "@rest:rref",
+       "שחלוף של": "@rest:transpose",
+       "שחלוף": "@rest:transpose",
+       "transpose of": "@rest:transpose",
+       "הנורמה של": "@rest:norm",
+       "נורמה של": "@rest:norm",
+       "מעל": "ncr",
+       "צירופים": "ncr",
+       "תמורות": "npr",
+       "פתח את": "@rest:expand",
+       "פיתוח של": "@rest:expand",
+       "פיתוח בינום של": "@rest:expand",
+       "טבלת אמת של": "",
+       "טבלת אמת ל": "",
+       "טבלת אמת": "",
+       "truth table of": "",
+       "truth table": "",
+       "של": "",
+       "את": "",
+       "בבקשה": "",
+       "plus": "+",
+       "minus": "-",
+       "times": "*",
+       "multiplied by": "*",
+       "divided by": "/",
+       "equals": "=",
+       "over": "/"
+      },
+      "numbers": {
+       "אפס": 0,
+       "אחת": 1,
+       "אחד": 1,
+       "שתיים": 2,
+       "שתים": 2,
+       "שניים": 2,
+       "שני": 2,
+       "שתי": 2,
+       "שלוש": 3,
+       "שלושה": 3,
+       "ארבע": 4,
+       "ארבעה": 4,
+       "חמש": 5,
+       "חמישה": 5,
+       "שש": 6,
+       "שישה": 6,
+       "שבע": 7,
+       "שבעה": 7,
+       "שמונה": 8,
+       "תשע": 9,
+       "תשעה": 9,
+       "עשר": 10,
+       "עשרה": 10,
+       "עשרים": 20,
+       "שלושים": 30,
+       "ארבעים": 40,
+       "חמישים": 50,
+       "שישים": 60,
+       "שבעים": 70,
+       "שמונים": 80,
+       "תשעים": 90,
+       "מאה": 100,
+       "מאתיים": 200,
+       "אלף": 1000,
+       "אלפיים": 2000,
+       "zero": 0,
+       "one": 1,
+       "two": 2,
+       "three": 3,
+       "four": 4,
+       "five": 5,
+       "six": 6,
+       "seven": 7,
+       "eight": 8,
+       "nine": 9,
+       "ten": 10,
+       "eleven": 11,
+       "twelve": 12,
+       "thirteen": 13,
+       "fourteen": 14,
+       "fifteen": 15,
+       "sixteen": 16,
+       "seventeen": 17,
+       "eighteen": 18,
+       "nineteen": 19,
+       "twenty": 20,
+       "thirty": 30,
+       "forty": 40,
+       "fifty": 50,
+       "sixty": 60,
+       "seventy": 70,
+       "eighty": 80,
+       "ninety": 90
+      },
+      "multipliers": {
+       "מאות": 100,
+       "אלפים": 1000,
+       "hundred": 100,
+       "thousand": 1000
+      },
+      "point": [
+       "נקודה",
+       "point"
+      ],
+      "variables": [
+       "x",
+       "y",
+       "z"
+      ]
+     },
+     "keywords": [
+      "נגזרת",
+      "אינטגרל",
+      "גבול",
+      "עצרת",
+      "טבלת אמת",
+      "דירוג",
+      "דטרמיננטה",
+      "מטריצה",
+      "הופכית",
+      "שחלוף",
+      "צירופים",
+      "תמורות",
+      "איחוד",
+      "חיתוך",
+      "קבוצת חזקה",
+      "מכפלה קרטזית",
+      "טאוטולוגיה",
+      "derivative",
+      "integral",
+      "limit",
+      "determinant",
+      "truth table",
+      "matrix",
+      "factorial"
+     ],
+     "text": {
+      "logic_rules": {
+       "HEBREW": {
+        "not": "שלילה הופכת את ערך האמת",
+        "and": "∧ אמת רק כששני הצדדים אמת",
+        "or": "∨ שקר רק כששני הצדדים שקר",
+        "xor": "⊕ אמת כשבדיוק צד אחד אמת",
+        "imp": "→ שקר רק כשההנחה אמת והמסקנה שקר",
+        "iff": "↔ אמת כששני הצדדים שווים"
+       },
+       "ENGLISH": {
+        "not": "negation flips the truth value",
+        "and": "∧ is true only when both sides are true",
+        "or": "∨ is false only when both sides are false",
+        "xor": "⊕ is true when exactly one side is true",
+        "imp": "→ is false only when the premise is true and the conclusion false",
+        "iff": "↔ is true when both sides are equal"
+       }
+      },
+      "tautology": {
+       "HEBREW": "טאוטולוגיה",
+       "ENGLISH": "a tautology"
+      },
+      "contradiction": {
+       "HEBREW": "סתירה",
+       "ENGLISH": "a contradiction"
+      },
+      "satisfiable": {
+       "HEBREW": "ספיקה - תלויה בערכי המשתנים",
+       "ENGLISH": "satisfiable - it depends on the values"
+      },
+      "tautology_why": {
+       "HEBREW": "העמודה האחרונה אמת (T) בכל השורות, ולכן הביטוי הוא טאוטולוגיה.",
+       "ENGLISH": "The last column is T in every row, so the formula is a tautology."
+      },
+      "contradiction_why": {
+       "HEBREW": "העמודה האחרונה שקר (F) בכל השורות, ולכן הביטוי הוא סתירה.",
+       "ENGLISH": "The last column is F in every row, so the formula is a contradiction."
+      },
+      "satisfiable_why": {
+       "HEBREW": "בעמודה האחרונה יש גם T וגם F, ולכן הביטוי ספיק אבל לא טאוטולוגיה.",
+       "ENGLISH": "The last column has both T and F, so the formula is satisfiable but not a tautology."
+      },
+      "tt_vars": {
+       "HEBREW": "משתנים: {vars} → {rows} שורות (2^{n})",
+       "ENGLISH": "Variables: {vars} → {rows} rows (2^{n})"
+      },
+      "tt_columns": {
+       "HEBREW": "עמודה לכל תת-ביטוי ({count} עמודות), ומחשבים שורה אחר שורה.",
+       "ENGLISH": "A column for each sub-formula ({count} columns), computed row by row."
+      },
+      "yes": {
+       "HEBREW": "כן",
+       "ENGLISH": "yes"
+      },
+      "no": {
+       "HEBREW": "לא",
+       "ENGLISH": "no"
+      },
+      "set_power": {
+       "HEBREW": "|A| = {n}, ולכן |P(A)| = 2^{n} = {m}",
+       "ENGLISH": "|A| = {n}, so |P(A)| = 2^{n} = {m}"
+      },
+      "set_size": {
+       "HEBREW": "|{a}| = {n}",
+       "ENGLISH": "|{a}| = {n}"
+      },
+      "set_subset": {
+       "HEBREW": "{a} {sym} {b}? {answer}",
+       "ENGLISH": "{a} {sym} {b}? {answer}"
+      },
+      "set_in": {
+       "HEBREW": "{a} ∈ {b}? {answer}",
+       "ENGLISH": "{a} ∈ {b}? {answer}"
+      },
+      "det_expand": {
+       "HEBREW": "פיתוח לפי השורה הראשונה: det = a₁₁·M₁₁ − a₁₂·M₁₂ + a₁₃·M₁₃",
+       "ENGLISH": "Cofactor expansion along the first row: det = a₁₁·M₁₁ − a₁₂·M₁₂ + a₁₃·M₁₃"
+      },
+      "det_gauss": {
+       "HEBREW": "מדרגים למטריצה משולשת: הדטרמיננטה היא מכפלת האלכסון, וכל החלפת שורות הופכת סימן.",
+       "ENGLISH": "Reduce to a triangular matrix: det is the product of the diagonal, and each row swap flips the sign."
+      },
+      "det_zero_col": {
+       "HEBREW": "בעמודה {c} אין איבר מוביל שאינו 0, ולכן det = 0.",
+       "ENGLISH": "Column {c} has no nonzero pivot, so det = 0."
+      },
+      "inv_gauss": {
+       "HEBREW": "מדרגים את [A | I] עד ש-A הופכת ל-I; הצד הימני הוא A⁻¹.",
+       "ENGLISH": "Row-reduce [A | I] until A becomes I; the right side is A⁻¹."
+      },
+      "rref_start": {
+       "HEBREW": "דירוג גאוס-ז'ורדן לצורה מדורגת קנונית (RREF), פעולת שורה אחר פעולה:",
+       "ENGLISH": "Gauss-Jordan elimination to reduced row echelon form (RREF), one row operation at a time:"
+      },
+      "ref_start": {
+       "HEBREW": "דירוג גאוס לצורה מדורגת (REF), פעולת שורה אחר פעולה:",
+       "ENGLISH": "Gaussian elimination to row echelon form (REF), one row operation at a time:"
+      },
+      "la_transpose": {
+       "HEBREW": "שחלוף - השורות הופכות לעמודות: {a}ᵀ = {r}",
+       "ENGLISH": "Transpose - rows become columns: {a}ᵀ = {r}"
+      },
+      "d_power": {
+       "HEBREW": "כלל החזקה לכל איבר: ({f})' = {d}",
+       "ENGLISH": "Power rule term by term: ({f})' = {d}"
+      },
+      "d_sum": {
+       "HEBREW": "כלל הסכום: ({f} {op} {g})' = ({f})' {op} ({g})'",
+       "ENGLISH": "Sum rule: ({f} {op} {g})' = ({f})' {op} ({g})'"
+      },
+      "d_const": {
+       "HEBREW": "קבוע כופל: ({c}·{f})' = {c}·({f})'",
+       "ENGLISH": "Constant multiple: ({c}·{f})' = {c}·({f})'"
+      },
+      "d_const_div": {
+       "HEBREW": "חלוקה בקבוע: ({f}/{c})' = ({f})'/{c}",
+       "ENGLISH": "Division by a constant: ({f}/{c})' = ({f})'/{c}"
+      },
+      "d_product": {
+       "HEBREW": "כלל המכפלה: (u·v)' = u'·v + u·v', כאשר u = {u}, v = {v}",
+       "ENGLISH": "Product rule: (u·v)' = u'·v + u·v', with u = {u}, v = {v}"
+      },
+      "d_quotient": {
+       "HEBREW": "כלל המנה: (u/v)' = (u'·v − u·v')/v², כאשר u = {u}, v = {v}",
+       "ENGLISH": "Quotient rule: (u/v)' = (u'·v − u·v')/v², with u = {u}, v = {v}"
+      },
+      "d_chain_power": {
+       "HEBREW": "כלל החזקה (ושרשרת): ({f})' = {n}·({u})^{m}·({u})'",
+       "ENGLISH": "Power (and chain) rule: ({f})' = {n}·({u})^{m}·({u})'"
+      },
+      "d_expa": {
+       "HEBREW": "(a^u)' = a^u·ln(a)·u', כאשר a = {a}, u = {u}",
+       "ENGLISH": "(a^u)' = a^u·ln(a)·u', with a = {a}, u = {u}"
+      },
+      "d_basic": {
+       "HEBREW": "נגזרת יסודית: ({f})' = {d}",
+       "ENGLISH": "Basic derivative: ({f})' = {d}"
+      },
+      "d_chain": {
+       "HEBREW": "כלל השרשרת: ({f})' = {outer}·({inner})'",
+       "ENGLISH": "Chain rule: ({f})' = {outer}·({inner})'"
+      },
+      "d_order": {
+       "HEBREW": "נגזרת מסדר {k}:",
+       "ENGLISH": "Derivative of order {k}:"
+      },
+      "i_power": {
+       "HEBREW": "כלל החזקה: ∫ {f} d{v} = {F}",
+       "ENGLISH": "Power rule: ∫ {f} d{v} = {F}"
+      },
+      "i_linear": {
+       "HEBREW": "לינאריות: ∫(f ± g) = ∫f ± ∫g, וקבועים יוצאים מהאינטגרל",
+       "ENGLISH": "Linearity: ∫(f ± g) = ∫f ± ∫g, and constants come out of the integral"
+      },
+      "i_term": {
+       "HEBREW": "∫ {f} d{v} = {F}",
+       "ENGLISH": "∫ {f} d{v} = {F}"
+      },
+      "i_value": {
+       "HEBREW": "F({x}) = {F}",
+       "ENGLISH": "F({x}) = {F}"
+      },
+      "i_bounds": {
+       "HEBREW": "המשפט היסודי: ∫ מ-{a} עד {b} = F({b}) − F({a}) = {Fb} − {Fa} = {r}",
+       "ENGLISH": "Fundamental theorem: ∫ from {a} to {b} = F({b}) − F({a}) = {Fb} − {Fa} = {r}"
+      },
+      "l_direct": {
+       "HEBREW": "הצבה ישירה: {f} כאשר {v} = {a} נותן {r}",
+       "ENGLISH": "Direct substitution: {f} at {v} = {a} gives {r}"
+      },
+      "l_zero": {
+       "HEBREW": "הצבה נותנת 0/0 - מפרקים ומצמצמים את הגורם ({factor}) במונה ובמכנה",
+       "ENGLISH": "Substitution gives 0/0 - factor out and cancel ({factor}) in the numerator and denominator"
+      },
+      "l_cancel": {
+       "HEBREW": "אחרי הצמצום: {f}",
+       "ENGLISH": "After cancelling: {f}"
+      },
+      "l_inf": {
+       "HEBREW": "הצבה נותנת {p}/0 והסימן זהה משני הצדדים, ולכן הגבול {r}",
+       "ENGLISH": "Substitution gives {p}/0 with the same sign on both sides, so the limit is {r}"
+      },
+      "l_sides": {
+       "HEBREW": "הצבה נותנת מספר/0: מימין {right}, משמאל {left} - הגבול לא קיים",
+       "ENGLISH": "Substitution gives a number/0: from the right {right}, from the left {left} - no limit"
+      },
+      "l_leading": {
+       "HEBREW": "באינסוף קובעים האיברים המובילים: {p} / {q}",
+       "ENGLISH": "At infinity the leading terms decide: {p} / {q}"
+      },
+      "l_numeric": {
+       "HEBREW": "הצבה ישירה לא מוגדרת; הערכה משני הצדדים: f({left}) ≈ {lv}, f({right}) ≈ {rv}",
+       "ENGLISH": "Direct substitution is undefined; from both sides: f({left}) ≈ {lv}, f({right}) ≈ {rv}"
+      },
+      "l_none": {
+       "HEBREW": "לא קיים",
+       "ENGLISH": "does not exist"
+      },
+      "c_ncr": {
+       "HEBREW": "צירופים: C({n}, {r}) = {n}! / ({r}! · {k}!)",
+       "ENGLISH": "Combinations: C({n}, {r}) = {n}! / ({r}! · {k}!)"
+      },
+      "c_npr": {
+       "HEBREW": "תמורות: P({n}, {r}) = {n}! / {k}!",
+       "ENGLISH": "Permutations: P({n}, {r}) = {n}! / {k}!"
+      },
+      "c_binomial": {
+       "HEBREW": "נוסחת הבינום: (a + b)^{n} = Σ C({n}, k)·a^({n}−k)·b^k, כאשר a = {a}, b = {b}",
+       "ENGLISH": "Binomial theorem: (a + b)^{n} = Σ C({n}, k)·a^({n}−k)·b^k, with a = {a}, b = {b}"
+      },
+      "c_term": {
+       "HEBREW": "k = {k}: C({n}, {k}) = {c} → {term}",
+       "ENGLISH": "k = {k}: C({n}, {k}) = {c} → {term}"
+      }
      }
     }
    }
