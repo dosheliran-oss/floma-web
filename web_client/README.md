@@ -74,9 +74,13 @@ length.
 - Every chat belongs to one assistant: **Floma's and Toby's chats are separate lists**, each with its
   own open chat, and switching the assistant switches the list. When a chat ends (New chat, another
   chat or assistant, the next start), Gemini summarizes it into facts. They go into the device's notes and, when
-  Firebase is connected, to the shared memory. Only each assistant's **3 most recent chats** stay on
+  Firebase is connected, to the shared memory. Only each assistant's **10 most recent unpinned chats** stay on
   the device: an older chat is deleted once its facts are in the notes. If they couldn't be extracted
-  yet (no key, offline), it waits, and beyond 10 chats the oldest go anyway.
+  yet (no key, offline), it waits, and beyond 20 chats the oldest go anyway. Up to **5 pinned
+  chats** (📌) per assistant never count toward that, are never deleted automatically, and are
+  stored whole in Firebase (`floma/pinned_chats/<persona>/<id>`), so every device restores them
+  (Step 70). "סיכום שיחה" extracts the open chat's facts on demand, and Settings → "סיכום זיכרון"
+  lets the user edit, delete or add facts (saved at once, pushed to Firebase).
 - A chat whose facts couldn't be extracted yet is marked "waiting to be saved".
 - Chats saved by an older version (one long chat) are moved into the list as one chat.
 
@@ -209,6 +213,7 @@ in their browser.
 ```powershell
 node web_client\check_pwa.js                         # manifest, icons, service worker, page wiring
 node web_client\check_voice.js                       # dictation, read-aloud, interruptions, ElevenLabs + fallback (fakes)
+node web_client\check_web_sessions.js              # Step 70: 10-chat retention, 5 synced pinned chats, Memory Summary edits, chat summarize
 python -m unittest web_client\test_serve.py          # serve.py only serves the web app's folders
 ```
 

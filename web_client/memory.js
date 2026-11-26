@@ -72,9 +72,11 @@
     const base = normalizeDbUrl(url);
     if (!base) throw new SyncError("BAD_URL");
     const root = window.FLOMA_PLATFORM.memory_sync.root;
-    async function call(method, body) {
+    const pinnedRoot = window.FLOMA_PLATFORM.chat_sessions.pinned_root;
+    const at = (...parts) => parts.map((p) => String(p).split("/").map(encodeURIComponent).join("/")).join("/");
+    async function call(method, body, path = root) {
       // The legacy database secret goes in the auth parameter (the REST API's way for it).
-      const address = `${base}/${root}.json?auth=${encodeURIComponent(secret)}`;
+      const address = `${base}/${path}.json?auth=${encodeURIComponent(secret)}`;
       let response;
       try {
         response = await fetch(address, {
@@ -105,6 +107,14 @@
       },
       async putCategories(nodes) {
         await call("PATCH", nodes);
+      },
+      // Step 70: pinned chats, whole, under chat_sessions.pinned_root/<persona>/<chat id>.
+      async getPinned() {
+        const data = await call("GET", undefined, at(pinnedRoot));
+        return data && typeof data === "object" && !Array.isArray(data) ? data : {};
+      },
+      async putPinned(who, id, node) {
+        await call(node ? "PUT" : "DELETE", node || undefined, at(pinnedRoot, who, id));
       },
     };
   }
@@ -309,7 +319,89 @@
     return Boolean(pulled);
   }
 
-  /** The saved facts by category key (Settings → "View saved memory"). */
+  /**
+   * The chat's "סיכום שיחה" button (Step 70): a thorough pass over the whole conversation (not only what's new
+   * since the last checkpoint), merged into the notes and pushed. "done" | "empty" | "failed" (no model now).
+   */
+  async function summarizeChatJob(messages, summarize) {
+    const chat = messages.filter((m) => !m.local && m.ts && m.text && m.text.trim());
+    if (chat.length < 2) return "empty";
+    if (!(await summarizeIntoNotes(chat, summarize))) return "failed";
+    await pushNow();
+    return "done";
+  }
+
+  /**
+   * "סיכום זיכרון": the user's own edit of one topic (Step 70). Saved locally at once and pushed to Firebase when
+   * it's connected; an empty list removes the topic (an empty node in Firebase). False for an unknown topic.
+   */
+  async function setFactsJob(key, list) {
+    if (!window.FLOMA_PLATFORM.memory_categories.some((c) => c.key === key)) return false;
+    const seen = new Set();
+    const clean = [];
+    for (const line of list) {
+      const f = fact(String(line).replace(/\s+/g, " "));
+      if (f && !seen.has(f)) { seen.add(f); clean.push(f); }
+    }
+    const notes = clean.slice(0, window.FLOMA_PLATFORM.memory_sync.max_facts).map((f) => `- ${f}`).join("\n");
+    if ((state.sections[key] || "") === notes) return true;
+    if (notes) state.sections[key] = notes;
+    else delete state.sections[key];
+    if (configured()) state.pending[key] = notes; // before Firebase is set up the edit stays local
+    save();
+    await pushNow();
+    return true;
+  }
+
+  async function editFactJob(key, index, text) {
+    const list = facts()[key] || [];
+    if (index < 0 || index >= list.length) return false;
+    list[index] = text;
+    return setFactsJob(key, list.filter((f) => f.trim()));
+  }
+
+  async function deleteFactJob(key, index) {
+    const list = facts()[key] || [];
+    if (index < 0 || index >= list.length) return false;
+    list.splice(index, 1);
+    return setFactsJob(key, list);
+  }
+
+  async function addFactJob(text, key) {
+    const note = String(text || "").replace(/\s+/g, " ").trim();
+    if (!note) return false;
+    const topic = key || window.FLOMA_PLATFORM.memory_sync.summary_category || "notes";
+    return setFactsJob(topic, [...(facts()[topic] || []), note]);
+  }
+
+  /**
+   * Every pinned chat in Firebase ({persona: {id: node}}), or null when it can't be read right now. The memory's
+   * backoff is respected, but a pinned-chat failure never changes it (the facts keep syncing; this is retried
+   * on the next start, pin or sync).
+   */
+  async function fetchPinnedJob() {
+    const api = available();
+    if (!api) return null;
+    try {
+      return await api.getPinned();
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /** Uploads one pinned chat (node null: removes it); false when it couldn't be written (retried later). */
+  async function putPinnedJob(who, id, node) {
+    const api = available();
+    if (!api) return false;
+    try {
+      await api.putPinned(who, id, node);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /** The saved facts by category key (Settings → "סיכום זיכרון"). */
   function facts() {
     const result = {};
     for (const [key, notes] of Object.entries(state.sections)) {
@@ -341,6 +433,14 @@
     fold: (messages, summarize, since) => serial(() => foldNow(messages, summarize, since)),
     distill: (messages, summarize, since) => serial(() => distillNow(messages, summarize, since)),
     syncNow: () => serial(syncNowJob),
+    summarizeChat: (messages, summarize) => serial(() => summarizeChatJob(messages, summarize)),
+    setFacts: (key, list) => serial(() => setFactsJob(key, list)),
+    editFact: (key, index, text) => serial(() => editFactJob(key, index, text)),
+    deleteFact: (key, index) => serial(() => deleteFactJob(key, index)),
+    addFact: (text, key) => serial(() => addFactJob(text, key)),
+    configured: () => configured(),
+    fetchPinned: () => serial(fetchPinnedJob),
+    putPinned: (who, id, node) => serial(() => putPinnedJob(who, id, node)),
     /** "Delete all chats": the chats go, the facts stay (here and in Firebase); only the bookmark resets. */
     forgetLocal() { state.coveredTs = 0; save(); },
     _mergeRemote: mergeRemote,

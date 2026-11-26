@@ -13,8 +13,14 @@
  *
  * A chat that ends (New chat, another chat or assistant, the next start) is summarized into facts:
  * they go into the local notes and, when it's connected, to the user's Firebase memory (memory.js).
- * Only each assistant's KEEP_SESSIONS newest chats are kept in this browser; an older chat is deleted
- * once its facts are in the notes, and beyond HARD_CAP even if they couldn't be extracted.
+ * Only each assistant's KEEP_SESSIONS (10) newest unpinned chats are kept in this browser; an older chat is
+ * deleted once its facts are in the notes, and beyond HARD_CAP (20) even if they couldn't be extracted.
+ *
+ * Pinned chats (Step 70, 📌, at most MAX_PINNED = 5 per assistant: entry.pinnedAt) never count toward those
+ * limits and are never deleted automatically. Each is stored whole in the user's Firebase
+ * (chat_sessions.pinned_root/<persona>/<id>, memory.js putPinned): entry.pinDirty = changed since the last
+ * upload, entry.pinSynced = Firebase has it; "floma.unpinned" lists the ones unpinned or deleted here that
+ * Firebase still has. Every start pulls the pinned chats, so the same credentials bring them to any device.
  */
 (function () {
   "use strict";
@@ -33,10 +39,13 @@
     chat: (id) => `floma.chat.${id}`,
     legacyHistory: "floma.history", // the single infinite chat before sessions (migrated once)
     seenBuild: "floma.seenBuild", reloadedFor: "floma.reloadedFor", // the published build this browser ran last (Step 59)
+    unpinned: "floma.unpinned", // Step 70: pinned chats unpinned / deleted here that Firebase still has
   };
   const MAX_STORED = 200; // messages per chat
-  const KEEP_SESSIONS = 3; // chats kept per assistant once older ones are memorized
-  const HARD_CAP = 10; // chats per assistant even when their facts couldn't be extracted yet
+  const SESSIONS = window.FLOMA_PLATFORM.chat_sessions; // the same limits on every platform
+  const KEEP_SESSIONS = SESSIONS.keep; // unpinned chats kept per assistant once older ones are memorized (10)
+  const HARD_CAP = SESSIONS.hard_cap; // unpinned chats per assistant even when their facts couldn't be extracted (20)
+  const MAX_PINNED = SESSIONS.max_pinned; // pinned chats per assistant (5)
   const KEY_PROBLEMS = ["MISSING_KEY", "INVALID_KEY"];
   const KEEP_DOCUMENTS = 3; // document text kept in localStorage for follow-up questions, newest only
   const KEEP_PICTURES = 30; // thumbnails kept in localStorage for the newest messages only
@@ -61,7 +70,7 @@
       confirmClear: "למחוק את כל השיחות מהדפדפן הזה? מה שלמדתי עליך נשאר בזיכרון.",
       memBadgeOn: "☁ זיכרון ענן מחובר · {topics} נושאים · {facts} עובדות", memBadgeOff: "☁ זיכרון ענן לא מחובר · {facts} עובדות בדפדפן",
       memBadgeError: "☁ שגיאת סנכרון ({error}) · {facts} עובדות בדפדפן", memBadgeTime: " · סונכרן {time}",
-      memSyncNow: "סנכרן וחלץ עכשיו", memSyncing: "מסנכרן ומחלץ עובדות…", memView: "הצג זיכרון שמור",
+      memSyncNow: "סנכרן וחלץ עכשיו", memSyncing: "מסנכרן ומחלץ עובדות…", memView: "סיכום זיכרון",
       memViewTitle: "מה אני זוכר עליך", memViewEmpty: "עוד אין עובדות שמורות.", memNotSavedYet: "לא נשמר עדיין לענן",
       guide: "📖 מדריך מערכת ויכולות", help: "מדריך מערכת ויכולות",
       guideMissing: "המדריך לא נטען כרגע (אולי אין חיבור, או שהאתר מתעדכן).", guideRetry: "נסה שוב",
@@ -70,7 +79,6 @@
       sitesAdd: "הוסף", sitesUrl: "כתובת אתר", sitesName: "שם (לא חובה)", sitesBad: "זו לא כתובת אתר תקינה.", sitesNone: "עוד לא נוספו אתרים.", sitesRemove: "הסרה", confirmRemoveKey: "למחוק את המפתח מהדפדפן הזה?",
       chats: "שיחות", newChat: "שיחה חדשה", untitled: "שיחה חדשה", deleteChat: "מחיקת השיחה",
       confirmDeleteChat: "למחוק את השיחה הזו?", noChats: "עוד אין שיחות קודמות.",
-      chatsKept: "רק 3 השיחות האחרונות של {name} נשמרות בדפדפן. לפני שמוחקים שיחה ישנה, העובדות ממנה נשמרות בזיכרון (וב-Firebase כשהוא מחובר).",
       notSaved: "ממתינה לשמירה בזיכרון",
       tobyAddon: "טובי (תוסף ליצן)",
       personaSwitch: "החלפת עוזר: פלומה או טובי",
@@ -138,7 +146,7 @@
       confirmClear: "Delete all chats from this browser? What I learned about you stays in memory.",
       memBadgeOn: "☁ Cloud memory connected · {topics} topics · {facts} facts", memBadgeOff: "☁ Cloud memory not connected · {facts} facts in this browser",
       memBadgeError: "☁ Sync error ({error}) · {facts} facts in this browser", memBadgeTime: " · synced {time}",
-      memSyncNow: "Sync & extract now", memSyncing: "Syncing and extracting facts…", memView: "View saved memory",
+      memSyncNow: "Sync & extract now", memSyncing: "Syncing and extracting facts…", memView: "Memory Summary",
       memViewTitle: "What I remember about you", memViewEmpty: "No saved facts yet.", memNotSavedYet: "not in the cloud yet",
       guide: "📖 System guide & capabilities", help: "System guide & capabilities",
       guideMissing: "The guide didn't load right now (maybe offline, or the site is updating).", guideRetry: "Try again",
@@ -147,7 +155,6 @@
       sitesAdd: "Add", sitesUrl: "Site address", sitesName: "Name (optional)", sitesBad: "That isn't a valid site address.", sitesNone: "No sites added yet.", sitesRemove: "Remove", confirmRemoveKey: "Remove the key from this browser?",
       chats: "Chats", newChat: "New chat", untitled: "New chat", deleteChat: "Delete chat",
       confirmDeleteChat: "Delete this chat?", noChats: "No earlier chats yet.",
-      chatsKept: "Only {name}'s 3 most recent chats stay in this browser. Before an older chat is deleted, its facts are saved to memory (and to Firebase when it's connected).",
       notSaved: "Waiting to be saved to memory",
       tobyAddon: "Toby (jester add-on)",
       personaSwitch: "Switch assistant: Floma or Toby",
@@ -248,6 +255,10 @@
     document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => { el.placeholder = t(el.dataset.i18nPlaceholder).replace("{name}", assistant()); });
     document.querySelectorAll("[data-i18n-label]").forEach((el) => { el.setAttribute("aria-label", t(el.dataset.i18nLabel)); });
     document.querySelectorAll("[data-i18n-title]").forEach((el) => { el.title = t(el.dataset.i18nTitle); }); // tooltips
+    // Step 70: the shared texts (persona/floma_platform.js → chat_sessions.texts).
+    $("summarizeLabel").textContent = ct("summarize");
+    $("summarizeChat").title = ct("summarize_hint");
+    $("summarizeChat").setAttribute("aria-label", ct("summarize"));
     updateSubtitle();
   }
 
@@ -542,6 +553,10 @@
     entry.updated = Date.now();
     delete entry.memorized; // new messages: something new to memorize when it ends
     delete entry.unsaved;
+    if (entry.pinnedAt) {
+      entry.pinDirty = true; // the copy in Firebase is behind now
+      schedulePinnedUpload();
+    }
     state.sessions = [entry, ...state.sessions.filter((x) => x.id !== entry.id)];
     saveSessions();
     renderSessions();
@@ -605,6 +620,8 @@
   }
 
   function deleteSession(id) {
+    const gone = sessionEntry(id);
+    if (gone && gone.pinSynced) forgetRemotePin(gone); // the user deleted a pinned chat: Firebase forgets it too
     save(STORE.chat(id), null);
     state.sessions = state.sessions.filter((x) => x.id !== id);
     saveSessions();
@@ -620,14 +637,179 @@
   }
 
   /**
-   * Retention for one assistant: its KEEP_SESSIONS newest chats stay; an older one is deleted once its
-   * facts are in the notes ("memorized"), and beyond HARD_CAP even if not. Open chats are never deleted.
+   * Retention for one assistant: its KEEP_SESSIONS newest unpinned chats stay; an older one is deleted once
+   * its facts are in the notes ("memorized"), and beyond HARD_CAP even if not. Pinned chats and open chats
+   * are never deleted.
    */
   function pruneSessions(who) {
-    state.sessions.filter((x) => x.persona === who).forEach((entry, position) => {
+    state.sessions.filter((x) => x.persona === who && !x.pinnedAt).forEach((entry, position) => {
       if (position < KEEP_SESSIONS || isOpenSomewhere(entry.id)) return;
       if (entry.memorized || position >= HARD_CAP) deleteSession(entry.id);
     });
+  }
+
+  // --- Pinned chats (Step 70) ---
+
+  const ct = (key) => (SESSIONS.texts[lang()] || SESSIONS.texts.HEBREW)[key];
+  let unpinned = (load(STORE.unpinned, []) || []).filter((x) => x && x.id && x.persona);
+  const saveUnpinned = () => save(STORE.unpinned, unpinned);
+  const pinnedOf = (who) => state.sessions.filter((x) => x.persona === who && x.pinnedAt);
+
+  function forgetRemotePin(entry) {
+    if (!unpinned.some((x) => x.id === entry.id)) unpinned.push({ persona: entry.persona, id: entry.id });
+    saveUnpinned();
+  }
+
+  /** 📌: "pinned" | "unpinned" | "limit" (already MAX_PINNED) | "missing" (an empty chat isn't listed yet). */
+  function togglePin(id) {
+    const entry = sessionEntry(id);
+    if (!entry) return "missing";
+    let result;
+    if (entry.pinnedAt) {
+      if (entry.pinSynced) forgetRemotePin(entry);
+      delete entry.pinnedAt;
+      delete entry.pinDirty;
+      delete entry.pinSynced;
+      result = "unpinned";
+    } else if (pinnedOf(entry.persona).length >= MAX_PINNED) {
+      showToast(ct("pin_limit"));
+      return "limit";
+    } else {
+      entry.pinnedAt = Date.now();
+      entry.pinDirty = true;
+      unpinned = unpinned.filter((x) => x.id !== id);
+      saveUnpinned();
+      result = "pinned";
+    }
+    saveSessions(); // (unpinned, it's an ordinary chat again: the 10-chat rule applies from the next sweep)
+    renderSessions();
+    syncPinned(false);
+    return result;
+  }
+
+  /** A pinned chat as stored in Firebase: its index fields and its messages (text only, times in ms). */
+  function pinnedNode(entry) {
+    const messages = (entry.id === state.sessionId ? state.messages : load(STORE.chat(entry.id), []))
+      .filter((m) => (m.role === "user" || m.role === "assistant") && !m.local && m.text && m.text.trim())
+      .map((m) => ({ role: m.role, text: m.text, ts: m.ts || 0 }));
+    return { id: entry.id, persona: entry.persona, title: entry.title || "", created: entry.created || 0,
+      updated: entry.updated || 0, pinned_at: entry.pinnedAt, device: "web",
+      messages: messages.slice(-SESSIONS.max_pinned_messages) };
+  }
+
+  /** A pinned chat from Firebase in this browser's form, or null if it isn't one (Firebase may turn arrays into objects). */
+  function parsePinnedNode(node, id) {
+    if (!node || typeof node !== "object" || !/^[A-Za-z0-9]+$/.test(id)) return null;
+    let raw = node.messages;
+    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+      raw = Object.keys(raw).sort((a, b) => Number(a) - Number(b)).map((k) => raw[k]);
+    }
+    const num = (v) => (typeof v === "number" && isFinite(v) ? v : 0);
+    const messages = (Array.isArray(raw) ? raw : [])
+      .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.text === "string" && m.text.trim())
+      .map((m) => ({ role: m.role, text: m.text, ts: num(m.ts) }));
+    if (!messages.length) return null;
+    return { title: typeof node.title === "string" ? node.title.slice(0, 80) : "", messages,
+      created: num(node.created) || messages[0].ts, updated: num(node.updated) || messages[messages.length - 1].ts,
+      pinnedAt: num(node.pinned_at) };
+  }
+
+  /**
+   * Firebase's pinned chats merged into this browser: a chat that isn't here is added (pinned; its facts count as
+   * already in the memory - the device that wrote it extracted them); a newer copy replaces the messages unless
+   * this browser has unsent changes; a chat this browser uploaded that Firebase no longer has was unpinned on
+   * another device, so it's unpinned here too (the chat stays). True if anything changed.
+   */
+  function mergePinned(remote) {
+    const forgotten = new Set(unpinned.map((x) => x.id));
+    const seen = new Set();
+    let changed = false;
+    for (const [who, chats] of Object.entries(remote || {})) {
+      if (!["floma", "toby"].includes(who) || !chats || typeof chats !== "object") continue;
+      for (const [id, node] of Object.entries(chats)) {
+        const parsed = parsePinnedNode(node, id);
+        if (!parsed || forgotten.has(id)) continue;
+        seen.add(id);
+        const newest = Math.max(0, ...parsed.messages.map((m) => m.ts));
+        const entry = sessionEntry(id);
+        if (!entry) {
+          save(STORE.chat(id), parsed.messages);
+          state.sessions.push({ id, persona: who, title: parsed.title || sessionTitle(parsed.messages), created: parsed.created,
+            updated: parsed.updated, memoryTs: newest, memorized: true, pinnedAt: parsed.pinnedAt || Date.now(), pinSynced: true });
+          changed = true;
+          continue;
+        }
+        if (!entry.pinnedAt) { entry.pinnedAt = parsed.pinnedAt || Date.now(); changed = true; }
+        if (!entry.pinSynced) { entry.pinSynced = true; changed = true; }
+        if (parsed.updated > (entry.updated || 0) && !entry.pinDirty) {
+          save(STORE.chat(id), parsed.messages);
+          entry.title = parsed.title || entry.title;
+          entry.updated = parsed.updated;
+          entry.memoryTs = Math.max(entry.memoryTs || 0, newest);
+          if (id === state.sessionId && !state.thinking) {
+            state.messages = parsed.messages;
+            renderChat();
+          }
+          changed = true;
+        }
+      }
+    }
+    for (const entry of state.sessions) {
+      if (entry.pinnedAt && entry.pinSynced && !entry.pinDirty && !seen.has(entry.id)) {
+        delete entry.pinnedAt;
+        delete entry.pinSynced;
+        changed = true;
+      }
+    }
+    if (changed) {
+      state.sessions.sort((a, b) => (b.updated || 0) - (a.updated || 0));
+      saveSessions();
+    }
+    return changed;
+  }
+
+  let pinnedBusy = null;
+
+  /**
+   * Pinned chats ↔ Firebase: removals and changed chats are uploaded, and (with pull) the other devices' pinned
+   * chats come in. Nothing happens before Firebase is set up. Resolves when done.
+   */
+  function syncPinned(pull = true) {
+    if (!Memory.configured()) return Promise.resolve(false);
+    if (pinnedBusy) return pinnedBusy.then(() => syncPinned(pull));
+    pinnedBusy = (async () => {
+      const remote = pull ? await Memory.fetchPinned() : null;
+      // Merged first: what's still unsent here is protected by its dirty / unsynced state.
+      const changed = remote ? mergePinned(remote) : false;
+      for (const item of unpinned.slice()) {
+        if (await Memory.putPinned(item.persona, item.id, null)) {
+          unpinned = unpinned.filter((x) => x.id !== item.id);
+          saveUnpinned();
+        }
+      }
+      for (const entry of state.sessions.filter((x) => x.pinnedAt && (x.pinDirty || !x.pinSynced))) {
+        const sentAt = entry.updated;
+        if (await Memory.putPinned(entry.persona, entry.id, pinnedNode(entry))) {
+          const now = sessionEntry(entry.id);
+          if (now && now.pinnedAt) {
+            now.pinSynced = true;
+            if (now.updated === sentAt) delete now.pinDirty;
+          }
+        }
+      }
+      saveSessions();
+      if (changed) renderSessions();
+      return changed;
+    })().finally(() => { pinnedBusy = null; });
+    return pinnedBusy;
+  }
+
+  let pinnedTimer = null;
+
+  /** After a message in a pinned chat: one upload a few seconds later (not one per message). */
+  function schedulePinnedUpload() {
+    if (pinnedTimer) return;
+    pinnedTimer = setTimeout(() => { pinnedTimer = null; syncPinned(false); }, 4000);
   }
 
   function summarizer() {
@@ -676,7 +858,7 @@
     renderMemoryBadges();
     const hint = $("ephemeralHint");
     hint.hidden = false;
-    hint.textContent = t("chatsKept").replace("{name}", assistant());
+    hint.textContent = ct("chats_kept").replace("{name}", assistant());
     if (!mySessions().length) {
       const none = document.createElement("li");
       none.className = "hint";
@@ -685,9 +867,12 @@
     }
     const locale = lang() === "ENGLISH" ? "en" : "he";
     const today = new Date().toDateString();
-    for (const entry of mySessions()) {
+    // Pinned chats first (newest first among them), then the rest, newest first.
+    const ordered = [...mySessions().filter((x) => x.pinnedAt), ...mySessions().filter((x) => !x.pinnedAt)];
+    for (const entry of ordered) {
       const item = document.createElement("li");
-      item.className = `session${entry.id === state.sessionId ? " active" : ""}`;
+      item.className = `session${entry.id === state.sessionId ? " active" : ""}${entry.pinnedAt ? " pinned" : ""}`;
+      item.dataset.id = entry.id;
       const open = document.createElement("button");
       open.type = "button";
       open.className = "session-open";
@@ -714,7 +899,16 @@
         extractBeforeDelete([entry.id]); // from a copy: the facts it taught stay
         deleteSession(entry.id);
       });
-      item.append(open, remove);
+      // Step 70: 📌 pins the chat (kept for good, synced to Firebase) or unpins it.
+      const pin = document.createElement("button");
+      pin.type = "button";
+      pin.className = "session-pin";
+      pin.textContent = "📌";
+      pin.setAttribute("aria-pressed", String(Boolean(entry.pinnedAt)));
+      pin.setAttribute("aria-label", entry.pinnedAt ? ct("unpin") : ct("pin"));
+      pin.title = entry.pinnedAt ? ct("unpin") : ct("pin");
+      pin.addEventListener("click", () => togglePin(entry.id));
+      item.append(open, pin, remove);
       list.append(item);
     }
   }
@@ -1346,6 +1540,7 @@
     try {
       await checkpoint();
       await Memory.syncNow();
+      await syncPinned(); // Step 70: and the pinned chats
     } finally {
       memoryBusy = false;
       fillSettings();
@@ -1391,35 +1586,143 @@
     toastTimer = setTimeout(() => { toast.hidden = true; }, 3200);
   }
 
+  /**
+   * Settings → "סיכום זיכרון" (Step 70): every fact by topic, each with ✎ edit and 🗑 delete, and a row to add a
+   * personal note. Every change is saved locally at once and pushed to Firebase (Memory.setFacts).
+   */
   function showSavedMemory() {
+    $("memoryDialogTitle").textContent = ct("memory_title");
+    $("memoryDialogHint").textContent = ct("memory_hint");
+    $("memoryAddText").placeholder = ct("add_placeholder");
+    $("memoryAddTopic").setAttribute("aria-label", ct("add_topic"));
+    $("memoryAdd").textContent = ct("add");
+    const topics = $("memoryAddTopic");
+    topics.replaceChildren();
+    for (const category of window.FLOMA_PLATFORM.memory_categories) {
+      const option = document.createElement("option");
+      option.value = category.key;
+      option.textContent = category.title;
+      topics.append(option);
+    }
+    topics.value = window.FLOMA_PLATFORM.memory_sync.summary_category || "notes";
+    memoryEditing = null;
+    renderMemoryFacts();
+    const dialog = $("memoryDialog");
+    if (typeof dialog.showModal === "function") { if (!dialog.open) dialog.showModal(); }
+    else dialog.setAttribute("open", "");
+  }
+
+  let memoryEditing = null; // [topic, index] of the fact being edited
+
+  function renderMemoryFacts() {
     const facts = Memory.facts();
     const pending = new Set(Memory.pendingKeys());
     const box = $("memoryFacts");
     box.replaceChildren();
     $("memoryDialogStatus").textContent = memoryBadgeText();
+    const iconButton = (text, label, onClick) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = text;
+      button.title = label;
+      button.setAttribute("aria-label", label);
+      button.addEventListener("click", onClick);
+      return button;
+    };
     for (const category of window.FLOMA_PLATFORM.memory_categories) {
       const items = facts[category.key];
       if (!items) continue;
       const title = document.createElement("h3");
       title.textContent = category.title + (pending.has(category.key) ? ` (${t("memNotSavedYet")})` : "");
       const list = document.createElement("ul");
-      for (const fact of items) {
+      list.className = "editable";
+      items.forEach((fact, index) => {
         const item = document.createElement("li");
-        item.dir = "auto";
-        item.textContent = fact; // facts are text, never HTML
+        item.className = "fact";
+        item.dataset.topic = category.key;
+        item.dataset.index = String(index);
+        if (memoryEditing && memoryEditing[0] === category.key && memoryEditing[1] === index) {
+          const field = document.createElement("input");
+          field.type = "text";
+          field.dir = "auto";
+          field.value = fact;
+          const commit = () => { memoryEditing = null; editMemoryFact(category.key, index, field.value); };
+          field.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") { e.preventDefault(); commit(); }
+            if (e.key === "Escape") { e.preventDefault(); memoryEditing = null; renderMemoryFacts(); }
+          });
+          item.append(field, iconButton("✓", ct("save"), commit),
+            iconButton("✕", ct("cancel"), () => { memoryEditing = null; renderMemoryFacts(); }));
+          list.append(item);
+          setTimeout(() => field.focus(), 0);
+          return;
+        }
+        const text = document.createElement("span");
+        text.className = "fact-text";
+        text.dir = "auto";
+        text.textContent = fact; // facts are text, never HTML
+        item.append(text, iconButton("✎", ct("edit"), () => { memoryEditing = [category.key, index]; renderMemoryFacts(); }),
+          iconButton("🗑", ct("delete"), () => deleteMemoryFact(category.key, index)));
         list.append(item);
-      }
+      });
       box.append(title, list);
     }
     if (!box.children.length) {
       const none = document.createElement("p");
       none.className = "hint";
-      none.textContent = t("memViewEmpty");
+      none.textContent = ct("memory_empty");
       box.append(none);
     }
-    const dialog = $("memoryDialog");
-    if (typeof dialog.showModal === "function") dialog.showModal();
-    else dialog.setAttribute("open", "");
+  }
+
+  async function memoryEdited(promise) {
+    const ok = await promise;
+    if (ok) showToast(ct("memory_saved"));
+    renderMemoryFacts();
+    renderMemoryBadges();
+    return ok;
+  }
+
+  const editMemoryFact = (key, index, text) => memoryEdited(Memory.editFact(key, index, text));
+  const deleteMemoryFact = (key, index) => memoryEdited(Memory.deleteFact(key, index));
+  const addMemoryFact = (text, key) => memoryEdited(Memory.addFact(text, key));
+
+  let summarizing = false;
+
+  /**
+   * The "סיכום שיחה" button (Step 70): the whole open chat goes through a thorough fact-extraction pass (Gemini),
+   * merged into the memory and pushed to Firebase, then "✓ סיכום השיחה עודכן בזיכרון". Automatic extraction on
+   * switching chats or closing the page goes on as before.
+   */
+  async function summarizeChat() {
+    const id = state.sessionId;
+    if (summarizing || state.thinking || distilling.has(id)) return null;
+    const messages = state.messages.slice();
+    if (messages.filter((m) => !m.local && m.ts && m.text && m.text.trim()).length < 2) {
+      showToast(ct("summarize_empty"));
+      return "empty";
+    }
+    summarizing = true;
+    distilling.add(id);
+    $("summarizeChat").disabled = true;
+    showToast(ct("summarize_busy"));
+    let result = "failed";
+    try {
+      result = await Memory.summarizeChat(messages, summarizer());
+      const entry = sessionEntry(id);
+      if (result === "done" && entry) {
+        entry.memoryTs = Math.max(entry.memoryTs || 0, ...messages.map((m) => m.ts || 0));
+        saveSessions();
+      }
+    } finally {
+      summarizing = false;
+      distilling.delete(id);
+      $("summarizeChat").disabled = false;
+      showToast(ct(result === "done" ? "summarize_done" : result === "empty" ? "summarize_empty" : "summarize_failed"));
+      renderMemoryBadges();
+      if ($("memoryDialog").open) renderMemoryFacts();
+    }
+    return result;
   }
 
   function renderSites() {
@@ -2325,6 +2628,7 @@
       extractBeforeDelete([...state.sessions.map((x) => x.id), state.sessionId]); // the facts stay
       for (const entry of state.sessions) save(STORE.chat(entry.id), null); // both assistants' chats
       save(STORE.chat(state.sessionId), null);
+      for (const entry of state.sessions) if (entry.pinSynced) forgetRemotePin(entry); // deleted pinned chats leave Firebase too
       state.sessions = [];
       saveSessions();
       openChats = {};
@@ -2350,7 +2654,7 @@
       state.settings.firebaseUrl = url;
       save(STORE.settings, state.settings);
       fillSettings();
-      Memory.syncNow().then(fillSettings); // the first sync also uploads what this browser knows
+      Memory.syncNow().then(fillSettings).then(() => syncPinned()); // the first sync also uploads what this browser knows
     });
     $("firebaseRemove").addEventListener("click", () => {
       Memory.setSecret(null);
@@ -2414,6 +2718,16 @@
     $("sessionsGuide").addEventListener("click", showGuide);
     $("memSync").addEventListener("click", syncAndExtract);
     $("memView").addEventListener("click", showSavedMemory);
+    // Step 70: "סיכום שיחה" on the top bar, and adding a note in "סיכום זיכרון".
+    $("summarizeChat").addEventListener("click", summarizeChat);
+    const addNote = () => {
+      const text = $("memoryAddText").value;
+      addMemoryFact(text, $("memoryAddTopic").value).then((ok) => { if (ok) $("memoryAddText").value = ""; });
+    };
+    $("memoryAdd").addEventListener("click", addNote);
+    $("memoryAddText").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); addNote(); } // (not the dialog's submit, which closes it)
+    });
     $("siteAdd").addEventListener("click", () => {
       const url = Sites.normalize($("siteUrl").value);
       if (!url) {
@@ -2441,7 +2755,8 @@
     // prompt already has what the phone and the PC learned. Then the chats left last time are memorized,
     // and the chat left open is checkpointed (its facts saved without closing it).
     Memory.setDatabaseUrl(() => state.settings.firebaseUrl);
-    Memory.refreshOnStart().then(fillSettings).then(sweepSessions).then(() => checkpoint());
+    // Step 70: then the pinned chats come in from Firebase (and this browser's unsent ones go up).
+    Memory.refreshOnStart().then(fillSettings).then(() => syncPinned()).then(sweepSessions).then(() => checkpoint());
 
     // No key prompt: Gemini is optional (Settings → Model). Without it the chat answers in local mode.
     $("input").focus();

@@ -62,6 +62,28 @@ html, body { overflow: hidden; }
   border-block-end: 1px solid var(--border);
 }
 
+/* Step 70: "סיכום שיחה" on the top bar - a compact labeled pill. */
+.chip-button {
+  flex: none;
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-variant);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.chip-button:hover { border-color: var(--primary); }
+.chip-button:disabled { opacity: 0.6; cursor: progress; }
+/* Phones: just 📝 in a small circle (the label is its aria-label / tooltip). */
+@media (max-width: 520px) {
+  .chip-button { width: 32px; height: 32px; min-height: 0; padding: 0; border-radius: 50%; }
+  .chip-button #summarizeLabel { display: none; }
+}
+
 /* The quick "פלומה | טובי" switch on the top bar: a small pill, the active assistant filled. */
 .persona-toggle {
   display: inline-flex;
@@ -409,6 +431,7 @@ button.danger { background: transparent; color: var(--error); border: 1px solid 
 /* Narrow phones: the switch already says who's active, so the name gives it room. */
 @media (max-width: 420px) {
   .topbar .title { display: none; }
+  .topbar { gap: 4px; padding-inline: 8px; }
 }
 
 /* Installed (standalone window): no browser chrome around it, so the header acts as the title bar. */
@@ -730,6 +753,23 @@ button.danger { background: transparent; color: var(--error); border: 1px solid 
 .session:hover .session-delete, .session-delete:focus-visible, .session.active .session-delete { opacity: 1; }
 .session-delete:hover { background: var(--background); color: var(--text); }
 @media (hover: none) { .session-delete { opacity: 1; } }
+/* Step 70: 📌 - always visible on a pinned chat, on hover otherwise. */
+.session-pin {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.85rem;
+  opacity: 0;
+  filter: grayscale(1);
+}
+.session:hover .session-pin, .session-pin:focus-visible, .session.active .session-pin, .session.pinned .session-pin { opacity: 1; }
+.session.pinned .session-pin { filter: none; background: var(--surface-variant); }
+.session-pin:hover { background: var(--background); }
+@media (hover: none) { .session-pin { opacity: 1; } }
 
 @media (min-width: 1024px) {
   .sessions, .sessions[hidden] { display: flex; width: 280px; animation: none; }
@@ -745,6 +785,17 @@ button.danger { background: transparent; color: var(--error); border: 1px solid 
 .memory-facts h3 { font-size: 0.95rem; margin: 12px 0 4px; color: var(--primary); }
 .memory-facts ul { margin: 0; padding-inline-start: 20px; }
 .memory-facts li { margin: 2px 0; }
+/* Step 70: "סיכום זיכרון" - each fact with ✎ / 🗑, and the add row. */
+.memory-facts ul.editable { list-style: none; padding: 0; }
+.memory-facts .fact { display: flex; align-items: center; gap: 4px; padding: 2px 4px; border-radius: 8px; }
+.memory-facts .fact:hover { background: var(--surface-variant); }
+.memory-facts .fact-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.memory-facts .fact input { flex: 1; min-width: 0; font: inherit; padding: 4px 8px; }
+.memory-facts .fact button { flex: none; border: 0; background: transparent; cursor: pointer; width: 28px; height: 28px; border-radius: 50%; color: var(--muted); }
+.memory-facts .fact button:hover { background: var(--background); color: var(--text); }
+.memory-add { display: flex; gap: 6px; margin-top: 8px; }
+.memory-add input { flex: 1; min-width: 0; font: inherit; padding: 6px 10px; }
+.memory-add select { font: inherit; max-width: 40%; }
 .toast {
   position: fixed; inset-inline: 0; bottom: 96px; margin: 0 auto; width: max-content; max-width: 90vw;
   padding: 8px 16px; border-radius: 999px; background: var(--surface2, #333); color: var(--text);

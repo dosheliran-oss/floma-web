@@ -10,12 +10,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Floma">
-  <meta name="floma-build" content="1.66.0-971c3135a270-708da73f">
+  <meta name="floma-build" content="1.67.0-0f378da750a3-6dd7373c">
   <title>Floma</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png?v=71c418f008">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=5eefe63104">
-  <link rel="stylesheet" href="styles.css?v=c94aa15cb6">
+  <link rel="stylesheet" href="styles.css?v=132180ba88">
 </head>
 <body>
   <div class="app">
@@ -30,6 +30,8 @@
       </div>
       <!-- The quick "פלומה | טובי" switch: the same switch as the one in Settings (filled by app.js). -->
       <div class="persona-toggle" id="personaToggle" role="radiogroup" data-i18n-label="personaSwitch"></div>
+      <!-- Step 70: "סיכום שיחה" - this whole chat's facts into the memory now (and Firebase). -->
+      <button class="chip-button" id="summarizeChat" type="button"><span aria-hidden="true">📝</span> <span id="summarizeLabel"></span></button>
       <!-- Step 60: the Skills panel (skills.js, persona/skills_registry.js). -->
       <button class="icon-button" id="openSkills" type="button" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M20.5 11H19V7a2 2 0 0 0-2-2h-4V3.5a2.5 2.5 0 0 0-5 0V5H4a2 2 0 0 0-2 2v3.8h1.5a2.7 2.7 0 0 1 0 5.4H2V20a2 2 0 0 0 2 2h3.8v-1.5a2.7 2.7 0 0 1 5.4 0V22H17a2 2 0 0 0 2-2v-4h1.5a2.5 2.5 0 0 0 0-5Z"/></svg></button>
       <button class="icon-button" id="newChat" type="button" data-i18n-label="newChat"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75L3 17.25ZM20.7 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83Z"/></svg></button>
@@ -222,11 +224,18 @@
 
   </aside>
 
+  <!-- Step 70: "סיכום זיכרון" - every fact by topic, editable (✎ / 🗑 / add); changes are saved at once (memory.js). -->
   <dialog class="key-dialog memory-dialog" id="memoryDialog" aria-labelledby="memoryDialogTitle">
     <form method="dialog">
-      <h2 id="memoryDialogTitle" data-i18n="memViewTitle"></h2>
+      <h2 id="memoryDialogTitle"></h2>
+      <p class="hint" id="memoryDialogHint"></p>
       <p class="hint" id="memoryDialogStatus"></p>
       <div id="memoryFacts" class="memory-facts"></div>
+      <div class="memory-add">
+        <select id="memoryAddTopic"></select>
+        <input id="memoryAddText" type="text" dir="auto" autocomplete="off">
+        <button type="button" id="memoryAdd"></button>
+      </div>
       <div class="buttons"><button type="submit" data-i18n="close"></button></div>
     </form>
   </dialog>
@@ -265,11 +274,11 @@
   </dialog>
 
   <!-- The Floma platform and its assistant personas, shared with Android and the desktop app. -->
-  <script src="../persona/floma_platform.js?v=3725997811"></script>
+  <script src="../persona/floma_platform.js?v=97038dcffc"></script>
   <script src="../persona/personas.js?v=76720a2a25"></script>
-  <script src="../persona/system_guide.js?v=731100dd1d"></script>
+  <script src="../persona/system_guide.js?v=ea7abaaced"></script>
   <script src="core.js?v=0f63ad6a39"></script>
-  <script src="memory.js?v=815a888df9"></script>
+  <script src="memory.js?v=052b01db31"></script>
   <script src="sites.js?v=27de92a66b"></script>
   <script src="../persona/sites_catalog.js?v=7f9b2bfb52"></script>
   <script src="catalog.js?v=e43e86c6c7"></script>
@@ -283,6 +292,6 @@
   <script src="calc_academic.js?v=708925087c"></script>
   <script src="skills.js?v=75c78b8392"></script>
   <script src="update.js?v=dc7b6934b3"></script>
-  <script src="app.js?v=3373b33615"></script>
+  <script src="app.js?v=a172ab33ae"></script>
 </body>
 </html>
