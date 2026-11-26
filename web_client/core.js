@@ -531,6 +531,213 @@
     return fill((texts[language] || texts.HEBREW)[key] || texts.HEBREW[key], values);
   }
 
+  // --- Accounts (Step 75): ported from persona.py (persona-tests checks them) --------------------------------
+
+  const usernameChar = (c) => (c >= "a" && c <= "z") || (c >= "0" && c <= "9") || c === "_" || c === "-"
+    || (c >= "\u05d0" && c <= "\u05ea");
+
+  /** The username as stored (and the user id): trimmed, A-Z lowercased; null unless 3-32 allowed characters. */
+  function normalizeUsername(name) {
+    if (typeof name !== "string") return null;
+    const text = [...name.trim()].map((c) => (c >= "A" && c <= "Z" ? c.toLowerCase() : c)).join("");
+    const chars = [...text];
+    if (chars.length < 3 || chars.length > 32 || !chars.every(usernameChar)) return null;
+    return text;
+  }
+
+  const hexBytes = (hex) => {
+    if (typeof hex !== "string" || hex.length % 2 || /[^0-9a-fA-F]/.test(hex)) return null;
+    return new Uint8Array(hex.match(/../g) ? hex.match(/../g).map((b) => parseInt(b, 16)) : []);
+  };
+  const toHex = (buffer) => [...new Uint8Array(buffer)].map((b) => b.toString(16).padStart(2, "0")).join("");
+
+  // SHA-256 / HMAC / PBKDF2 in plain JS: for pages without WebCrypto (plain http on the LAN: serve.py), same result.
+  const K256 = [0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786,
+    0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7,
+    0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb,
+    0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f,
+    0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2];
+  const IV256 = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+  const W = new Int32Array(64);
+
+  /** One SHA-256 block (16 big-endian words at [words, offset]) into [h] (8 words), in place. */
+  function compress(h, words, offset) {
+    for (let i = 0; i < 16; i++) W[i] = words[offset + i];
+    for (let i = 16; i < 64; i++) {
+      const a = W[i - 15], b = W[i - 2];
+      const s0 = ((a >>> 7) | (a << 25)) ^ ((a >>> 18) | (a << 14)) ^ (a >>> 3);
+      const s1 = ((b >>> 17) | (b << 15)) ^ ((b >>> 19) | (b << 13)) ^ (b >>> 10);
+      W[i] = (W[i - 16] + s0 + W[i - 7] + s1) | 0;
+    }
+    let [a, b, c, d, e, f, g, k] = h;
+    for (let i = 0; i < 64; i++) {
+      const S1 = ((e >>> 6) | (e << 26)) ^ ((e >>> 11) | (e << 21)) ^ ((e >>> 25) | (e << 7));
+      const t1 = (k + S1 + ((e & f) ^ (~e & g)) + K256[i] + W[i]) | 0;
+      const S0 = ((a >>> 2) | (a << 30)) ^ ((a >>> 13) | (a << 19)) ^ ((a >>> 22) | (a << 10));
+      const t2 = (S0 + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+      k = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+    }
+    h[0] = (h[0] + a) | 0; h[1] = (h[1] + b) | 0; h[2] = (h[2] + c) | 0; h[3] = (h[3] + d) | 0;
+    h[4] = (h[4] + e) | 0; h[5] = (h[5] + f) | 0; h[6] = (h[6] + g) | 0; h[7] = (h[7] + k) | 0;
+  }
+
+  /** SHA-256 of [bytes] continuing from state [h] after [prefixBytes] already hashed (a multiple of 64). */
+  function sha256From(h, bytes, prefixBytes) {
+    const state = Int32Array.from(h);
+    const total = bytes.length + prefixBytes;
+    const padded = new Uint8Array(((bytes.length + 9 + 63) >> 6) << 6);
+    padded.set(bytes);
+    padded[bytes.length] = 0x80;
+    const bits = total * 8;
+    padded[padded.length - 4] = (bits >>> 24) & 255; padded[padded.length - 3] = (bits >>> 16) & 255;
+    padded[padded.length - 2] = (bits >>> 8) & 255; padded[padded.length - 1] = bits & 255;
+    padded[padded.length - 5] = Math.floor(bits / 2 ** 32) & 255;
+    const words = new Int32Array(padded.length / 4);
+    for (let i = 0; i < words.length; i++) words[i] = (padded[i * 4] << 24) | (padded[i * 4 + 1] << 16) | (padded[i * 4 + 2] << 8) | padded[i * 4 + 3];
+    for (let i = 0; i < words.length; i += 16) compress(state, words, i);
+    return state;
+  }
+
+  const wordsToBytes = (h) => { const out = new Uint8Array(32); h.forEach((w, i) => { out[i * 4] = w >>> 24; out[i * 4 + 1] = (w >>> 16) & 255; out[i * 4 + 2] = (w >>> 8) & 255; out[i * 4 + 3] = w & 255; }); return out; };
+
+  /** PBKDF2-HMAC-SHA256 in plain JS (32 bytes); the HMAC pads are hashed once, so each round is two blocks. */
+  function pbkdf2Js(passwordBytes, salt, iterations) {
+    let key = Uint8Array.from(passwordBytes);
+    if (key.length > 64) key = wordsToBytes(sha256From(IV256, key, 0));
+    const pad = (x) => { const b = new Uint8Array(64); for (let i = 0; i < 64; i++) b[i] = (key[i] || 0) ^ x; return b; };
+    const blockState = (block) => {
+      const words = new Int32Array(16);
+      for (let i = 0; i < 16; i++) words[i] = (block[i * 4] << 24) | (block[i * 4 + 1] << 16) | (block[i * 4 + 2] << 8) | block[i * 4 + 3];
+      const h = Int32Array.from(IV256);
+      compress(h, words, 0);
+      return h;
+    };
+    const inner = blockState(pad(0x36));
+    const outer = blockState(pad(0x5c));
+    const hmac = (msg) => wordsToBytes(sha256From(outer, wordsToBytes(sha256From(inner, msg, 64)), 64));
+    const first = new Uint8Array(salt.length + 4);
+    first.set(salt);
+    first[salt.length + 3] = 1;
+    let u = hmac(first);
+    const result = Uint8Array.from(u);
+    // The rounds: a 32-byte message each, so one fixed-size block per hash (no re-padding).
+    const block = new Int32Array(16);
+    block[8] = 0x80000000 | 0; block[15] = (64 + 32) * 8;
+    const uWords = new Int32Array(8);
+    for (let i = 0; i < 8; i++) uWords[i] = (u[i * 4] << 24) | (u[i * 4 + 1] << 16) | (u[i * 4 + 2] << 8) | u[i * 4 + 3];
+    const acc = Int32Array.from(uWords);
+    const h = new Int32Array(8);
+    for (let n = 1; n < iterations; n++) {
+      for (let i = 0; i < 8; i++) block[i] = uWords[i];
+      h.set(inner); compress(h, block, 0);
+      for (let i = 0; i < 8; i++) block[i] = h[i];
+      h.set(outer); compress(h, block, 0);
+      for (let i = 0; i < 8; i++) { uWords[i] = h[i]; acc[i] ^= h[i]; }
+    }
+    return toHex(wordsToBytes(acc));
+  }
+
+  /** PBKDF2-HMAC-SHA256 (salted, iterated SHA-256) of the password, 32 bytes as hex: WebCrypto when the page has it
+   * (async), plain JS otherwise (same result). */
+  async function passwordHash(password, saltHex, iterations) {
+    const salt = hexBytes(saltHex);
+    if (!salt) throw new Error("bad salt");
+    const c = globalThis.crypto || (typeof window !== "undefined" && window.crypto);
+    if (c && c.subtle) {
+      const key = await c.subtle.importKey("raw", new Uint8Array(utf8(password)), "PBKDF2", false, ["deriveBits"]);
+      return toHex(await c.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt, iterations: Math.trunc(iterations) }, key, 256));
+    }
+    return pbkdf2Js(utf8(password), salt, Math.trunc(iterations));
+  }
+
+  const passwordOk = (password) => typeof password === "string" && [...password].length >= P().accounts.min_password;
+
+  /** What users_root/<user_id> holds: never the password itself. */
+  async function userRecord(username, displayName, password, saltHex, createdAt, iterations = null) {
+    const acc = P().accounts;
+    const it = iterations || acc.iterations;
+    const id = normalizeUsername(username);
+    return { user_id: id, username: id, display_name: String(displayName || "").split(/\s+/).filter(Boolean).join(" ") || id,
+      algo: acc.algo, iterations: Math.trunc(it), salt: saltHex, hash: await passwordHash(password, saltHex, it),
+      created_at: Math.trunc(createdAt) };
+  }
+
+  /** [password] matches the stored record. */
+  async function verifyPassword(record, password) {
+    if (!isPlainObject(record) || typeof password !== "string" || record.algo !== P().accounts.algo) return false;
+    const iterations = whole(record.iterations);
+    if (typeof record.salt !== "string" || typeof record.hash !== "string" || !iterations || iterations < 1) return false;
+    if (!hexBytes(record.salt)) return false;
+    const actual = await passwordHash(password, record.salt, iterations);
+    let diff = actual.length ^ record.hash.length;
+    for (let i = 0; i < Math.min(actual.length, record.hash.length); i++) diff |= actual.charCodeAt(i) ^ record.hash.charCodeAt(i);
+    return diff === 0;
+  }
+
+  /** A random salt (hex) for a new user. */
+  function newSalt() {
+    const bytes = new Uint8Array(P().accounts.salt_bytes);
+    (globalThis.crypto || window.crypto).getRandomValues(bytes);
+    return toHex(bytes);
+  }
+
+  function userRoot(userId) {
+    const acc = P().accounts;
+    return userId ? acc.user_root.replace("{user_id}", userId) : acc.legacy_root;
+  }
+
+  /** memory | pinned | queue | settings, under the user's root (plus [rest]). */
+  function userPath(userId, kind, ...rest) {
+    return [userRoot(userId), P().accounts.paths[kind], ...rest].join("/");
+  }
+
+  function legacyHasData(legacy) {
+    return ["memory", "pinned", "queue", "settings"].some((k) => isPlainObject(legacy[k]) && Object.keys(legacy[k]).length > 0);
+  }
+
+  /** The one-time import of the old flat root into an account (nothing is overwritten or deleted). */
+  function migrationPlan(legacy, current, now, device) {
+    const obj = (v) => (isPlainObject(v) ? v : {});
+    const oldMem = obj(legacy.memory);
+    const curMem = obj(current.memory);
+    const memory = {};
+    let facts = 0;
+    for (const c of P().memory_categories) {
+      if (!(c.key in oldMem)) continue;
+      const theirs = itemsFromNode(c.key, oldMem[c.key]);
+      const merged = mergeItems(c.key in curMem ? itemsFromNode(c.key, curMem[c.key]) : {}, theirs);
+      facts += liveItems(theirs).length;
+      memory[c.key] = nodeFromItems(c.key, merged, now, device);
+    }
+    const copyMissing = (kind) => {
+      const old = obj(legacy[kind]);
+      const cur = obj(current[kind]);
+      const out = {};
+      for (const who of Object.keys(old).sort()) {
+        if (!isPlainObject(old[who])) continue;
+        const have = obj(cur[who]);
+        const fresh = {};
+        for (const id of Object.keys(old[who]).sort()) if (isPlainObject(old[who][id]) && !(id in have)) fresh[id] = old[who][id];
+        if (Object.keys(fresh).length) out[who] = fresh;
+      }
+      return out;
+    };
+    const pinned = copyMissing("pinned");
+    const queue = copyMissing("queue");
+    const oldSet = obj(legacy.settings);
+    const curSet = obj(current.settings);
+    const settings = {};
+    for (const k of Object.keys(oldSet).sort()) if (isPlainObject(oldSet[k]) && !(k in curSet)) settings[k] = oldSet[k];
+    return { memory, pinned, queue, settings, facts, pinned_count: Object.values(pinned).reduce((n, v) => n + Object.keys(v).length, 0) };
+  }
+
+  function accountText(key, language, values = {}) {
+    const texts = P().accounts.texts;
+    return fill((texts[language] || texts.HEBREW)[key] || texts.HEBREW[key], values);
+  }
+
   // --- Gemini client (AIService.kt) -------------------------------------------------------------
 
   class AiError extends Error {
@@ -1027,6 +1234,8 @@
     memoryNode, notesFromNode, complete, summarizeMemory, verifyKey, translate,
     factId, itemsFromNode, mergeItems, liveItems, notesFromItems, applyNotes, editItem, nodeFromItems,
     backupDocument, parseBackup, restoreItems, extractionStatus, ledgerText,
+    normalizeUsername, passwordHash, passwordOk, userRecord, verifyPassword, newSalt, userRoot, userPath, legacyHasData,
+    migrationPlan, accountText, pbkdf2Js,
     personas, profile, personaId, assistantName, nameAfterSwitch,
     avatarImage, animated, greeting, emotionMotion, avatarFor, chatLine, errorLine, typingStage, unavailableLine,
     theme, label, modelForChoice, modelChain, fallsBack, goesOffline,

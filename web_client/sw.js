@@ -20,6 +20,7 @@ const SHELL = [
   "index.html",
   "styles.css",
   "core.js",
+  "account.js",
   "memory.js",
   "sites.js",
   "catalog.js",

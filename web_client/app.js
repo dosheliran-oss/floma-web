@@ -34,13 +34,16 @@
   const Voice = window.FlomaVoice;
   const Docs = window.FlomaDocuments;
   const Skills = window.FlomaSkills;
+  // Step 75: each account keeps its own keys, settings and chats (the browser's first account keeps the old ones).
+  const Account = window.FlomaAccount;
+  const U = `floma.${Account.storagePrefix()}`;
   const STORE = {
-    key: "floma.apiKey", elevenKey: "floma.elevenLabsKey", settings: "floma.settings", sessions: "floma.sessions", active: "floma.activeSession",
-    chat: (id) => `floma.chat.${id}`,
-    legacyHistory: "floma.history", // the single infinite chat before sessions (migrated once)
+    key: `${U}apiKey`, elevenKey: `${U}elevenLabsKey`, settings: `${U}settings`, sessions: `${U}sessions`, active: `${U}activeSession`,
+    chat: (id) => `${U}chat.${id}`,
+    legacyHistory: `${U}history`, // the single infinite chat before sessions (migrated once)
     seenBuild: "floma.seenBuild", reloadedFor: "floma.reloadedFor", // the published build this browser ran last (Step 59)
-    unpinned: "floma.unpinned", // Step 70: pinned chats unpinned / deleted here that Firebase still has
-    queue: "floma.extractionQueue", // Step 74: chats waiting for their facts to be extracted
+    unpinned: `${U}unpinned`, // Step 70: pinned chats unpinned / deleted here that Firebase still has
+    queue: `${U}extractionQueue`, // Step 74: chats waiting for their facts to be extracted
   };
   const MAX_STORED = 200; // messages per chat
   const SESSIONS = window.FLOMA_PLATFORM.chat_sessions; // the same limits on every platform
@@ -1780,7 +1783,7 @@
       showToast(presetText("changed"));
     }
     if (push) {
-      Memory.putNode(presetConfig().firebase_path,
+      Memory.putNode(Core.userPath(Account.userId(), "settings", "voice_preset"),
         { value: chosen, updated_at: state.settings.voicePresetTs, device: "web" });
     }
     fillVoicePreset();
@@ -1801,7 +1804,35 @@
   }
 
   async function pullVoicePreset() {
-    adoptRemoteVoicePreset(await Memory.fetchNode(presetConfig().firebase_path));
+    adoptRemoteVoicePreset(await Memory.fetchNode(Core.userPath(Account.userId(), "settings", "voice_preset")));
+    // Step 75: the account's theme too (newer than ours wins).
+    const theme = await Memory.fetchNode(Core.userPath(Account.userId(), "settings", "theme"));
+    if (theme && window.FLOMA_PLATFORM.themes[theme.value] && typeof theme.updated_at === "number"
+      && theme.updated_at > (Number(state.settings.themeTs) || 0) && theme.value !== state.settings.theme) {
+      state.settings.theme = theme.value;
+      state.settings.themeTs = theme.updated_at;
+      save(STORE.settings, state.settings);
+      applyTheme();
+      fillThemes();
+    }
+  }
+
+  // --- Step 75: the account in Settings ---
+
+  function fillAccount() {
+    const s = Account.session() || {};
+    const at = (key, values) => Core.accountText(key, lang(), values);
+    $("accountTitle").textContent = at("title");
+    $("accountWho").textContent = s.user_id ? at("signed_in_as", { name: s.display_name || s.user_id }) : at("local_mode");
+    $("logout").textContent = at("logout");
+  }
+
+  function logout() {
+    if (!confirm(Core.accountText("logout_confirm", lang()))) return false;
+    checkpoint();
+    Account.signOut();
+    location.reload();
+    return true;
   }
 
   function renderLoad() {
@@ -2346,9 +2377,12 @@
       swatch.append(dot, name);
       swatch.addEventListener("click", () => {
         state.settings.theme = id;
+        state.settings.themeTs = Date.now();
         save(STORE.settings, state.settings);
         applyTheme();
         fillThemes();
+        // Step 75: the theme follows the account to its other devices.
+        Memory.putNode(Core.userPath(Account.userId(), "settings", "theme"), { value: id, updated_at: state.settings.themeTs, device: "web" });
       });
       picker.append(swatch);
     }
@@ -2387,6 +2421,7 @@
     $("setSerious").checked = s.seriousMode;
     $("setInstructions").value = s.customInstructions;
     fillVoicePreset();
+    fillAccount();
     renderLoad();
     $("setWebSearch").checked = s.webSearch;
     $("setAutoSkills").checked = s.autoSwitchSkills !== false;
@@ -2790,6 +2825,16 @@
   // --- Wiring ---
 
   function init() {
+    // Step 75: "כניסה / פתיחת משתמש חדש" whenever no session is active; the page starts again signed in.
+    if (!Account.session()) {
+      Account.showLogin(load("floma.settings", {}).language === "ENGLISH" ? "ENGLISH" : "HEBREW").then(() => location.reload());
+      return;
+    }
+    if (Account.userId() && !state.settings.firebaseUrl && Account.deviceFirebaseUrl()) {
+      state.settings.firebaseUrl = Account.deviceFirebaseUrl(); // every account in this browser uses it
+      save(STORE.settings, state.settings);
+    }
+    Memory.setUserId(() => Account.userId());
     loadSessions();
     setupPwa();
     $("checkUpdates").addEventListener("click", () => checkForUpdate(true));
@@ -2868,6 +2913,7 @@
     window.addEventListener("focus", syncOnFocus);
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") syncOnFocus(); });
     $("loadReset").addEventListener("click", resetFailSafe);
+    $("logout").addEventListener("click", logout);
     $("loadBadge").addEventListener("click", () => setDrawer(true));
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && !$("settings").hidden) setDrawer(false);
@@ -3069,7 +3115,9 @@
     // Every start loads the shared facts first (no pull interval, no old backoff), so a new chat's
     // prompt already has what the phone and the PC learned. Then the chats left last time are memorized,
     // and the chat left open is checkpointed (its facts saved without closing it).
-    Memory.setDatabaseUrl(() => state.settings.firebaseUrl);
+    Memory.setDatabaseUrl(() => (Account.isLocal() ? null : state.settings.firebaseUrl)); // no account: no sync
+    const imported = Account.takeImported();
+    if (imported) setTimeout(() => showToast(Core.accountText("imported", lang(), imported), 6000), 1500);
     // Step 70: then the pinned chats come in from Firebase (and this browser's unsent ones go up).
     Memory.refreshOnStart().then(fillSettings).then(() => syncPinned()).then(pullVoicePreset).then(sweepSessions).then(() => checkpoint())
       .then(() => processQueue()); // Step 74: chats queued here or on another device

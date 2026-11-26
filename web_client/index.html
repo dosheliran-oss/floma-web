@@ -10,14 +10,36 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Floma">
-  <meta name="floma-build" content="1.70.0-ce7e10cefac8-f921f096">
+  <meta name="floma-build" content="1.71.0-ff969db73ae0-b857311f">
   <title>Floma</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png?v=71c418f008">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=5eefe63104">
-  <link rel="stylesheet" href="styles.css?v=25ef6e81bd">
+  <link rel="stylesheet" href="styles.css?v=0c0309dde5">
 </head>
 <body>
+  <!-- Step 75: כניסה / פתיחת משתמש חדש (account.js), whenever no session is active. -->
+  <section class="login-screen" id="loginScreen" hidden>
+    <form class="login-card" id="loginForm">
+      <h1 id="loginTitle"></h1>
+      <p class="hint" id="loginHint"></p>
+      <div class="login-tabs">
+        <button type="button" id="loginTabLogin" aria-pressed="true"></button>
+        <button type="button" id="loginTabRegister" aria-pressed="false"></button>
+      </div>
+      <div id="loginFirebase" hidden>
+        <p class="hint" id="loginFirebaseHint"></p>
+        <input id="loginUrl" type="url" dir="ltr" autocomplete="off" placeholder="https://<name>.firebaseio.com">
+        <input id="loginSecret" type="password" dir="ltr" autocomplete="off" placeholder="Firebase secret">
+      </div>
+      <input id="loginUsername" type="text" dir="auto" autocomplete="username" autocapitalize="off" spellcheck="false">
+      <input id="loginDisplay" type="text" dir="auto" autocomplete="nickname" hidden>
+      <input id="loginPassword" type="password" dir="auto" autocomplete="current-password">
+      <p class="error" id="loginError" role="alert"></p>
+      <button type="submit" id="loginSubmit"></button>
+      <button type="button" class="link-button" id="loginLocal"></button>
+    </form>
+  </section>
   <div class="app">
     <header class="topbar">
       <button class="icon-button" id="openSessions" type="button" aria-controls="sessions" aria-expanded="false" data-i18n-label="chats"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z"/></svg></button>
@@ -97,6 +119,13 @@
       <p class="hint" id="loadState"></p>
       <div class="buttons"><button type="button" id="loadReset" disabled></button></div>
       <p class="hint" id="loadHint"></p>
+    </section>
+
+    <!-- Step 75: who is signed in, and התנתקות. -->
+    <section class="account-section">
+      <h3 id="accountTitle"></h3>
+      <p class="hint" id="accountWho"></p>
+      <div class="buttons"><button type="button" id="logout" class="danger"></button></div>
     </section>
 
     <section>
@@ -299,11 +328,12 @@
   </dialog>
 
   <!-- The Floma platform and its assistant personas, shared with Android and the desktop app. -->
-  <script src="../persona/floma_platform.js?v=58047e4b79"></script>
+  <script src="../persona/floma_platform.js?v=27e60e7a65"></script>
   <script src="../persona/personas.js?v=76720a2a25"></script>
-  <script src="../persona/system_guide.js?v=985f918edb"></script>
-  <script src="core.js?v=fec01491a2"></script>
-  <script src="memory.js?v=4a126dceb8"></script>
+  <script src="../persona/system_guide.js?v=0558d6a05a"></script>
+  <script src="core.js?v=ce8c102758"></script>
+  <script src="account.js?v=48513a5c52"></script>
+  <script src="memory.js?v=a5fe00759b"></script>
   <script src="sites.js?v=27de92a66b"></script>
   <script src="../persona/sites_catalog.js?v=7f9b2bfb52"></script>
   <script src="catalog.js?v=e43e86c6c7"></script>
@@ -319,6 +349,6 @@
   <script src="calc_academic.js?v=708925087c"></script>
   <script src="skills.js?v=4efe695e6b"></script>
   <script src="update.js?v=dc7b6934b3"></script>
-  <script src="app.js?v=8b021c291a"></script>
+  <script src="app.js?v=c417836774"></script>
 </body>
 </html>

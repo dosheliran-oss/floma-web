@@ -965,3 +965,18 @@ p.load-badge { cursor: default; font-size: 0.85rem; padding: 1px 8px; }
 .memory-dashboard { font-weight: 600; white-space: pre-line; margin: 4px 0; }
 .memory-tools { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
 .memory-tools input[type="search"] { flex: 1 1 160px; min-width: 0; }
+
+/* Step 75: the sign-in screen (account.js) - over everything until a session is active. */
+body.signed-out .app, body.signed-out .drawer { display: none; }
+.login-screen { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; background: var(--bg); overflow-y: auto; }
+.login-screen[hidden] { display: none; }
+.login-card { width: min(420px, 100%); display: flex; flex-direction: column; gap: 10px; padding: 20px;
+  border-radius: 16px; background: var(--surface, #1c2030); color: var(--text); }
+.login-card h1 { margin: 0; font-size: 1.3rem; }
+.login-card input { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border, #333); background: var(--surface2, #262b3d); color: var(--text); }
+.login-tabs { display: flex; gap: 6px; }
+.login-tabs button { flex: 1; padding: 8px; border-radius: 10px; border: 1px solid var(--border, #333); background: transparent; color: var(--text); }
+.login-tabs button[aria-pressed="true"] { background: var(--primary); color: var(--on-primary, #fff); }
+#loginSubmit { padding: 10px; border-radius: 10px; border: 0; background: var(--primary); color: var(--on-primary, #fff); font-weight: 600; }
+.link-button { background: none; border: 0; color: var(--muted); text-decoration: underline; cursor: pointer; }
+button.danger { color: #f85149; border-color: #f85149; }

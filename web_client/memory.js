@@ -20,7 +20,10 @@
   const MEMORY_BATCH = 10;
   const RETRYABLE = ["NETWORK", "SERVER", "RATE_LIMITED"];
   const DB_HOSTS = [".firebaseio.com", ".firebasedatabase.app"];
-  const STORE = { cache: "floma.memory", secret: "floma.firebaseSecret" };
+  // Step 75: each account's own copy (FlomaAccount.storagePrefix); the Firebase secret is the browser's.
+  const ACCOUNT_PREFIX = window.FlomaAccount ? window.FlomaAccount.storagePrefix() : "";
+  const STORE = { cache: `floma.${ACCOUNT_PREFIX}memory`, secret: "floma.firebaseSecret" };
+  let userId = () => null; // Step 75: the signed-in account (its own Firebase paths); null: the old flat root
 
   class SyncError extends Error {
     constructor(kind, detail) {
@@ -71,8 +74,9 @@
   function client(url, secret) {
     const base = normalizeDbUrl(url);
     if (!base) throw new SyncError("BAD_URL");
-    const root = window.FLOMA_PLATFORM.memory_sync.root;
-    const pinnedRoot = window.FLOMA_PLATFORM.chat_sessions.pinned_root;
+    const root = Core.userPath(userId(), "memory");
+    const pinnedRoot = Core.userPath(userId(), "pinned");
+    const queueRoot = Core.userPath(userId(), "queue");
     const at = (...parts) => parts.map((p) => String(p).split("/").map(encodeURIComponent).join("/")).join("/");
     async function call(method, body, path = root) {
       // The legacy database secret goes in the auth parameter (the REST API's way for it).
@@ -118,11 +122,11 @@
       },
       // Step 74: the extraction queue: memory_ledger.pending_root/<persona>/<chat id>.
       async getQueue() {
-        const data = await call("GET", undefined, at(window.FLOMA_PLATFORM.memory_ledger.pending_root));
+        const data = await call("GET", undefined, at(queueRoot));
         return data && typeof data === "object" && !Array.isArray(data) ? data : {};
       },
       async putQueue(who, id, node) {
-        await call(node ? "PUT" : "DELETE", node || undefined, at(window.FLOMA_PLATFORM.memory_ledger.pending_root, who, id));
+        await call(node ? "PUT" : "DELETE", node || undefined, at(queueRoot, who, id));
       },
       // Step 73: a synced setting ({value, updated_at, device}) at its own path, e.g. floma/settings/voice_preset.
       async getNode(nodePath) {
@@ -513,6 +517,7 @@
   window.FlomaMemory = {
     normalizeDbUrl,
     setDatabaseUrl(fn) { dbUrl = fn; },
+    setUserId(fn) { userId = fn; },
     /** What goes inside the prompt's <memory> block (always the local copy). */
     notes: () => Core.memoryNotes(state.sections, state.summary),
     status: () => {
