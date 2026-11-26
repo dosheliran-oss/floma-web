@@ -980,3 +980,9 @@ body.signed-out .app, body.signed-out .drawer { display: none; }
 #loginSubmit { padding: 10px; border-radius: 10px; border: 0; background: var(--primary); color: var(--on-primary, #fff); font-weight: 600; }
 .link-button { background: none; border: 0; color: var(--muted); text-decoration: underline; cursor: pointer; }
 button.danger { color: #f85149; border-color: #f85149; }
+
+/* Step 76: the bot's site connections (kept on the PC). */
+.bot-sites { list-style: none; margin: 4px 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.bot-site { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px;
+  border-radius: 10px; background: var(--surface2, rgb(127 127 127 / 0.12)); font-size: 0.85rem; }
+.bot-site.expired { color: #f0883e; }

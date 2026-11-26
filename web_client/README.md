@@ -215,6 +215,7 @@ node web_client\check_pwa.js                         # manifest, icons, service 
 node web_client\check_voice.js                       # dictation, read-aloud, interruptions, ElevenLabs + fallback (fakes)
 node web_client\check_web_sessions.js              # Step 70: 10-chat retention, 5 synced pinned chats, Memory Summary edits, chat summarize
 node web_client\check_web_code_vault.js            # Step 72: @code - languages → titles → code with copy, chips
+node web_client\check_web_bot_sessions.js          # Step 76: the PC's bot connections, open-login / test via the PC, @phone results from the PC
 node web_client\check_web_accounts.js              # Step 75: sign-in screen, registration rules, PBKDF2 records, legacy import, isolation, sign-out
 node web_client\check_web_memory_hub.js            # Step 74: status badges, lossless queue via Firebase, dashboard, search, backup/restore, focus sync
 node web_client\check_web_load.js                  # Step 73: load meter, fail-safe (voice off at 85% for 10 s), Vax voice style + Firebase sync

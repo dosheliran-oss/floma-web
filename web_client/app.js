@@ -1155,6 +1155,7 @@
       addMessage({ role: "assistant", text: answer.text, sources: answer.sources, local: true, skill: decision.skill,
         launcher: decision.skill === "phone" && answer.sources.length > 0, copyValue: answer.copy || null,
         chips: answer.chips && answer.chips.length ? answer.chips : undefined }); // Step 72: @code's quick replies
+      if (decision.skill === "phone" && answer.sources.length > 0) phoneViaPc(decision.query); // Step 76
     }
     setEmotion(Core.avatarFor("action_done"));
   }
@@ -1817,6 +1818,93 @@
     }
   }
 
+  // --- Step 76: the bot's site connections (kept on the PC) and lookups the PC runs for this browser ---
+
+  const BOT = window.FLOMA_PLATFORM.bot_sessions;
+  const bt = (key, values) => {
+    const texts = BOT.texts[lang()] || BOT.texts.HEBREW;
+    return (texts[key] || BOT.texts.HEBREW[key]).replace(/\{(\w+)\}/g, (all, k) => (values && k in values ? String(values[k]) : all));
+  };
+  let botSites = null; // the PC's published connections ({site_id: {label, domain, status, last_authenticated_at, searchable}})
+
+  /** A request the PC answers (live_lookup_requests): the answered node, or null when it didn't answer in time. */
+  async function askPc(kind, query) {
+    const uid = Account.userId();
+    if (!uid || !Memory.configured()) return null;
+    const id = `w${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+    const path = Core.userPath(uid, "lookups", id);
+    if (!(await Memory.putNode(path, { kind, query, status: "pending", created_at: Date.now(), device: "web" }))) return null;
+    const deadline = Date.now() + BOT.wait_ms;
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, BOT.poll_ms / 2));
+      const node = await Memory.fetchNode(path);
+      if (node && node.status && node.status !== "pending") return node;
+    }
+    return null;
+  }
+
+  async function loadBotSites() {
+    const uid = Account.userId();
+    botSites = uid ? (await Memory.fetchNode(Core.userPath(uid, "bot_sites"))) || {} : {};
+    renderBotSites();
+    return botSites;
+  }
+
+  /** After @phone's local answer: when the PC has an active connected site with a search URL, it looks the number up
+   * with the bot's session and the result comes back here. */
+  async function phoneViaPc(query) {
+    const sites = botSites || (await loadBotSites());
+    if (!Object.values(sites || {}).some((s) => s && s.status === "active" && s.searchable)) return;
+    const node = await askPc("phone", query);
+    const textOut = node && node.result && node.result.text;
+    addMessage({ role: "assistant", text: textOut || bt("pc_offline"), local: true, skill: "phone" });
+  }
+
+  function renderBotSites() {
+    const list = $("botSites");
+    if (!list) return;
+    $("botTitle").textContent = bt("pc_title");
+    $("botHint").textContent = bt("pc_hint");
+    $("botTarget").placeholder = bt("placeholder");
+    $("botOpen").textContent = bt("open");
+    list.replaceChildren();
+    const entries = Object.entries(botSites || {});
+    if (!entries.length) {
+      const none = document.createElement("li");
+      none.className = "hint";
+      none.textContent = bt("none");
+      list.append(none);
+    }
+    for (const [id, site] of entries) {
+      const item = document.createElement("li");
+      item.className = `bot-site ${site.status === "active" ? "active" : "expired"}`;
+      item.dataset.id = id;
+      const label = document.createElement("span");
+      const when = site.last_authenticated_at ? new Date(site.last_authenticated_at).toLocaleString(lang() === "ENGLISH" ? "en" : "he") : "—";
+      label.textContent = `${site.status === "active" ? "🔐" : "⚠"} ${site.label} · ${bt(site.status === "active" ? "active" : "expired")} · ${bt("last", { time: when })}`;
+      const test = document.createElement("button");
+      test.type = "button";
+      test.textContent = bt("test");
+      test.addEventListener("click", async () => {
+        $("botStatus").textContent = bt("pc_waiting");
+        const node = await askPc("test_site", id);
+        $("botStatus").textContent = (node && node.result && node.result.text) || bt("pc_offline");
+        loadBotSites();
+      });
+      item.append(label, test);
+      list.append(item);
+    }
+  }
+
+  async function openBotLogin() {
+    const target = $("botTarget").value.trim();
+    if (!target) return;
+    $("botStatus").textContent = bt("pc_waiting");
+    const node = await askPc("open_login", target);
+    $("botStatus").textContent = (node && node.result && node.result.text) || bt("pc_offline");
+    if (node && node.status === "done") $("botTarget").value = "";
+  }
+
   // --- Step 75: the account in Settings ---
 
   function fillAccount() {
@@ -2422,6 +2510,7 @@
     $("setInstructions").value = s.customInstructions;
     fillVoicePreset();
     fillAccount();
+    renderBotSites();
     renderLoad();
     $("setWebSearch").checked = s.webSearch;
     $("setAutoSkills").checked = s.autoSwitchSkills !== false;
@@ -2914,6 +3003,7 @@
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") syncOnFocus(); });
     $("loadReset").addEventListener("click", resetFailSafe);
     $("logout").addEventListener("click", logout);
+    $("botOpen").addEventListener("click", openBotLogin);
     $("loadBadge").addEventListener("click", () => setDrawer(true));
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && !$("settings").hidden) setDrawer(false);
@@ -3119,7 +3209,7 @@
     const imported = Account.takeImported();
     if (imported) setTimeout(() => showToast(Core.accountText("imported", lang(), imported), 6000), 1500);
     // Step 70: then the pinned chats come in from Firebase (and this browser's unsent ones go up).
-    Memory.refreshOnStart().then(fillSettings).then(() => syncPinned()).then(pullVoicePreset).then(sweepSessions).then(() => checkpoint())
+    Memory.refreshOnStart().then(fillSettings).then(() => syncPinned()).then(pullVoicePreset).then(loadBotSites).then(sweepSessions).then(() => checkpoint())
       .then(() => processQueue()); // Step 74: chats queued here or on another device
     // Step 73: the load meter (every 5 s) and its fail-safe.
     guardMonitor.onSnapshot = onLoad;
