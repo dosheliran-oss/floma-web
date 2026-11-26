@@ -116,6 +116,14 @@
       async putPinned(who, id, node) {
         await call(node ? "PUT" : "DELETE", node || undefined, at(pinnedRoot, who, id));
       },
+      // Step 74: the extraction queue: memory_ledger.pending_root/<persona>/<chat id>.
+      async getQueue() {
+        const data = await call("GET", undefined, at(window.FLOMA_PLATFORM.memory_ledger.pending_root));
+        return data && typeof data === "object" && !Array.isArray(data) ? data : {};
+      },
+      async putQueue(who, id, node) {
+        await call(node ? "PUT" : "DELETE", node || undefined, at(window.FLOMA_PLATFORM.memory_ledger.pending_root, who, id));
+      },
       // Step 73: a synced setting ({value, updated_at, device}) at its own path, e.g. floma/settings/voice_preset.
       async getNode(nodePath) {
         return call("GET", undefined, at(...nodePath.split("/")));
@@ -161,6 +169,31 @@
     summary: "", sections: {}, coveredTs: 0, pending: {}, lastPull: 0, nextAttempt: 0, failures: 0,
     lastError: null, lastSync: 0, lastSaved: 0,
   }, read(STORE.cache, {}));
+  // Step 74: the fact ledger ({key: {id: item}}); the notes (sections) are derived from it. Notes saved before
+  // it become facts dated 0; until the first pull, Firebase's copy wins a topic this browser didn't change, once.
+  if (!state.items || typeof state.items !== "object") {
+    state.items = {};
+    for (const [key, notes] of Object.entries(state.sections || {})) if (notes) state.items[key] = Core.applyNotes(key, {}, notes, 0);
+    state.legacy = Object.keys(state.items).length > 0;
+  }
+  state.sections = {}; // always derived from the facts
+  for (const [key, items] of Object.entries(state.items)) {
+    const notes = Core.notesFromItems(items);
+    if (notes) state.sections[key] = notes;
+  }
+  const same = (a, b) => JSON.stringify(Core.mergeItems(a || {}, {})) === JSON.stringify(Core.mergeItems(b || {}, {}));
+
+  /** A topic's items changed: the notes follow, and it's queued for Firebase (when connected). True if it changed. */
+  function setItems(key, items, queue = true) {
+    if (same(items, state.items[key])) return false;
+    if (Object.keys(items).length) state.items[key] = items;
+    else delete state.items[key];
+    const notes = Core.notesFromItems(items);
+    if (notes) state.sections[key] = notes;
+    else delete state.sections[key];
+    if (queue && configured()) state.pending[key] = notes; // before Firebase is set up the facts stay local
+    return true;
+  }
   const savedListeners = []; // called after facts reached Firebase (the chat's "saved" toast)
   let busy = Promise.resolve(); // one sync job at a time
   let dbUrl = () => null;
@@ -193,11 +226,20 @@
       const nodes = await api.getMemory();
       const remote = {};
       for (const c of window.FLOMA_PLATFORM.memory_categories) {
-        if (c.key in nodes) remote[c.key] = Core.notesFromNode(nodes[c.key]);
+        if (c.key in nodes) remote[c.key] = Core.itemsFromNode(c.key, nodes[c.key]);
       }
-      const merged = mergeRemote(state.sections, remote, Object.keys(state.pending));
-      const changed = JSON.stringify(merged) !== JSON.stringify(state.sections);
-      state.sections = merged;
+      // Step 74: fact by fact - the newer version of each fact wins, deletions are tombstones.
+      const before = JSON.stringify(state.sections);
+      const legacy = state.legacy;
+      delete state.legacy;
+      for (const c of window.FLOMA_PLATFORM.memory_categories) {
+        if (!(c.key in remote) && !(c.key in state.items)) continue;
+        const theirs = remote[c.key] || {};
+        const merged = legacy && c.key in remote && !(c.key in state.pending) ? theirs : Core.mergeItems(state.items[c.key] || {}, theirs);
+        setItems(c.key, merged, false);
+        if (!same(merged, theirs) && configured()) state.pending[c.key] = Core.notesFromItems(merged); // Firebase lacks some of ours
+      }
+      const changed = JSON.stringify(state.sections) !== before;
       state.lastPull = Date.now();
       succeeded();
       save();
@@ -220,8 +262,14 @@
     if (!api) return 0;
     const now = Date.now();
     const nodes = {};
-    for (const [key, notes] of Object.entries(pending)) nodes[key] = Core.memoryNode(key, notes, now, DEVICE);
     try {
+      // Merged with what Firebase has right now, so a fact another device wrote since our pull is kept.
+      const current = await api.getMemory();
+      for (const key of Object.keys(pending)) {
+        const theirs = key in current ? Core.itemsFromNode(key, current[key]) : {};
+        setItems(key, Core.mergeItems(state.items[key] || {}, theirs), false);
+        nodes[key] = Core.nodeFromItems(key, state.items[key] || {}, now, DEVICE);
+      }
       await api.putCategories(nodes);
     } catch (e) {
       failed(e);
@@ -256,9 +304,11 @@
     const given = Object.fromEntries(Object.entries(result.sections || {}).filter(([, v]) => v && v.trim()).map(([k, v]) => [k, v.trim()]));
     const kept = Object.fromEntries(Object.entries(previous).filter(([, v]) => v && v.trim()));
     const sections = Object.keys(given).length ? { ...kept, ...given } : summaryAsSections(result.summary, previous);
-    // Queued for Firebase only when it's set up; before that the notes stay local (the first connect merges them).
-    if (configured()) for (const [key, notes] of Object.entries(sections)) if (previous[key] !== notes) state.pending[key] = notes;
-    Object.assign(state, { summary: result.summary, sections, coveredTs: Math.max(state.coveredTs, batch[batch.length - 1].ts) });
+    const now = Date.now();
+    for (const [key, notes] of Object.entries(sections)) {
+      if (previous[key] !== notes) setItems(key, Core.applyNotes(key, state.items[key] || {}, notes, now));
+    }
+    Object.assign(state, { summary: result.summary, coveredTs: Math.max(state.coveredTs, batch[batch.length - 1].ts) });
     save();
     return true;
   }
@@ -297,23 +347,8 @@
    */
   async function syncNowJob() {
     state.nextAttempt = 0;
-    const before = { ...state.sections };
-    const pulled = await pullOnce(true);
-    if (pulled) {
-      for (const [key, notes] of Object.entries(before)) {
-        if (key in state.pending || !notes.trim()) continue;
-        if (!pulled.remote.includes(key)) {
-          state.pending[key] = notes; // only this browser has it: upload
-          continue;
-        }
-        const merged = unionNotes(state.sections[key], notes);
-        if (merged !== (state.sections[key] || "")) {
-          state.sections[key] = merged;
-          state.pending[key] = merged;
-        }
-      }
-      save();
-    }
+    delete state.legacy; // a first connect merges both sides fact by fact (nothing is overwritten)
+    await pullOnce(true);
     await pushNow();
   }
 
@@ -352,26 +387,58 @@
     }
     const notes = clean.slice(0, window.FLOMA_PLATFORM.memory_sync.max_facts).map((f) => `- ${f}`).join("\n");
     if ((state.sections[key] || "") === notes) return true;
-    if (notes) state.sections[key] = notes;
-    else delete state.sections[key];
-    if (configured()) state.pending[key] = notes; // before Firebase is set up the edit stays local
+    setItems(key, Core.applyNotes(key, state.items[key] || {}, notes, Date.now()));
     save();
     await pushNow();
     return true;
   }
 
+  /** One fact rewritten: it keeps its id, so the edit merges with the other devices (empty: deleted, a tombstone). */
   async function editFactJob(key, index, text) {
-    const list = facts()[key] || [];
-    if (index < 0 || index >= list.length) return false;
-    list[index] = text;
-    return setFactsJob(key, list.filter((f) => f.trim()));
+    const live = Core.liveItems(state.items[key] || {});
+    if (index < 0 || index >= live.length) return false;
+    setItems(key, Core.editItem(state.items[key], live[index][0], String(text || "").replace(/\s+/g, " ").trim(), Date.now()));
+    save();
+    await pushNow();
+    return true;
   }
 
   async function deleteFactJob(key, index) {
-    const list = facts()[key] || [];
-    if (index < 0 || index >= list.length) return false;
-    list.splice(index, 1);
-    return setFactsJob(key, list);
+    return editFactJob(key, index, "");
+  }
+
+  /** "שחזור מגיבוי": a backup merged in; {added, updated}, or null when it isn't a Floma memory backup. */
+  async function importBackupJob(doc) {
+    const backup = Core.parseBackup(doc);
+    if (!backup) return null;
+    const restored = Core.restoreItems(state.items, backup, Date.now());
+    for (const key of new Set([...Object.keys(restored.topics), ...Object.keys(state.items)])) setItems(key, restored.topics[key] || {});
+    if (!state.summary && typeof doc.summary === "string") state.summary = doc.summary;
+    save();
+    await pushNow();
+    return { added: restored.added, updated: restored.updated };
+  }
+
+  /** The extraction queue in Firebase ({persona: {id: node}}), or null; never touches the memory's backoff. */
+  async function fetchQueueJob() {
+    const api = available();
+    if (!api) return null;
+    try {
+      return await api.getQueue();
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async function putQueueJob(who, id, node) {
+    const api = available();
+    if (!api) return false;
+    try {
+      await api.putQueue(who, id, node);
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 
   async function addFactJob(text, key) {
@@ -435,8 +502,9 @@
   /** The saved facts by category key (Settings → "סיכום זיכרון"). */
   function facts() {
     const result = {};
-    for (const [key, notes] of Object.entries(state.sections)) {
-      const list = Core.memoryNode(key, notes, 0, DEVICE).facts;
+    const max = window.FLOMA_PLATFORM.memory_sync.max_facts;
+    for (const [key, items] of Object.entries(state.items)) {
+      const list = Core.liveItems(items).slice(0, max).map(([, r]) => r.text);
       if (list.length) result[key] = list;
     }
     return result;
@@ -474,6 +542,12 @@
     putPinned: (who, id, node) => serial(() => putPinnedJob(who, id, node)),
     fetchNode: (nodePath) => serial(() => fetchNodeJob(nodePath)),
     putNode: (nodePath, node) => serial(() => putNodeJob(nodePath, node)),
+    // Step 74: backups and the extraction queue.
+    exportBackup: () => Core.backupDocument(state.items, state.summary, Date.now(), DEVICE),
+    importBackup: (doc) => serial(() => importBackupJob(doc)),
+    fetchQueue: () => serial(fetchQueueJob),
+    putQueue: (who, id, node) => serial(() => putQueueJob(who, id, node)),
+    topics: () => JSON.parse(JSON.stringify(state.items)),
     /** "Delete all chats": the chats go, the facts stay (here and in Firebase); only the bookmark resets. */
     forgetLocal() { state.coveredTs = 0; save(); },
     _mergeRemote: mergeRemote,

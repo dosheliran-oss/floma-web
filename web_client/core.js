@@ -312,6 +312,225 @@
       .join("\n");
   }
 
+  // --- The fact ledger (Step 74): ported line for line from persona.py (persona-tests checks them) -----------
+
+  function fnv(bytes, seed) {
+    let h = seed >>> 0;
+    for (const b of bytes) {
+      h ^= b;
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    return h >>> 0;
+  }
+
+  /** The UTF-8 bytes of [text] (by hand: no TextEncoder needed, e.g. in the checks' sandbox). */
+  function utf8(text) {
+    const out = [];
+    for (const ch of text) {
+      const c = ch.codePointAt(0);
+      if (c < 0x80) out.push(c);
+      else if (c < 0x800) out.push(0xc0 | (c >> 6), 0x80 | (c & 63));
+      else if (c < 0x10000) out.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
+      else out.push(0xf0 | (c >> 18), 0x80 | ((c >> 12) & 63), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
+    }
+    return out;
+  }
+
+  /** A new fact's id: the same fact learned on two devices gets the same id (so it's one fact). */
+  function factId(topic, text) {
+    const bytes = utf8(`${topic}\n${text}`);
+    const hex = (h) => h.toString(16).padStart(8, "0");
+    return `f${hex(fnv(bytes, 0x811c9dc5))}${hex(fnv(bytes, 0x9dc5811c))}`;
+  }
+
+  const whole = (v) => (typeof v === "number" && Number.isFinite(v) ? Math.trunc(v) : null);
+
+  function ledgerItem(text, updatedAt, pos, deleted = false) {
+    const item = { text, updated_at: updatedAt, pos };
+    if (deleted) item.deleted = true;
+    return item;
+  }
+
+  const isPlainObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+
+  /** A topic's items from a Firebase node (or a backup's topic), plus its plain "facts" lines no live item has. */
+  function itemsFromNode(key, node) {
+    const items = {};
+    const raw = isPlainObject(node) ? node.items : null;
+    if (isPlainObject(raw)) {
+      for (const [id, rec] of Object.entries(raw)) {
+        if (!id || !isPlainObject(rec) || typeof rec.text !== "string") continue;
+        const updated = whole(rec.updated_at);
+        if (updated === null) continue;
+        const text = fact(rec.text);
+        const deleted = rec.deleted === true;
+        if (!text && !deleted) continue;
+        items[id] = ledgerItem(text, updated, whole(rec.pos) || 0, deleted);
+      }
+    }
+    const live = new Set(Object.values(items).filter((r) => !r.deleted).map((r) => r.text));
+    const stamp = (isPlainObject(node) ? whole(node.updated_at) : null) || 0;
+    notesFromNode(node).split("\n").forEach((line, position) => {
+      const text = fact(line);
+      if (!text || live.has(text)) return;
+      const id = factId(key, text);
+      if (!(id in items)) {
+        items[id] = ledgerItem(text, stamp, position);
+        live.add(text);
+      }
+    });
+    return items;
+  }
+
+  function winner(a, b) {
+    if (a.updated_at !== b.updated_at) return a.updated_at > b.updated_at ? a : b;
+    if (Boolean(a.deleted) !== Boolean(b.deleted)) return a.deleted ? a : b;
+    const ka = factId("", a.text);
+    const kb = factId("", b.text);
+    if (ka !== kb) return ka > kb ? a : b;
+    return a.pos >= b.pos ? a : b;
+  }
+
+  /** Both sides' facts: per id the winner (the same result whichever side is "a"). */
+  function mergeItems(a, b) {
+    const merged = {};
+    for (const id of [...new Set([...Object.keys(a), ...Object.keys(b)])].sort()) {
+      merged[id] = { ...(id in a && id in b ? winner(a[id], b[id]) : a[id] || b[id]) };
+    }
+    return merged;
+  }
+
+  /** The facts that aren't deleted, in their order: (pos, id). */
+  function liveItems(items) {
+    return Object.entries(items).filter(([, r]) => !r.deleted)
+      .sort(([ia, a], [ib, b]) => (a.pos - b.pos) || (ia < ib ? -1 : ia > ib ? 1 : 0));
+  }
+
+  function notesFromItems(items) {
+    return liveItems(items).slice(0, P().memory_sync.max_facts).map(([, r]) => `- ${r.text}`).join("\n");
+  }
+
+  /** The items after a topic's notes were rewritten: kept facts keep their id, new ones get one, missing ones are tombstoned. */
+  function applyNotes(key, items, notes, now) {
+    const texts = [];
+    for (const line of notes.replace(/\r\n/g, "\n").split("\n")) {
+      const text = fact(line);
+      if (text && !texts.includes(text)) texts.push(text);
+    }
+    texts.splice(P().memory_sync.max_facts);
+    const result = Object.fromEntries(Object.entries(items).map(([i, r]) => [i, { ...r }]));
+    const live = liveItems(items);
+    const byText = new Map(live.map(([i, r]) => [r.text, i]));
+    const keep = new Set();
+    let nextPos = Math.max(-1, ...Object.values(items).map((r) => r.pos)) + 1;
+    for (const text of texts) {
+      if (byText.has(text)) {
+        keep.add(byText.get(text));
+        continue;
+      }
+      let id = factId(key, text);
+      let n = 0;
+      while (keep.has(id) || (id in result && !result[id].deleted)) {
+        n += 1;
+        id = factId(key, `${text}#${n}`);
+      }
+      if (id in result) {
+        result[id] = ledgerItem(text, now, result[id].pos);
+      } else {
+        result[id] = ledgerItem(text, now, nextPos);
+        nextPos += 1;
+      }
+      keep.add(id);
+    }
+    for (const [id, rec] of live) if (!keep.has(id)) result[id] = ledgerItem(rec.text, now, rec.pos, true);
+    return result;
+  }
+
+  /** One fact rewritten by the user: it keeps its id (an empty text deletes it). */
+  function editItem(items, id, text, now) {
+    const result = Object.fromEntries(Object.entries(items).map(([i, r]) => [i, { ...r }]));
+    const rec = result[id];
+    if (!rec || rec.deleted) return result;
+    const clean = fact(text);
+    result[id] = ledgerItem(clean || rec.text, now, rec.pos, !clean);
+    return result;
+  }
+
+  /** A topic as written to Firebase: plain facts (for older versions) and the items, without old tombstones. */
+  function nodeFromItems(key, items, now, device) {
+    const cutoff = now - P().memory_ledger.tombstone_days * 86400000;
+    const kept = {};
+    for (const id of Object.keys(items).sort()) {
+      const r = items[id];
+      if (!r.deleted || r.updated_at >= cutoff) kept[id] = { ...r };
+    }
+    const facts = liveItems(items).slice(0, P().memory_sync.max_facts).map(([, r]) => r.text);
+    return { facts, items: kept, updated_at: Math.trunc(now), device };
+  }
+
+  function backupDocument(topics, summary, exportedAt, device) {
+    const ledger = P().memory_ledger;
+    const out = {};
+    for (const c of P().memory_categories) {
+      const t = topics[c.key];
+      if (t && Object.keys(t).length) {
+        out[c.key] = {};
+        for (const id of Object.keys(t).sort()) out[c.key][id] = { ...t[id] };
+      }
+    }
+    return { format: ledger.backup_format, version: ledger.backup_version, exported_at: Math.trunc(exportedAt), device,
+      summary: summary || "", topics: out };
+  }
+
+  /** A backup's topics ({key: items}), or null when it isn't a Floma memory backup. */
+  function parseBackup(doc) {
+    const ledger = P().memory_ledger;
+    if (!isPlainObject(doc) || doc.format !== ledger.backup_format || !isPlainObject(doc.topics)) return null;
+    const version = whole(doc.version);
+    if (version === null || typeof doc.version === "boolean" || version > ledger.backup_version) return null;
+    const keys = new Set(P().memory_categories.map((c) => c.key));
+    const out = {};
+    for (const [k, v] of Object.entries(doc.topics)) if (keys.has(k) && isPlainObject(v)) out[k] = itemsFromNode(k, { items: v });
+    return out;
+  }
+
+  /** The backup merged into [local]: missing or deleted facts come back (dated now); returns {topics, added, updated}. */
+  function restoreItems(local, backup, now) {
+    const result = {};
+    for (const [k, v] of Object.entries(local)) result[k] = Object.fromEntries(Object.entries(v).map(([i, r]) => [i, { ...r }]));
+    let added = 0;
+    let updated = 0;
+    for (const key of Object.keys(backup).sort()) {
+      const mine = result[key] || (result[key] = {});
+      for (const id of Object.keys(backup[key]).sort()) {
+        const rec = backup[key][id];
+        if (rec.deleted) continue;
+        const current = mine[id];
+        if (!current || current.deleted) {
+          mine[id] = ledgerItem(rec.text, current ? Math.max(now, current.updated_at + 1) : now, current ? current.pos : rec.pos);
+          added += 1;
+        } else if (current.text !== rec.text && rec.updated_at > current.updated_at) {
+          mine[id] = ledgerItem(rec.text, Math.max(now, current.updated_at + 1), current.pos);
+          updated += 1;
+        }
+      }
+    }
+    for (const k of Object.keys(result)) if (!Object.keys(result[k]).length) delete result[k];
+    return { topics: result, added, updated };
+  }
+
+  /** A chat's extraction status: "extracted" | "failed" | "pending" (older chats read their "memorized" flag). */
+  function extractionStatus(entry) {
+    if (entry && entry.memorized) return "extracted";
+    const status = entry && entry.extracted;
+    return ["extracted", "failed", "pending"].includes(status) ? status : "pending";
+  }
+
+  function ledgerText(key, language, values = {}) {
+    const texts = P().memory_ledger.texts;
+    return fill((texts[language] || texts.HEBREW)[key] || texts.HEBREW[key], values);
+  }
+
   // --- Gemini client (AIService.kt) -------------------------------------------------------------
 
   class AiError extends Error {
@@ -806,6 +1025,8 @@
     MODELS, EMOTIONS, DEFAULT_SETTINGS, AiError,
     route, modelFor, detectSeriousMode, systemPrompt, buildPrompt, memoryNotes, summarizerPrompt,
     memoryNode, notesFromNode, complete, summarizeMemory, verifyKey, translate,
+    factId, itemsFromNode, mergeItems, liveItems, notesFromItems, applyNotes, editItem, nodeFromItems,
+    backupDocument, parseBackup, restoreItems, extractionStatus, ledgerText,
     personas, profile, personaId, assistantName, nameAfterSwitch,
     avatarImage, animated, greeting, emotionMotion, avatarFor, chatLine, errorLine, typingStage, unavailableLine,
     theme, label, modelForChoice, modelChain, fallsBack, goesOffline,

@@ -160,6 +160,53 @@ window.FLOMA_PLATFORM = {
       "ENGLISH": "✓ Saved to cloud memory"
     }
   },
+  "memory_ledger": {
+    "_comment": "Step 74, the same on every platform (persona.py = core.js = MemoryFiles.kt, checked by persona-tests). Every fact is {id, topic, text, updated_at, pos} (+ deleted: true for a tombstone). A category node in Firebase keeps the plain `facts` list (older versions read it) and `items` {id: {text, updated_at, pos, deleted?}}. A new fact's id is fact_id(topic, text) - \"f\" + two FNV-1a 32-bit hashes of the UTF-8 bytes of topic + \"\\n\" + text - so the same fact learned on two devices is one fact; an edit keeps the id. Merging two sides takes, per id, the newer updated_at; on a tie a tombstone wins, then the text with the larger fact_id, then the larger pos - so every device ends with the same facts whatever the order. Live facts are listed by (pos, id). Tombstones older than tombstone_days are dropped when a node is written. Backups are {format, version, exported_at, device, summary, topics: {key: {id: item}}}; restoring merges them, and brings back facts that were deleted since. Chats: each has an extraction status (pending | extracted | failed); an unpinned chat beyond chat_sessions.keep that isn't extracted yet is never deleted - it moves to the extraction queue, synced at pending_root/<persona>/<id> ({id, persona, title, created, queued_at, device, messages}), and whichever device can summarize (the PC's local model, or a Gemini key) extracts it and only then removes it. Every app also syncs when it comes back to the front (at most every focus_sync_seconds).",
+    "tombstone_days": 60,
+    "focus_sync_seconds": 60,
+    "pending_root": "floma/pending_extractions",
+    "max_queue_messages": 200,
+    "backup_format": "floma-memory-backup",
+    "backup_version": 1,
+    "texts": {
+      "HEBREW": {
+        "dashboard": "ריכוז מידע",
+        "facts_count": "{count} עובדות פעילות ב-{topics} נושאים",
+        "last_sync": "סנכרון אחרון עם Firebase: {time}",
+        "never_synced": "עדיין לא סונכרן עם Firebase",
+        "search": "חיפוש בעובדות…",
+        "no_results": "אין עובדות שמתאימות לחיפוש.",
+        "queued": "{count} שיחות ישנות ממתינות לסיכום (אף שיחה לא נמחקת לפני שהעובדות שלה נשמרו).",
+        "export": "ייצוא גיבוי זיכרון",
+        "import": "שחזור מגיבוי",
+        "exported": "✓ הגיבוי נשמר ({count} עובדות)",
+        "imported": "✓ הגיבוי שוחזר: {added} עובדות נוספו, {updated} עודכנו",
+        "import_bad": "הקובץ הזה הוא לא גיבוי זיכרון של Floma.",
+        "badge_extracted": "✓ בזיכרון",
+        "badge_pending": "⏳ ממתין לסיכום",
+        "badge_failed": "⚠ ממתין לסיכום (ננסה שוב)",
+        "queue_done": "✓ {count} שיחות מהתור סוכמו לזיכרון"
+      },
+      "ENGLISH": {
+        "dashboard": "Memory Hub",
+        "facts_count": "{count} active facts in {topics} topics",
+        "last_sync": "Last Firebase sync: {time}",
+        "never_synced": "Not synced with Firebase yet",
+        "search": "Search the facts…",
+        "no_results": "No facts match the search.",
+        "queued": "{count} older chats are waiting to be summarized (no chat is deleted before its facts are saved).",
+        "export": "Export memory backup",
+        "import": "Restore from backup",
+        "exported": "✓ Backup saved ({count} facts)",
+        "imported": "✓ Backup restored: {added} facts added, {updated} updated",
+        "import_bad": "That file isn't a Floma memory backup.",
+        "badge_extracted": "✓ In memory",
+        "badge_pending": "⏳ Waiting to be summarized",
+        "badge_failed": "⚠ Waiting to be summarized (will retry)",
+        "queue_done": "✓ {count} queued chats were summarized into memory"
+      }
+    }
+  },
   "chat_sessions": {
     "_comment": "Step 70, the same on every platform. Each assistant keeps its `keep` newest unpinned chats; an older one is deleted once its facts are in the memory, and beyond `hard_cap` even if they couldn't be extracted. Pinned chats (at most `max_pinned` per assistant) never count toward either and are never deleted automatically. A pinned chat is stored whole in the user's Firebase at `pinned_root`/<persona>/<chat id> ({id, persona, title, created, updated, pinned_at, device, messages: [{role, text, ts}]}, times in ms, at most `max_pinned_messages` newest messages), so the same credentials on another device bring it back.",
     "keep": 10,

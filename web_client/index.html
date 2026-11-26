@@ -10,12 +10,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Floma">
-  <meta name="floma-build" content="1.69.0-4a0d96a41648-c0778aec">
+  <meta name="floma-build" content="1.70.0-ce7e10cefac8-f921f096">
   <title>Floma</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png?v=71c418f008">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=5eefe63104">
-  <link rel="stylesheet" href="styles.css?v=a4b619dfdc">
+  <link rel="stylesheet" href="styles.css?v=25ef6e81bd">
 </head>
 <body>
   <div class="app">
@@ -247,6 +247,14 @@
       <h2 id="memoryDialogTitle"></h2>
       <p class="hint" id="memoryDialogHint"></p>
       <p class="hint" id="memoryDialogStatus"></p>
+      <!-- Step 74: ריכוז מידע - counts, last sync, the queue; search; backups. -->
+      <p class="memory-dashboard" id="memoryDashboard"></p>
+      <div class="memory-tools">
+        <input id="memorySearch" type="search" dir="auto" autocomplete="off">
+        <button type="button" id="memoryExport"></button>
+        <button type="button" id="memoryImport"></button>
+        <input id="memoryImportFile" type="file" accept="application/json,.json" hidden>
+      </div>
       <div id="memoryFacts" class="memory-facts"></div>
       <div class="memory-add">
         <select id="memoryAddTopic"></select>
@@ -291,11 +299,11 @@
   </dialog>
 
   <!-- The Floma platform and its assistant personas, shared with Android and the desktop app. -->
-  <script src="../persona/floma_platform.js?v=a72e05b667"></script>
+  <script src="../persona/floma_platform.js?v=58047e4b79"></script>
   <script src="../persona/personas.js?v=76720a2a25"></script>
-  <script src="../persona/system_guide.js?v=5adbbaadfa"></script>
-  <script src="core.js?v=a117624359"></script>
-  <script src="memory.js?v=b8ed7d48c7"></script>
+  <script src="../persona/system_guide.js?v=985f918edb"></script>
+  <script src="core.js?v=fec01491a2"></script>
+  <script src="memory.js?v=4a126dceb8"></script>
   <script src="sites.js?v=27de92a66b"></script>
   <script src="../persona/sites_catalog.js?v=7f9b2bfb52"></script>
   <script src="catalog.js?v=e43e86c6c7"></script>
@@ -311,6 +319,6 @@
   <script src="calc_academic.js?v=708925087c"></script>
   <script src="skills.js?v=4efe695e6b"></script>
   <script src="update.js?v=dc7b6934b3"></script>
-  <script src="app.js?v=5c9fff646d"></script>
+  <script src="app.js?v=8b021c291a"></script>
 </body>
 </html>

@@ -956,3 +956,12 @@ p.load-badge { cursor: default; font-size: 0.85rem; padding: 1px 8px; }
 #loadBar::-webkit-progress-bar { background: var(--surface2, #2a2f3a); border-radius: 4px; }
 #loadBar::-webkit-progress-value { background: var(--load); border-radius: 4px; }
 #loadBar::-moz-progress-bar { background: var(--load); border-radius: 4px; }
+
+/* Step 74: the chats' extraction status, and the "ריכוז מידע" dashboard. */
+.extract-badge { font-size: 0.72rem; white-space: nowrap; }
+.extract-badge.extracted { color: #3fb950; }
+.extract-badge.pending { color: var(--muted); }
+.extract-badge.failed { color: #f0883e; }
+.memory-dashboard { font-weight: 600; white-space: pre-line; margin: 4px 0; }
+.memory-tools { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.memory-tools input[type="search"] { flex: 1 1 160px; min-width: 0; }

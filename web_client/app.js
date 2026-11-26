@@ -14,7 +14,7 @@
  * A chat that ends (New chat, another chat or assistant, the next start) is summarized into facts:
  * they go into the local notes and, when it's connected, to the user's Firebase memory (memory.js).
  * Only each assistant's KEEP_SESSIONS (10) newest unpinned chats are kept in this browser; an older chat is
- * deleted once its facts are in the notes, and beyond HARD_CAP (20) even if they couldn't be extracted.
+ * deleted once its facts are in the notes; one whose facts aren't extracted yet moves to the extraction queue (Step 74).
  *
  * Pinned chats (Step 70, 📌, at most MAX_PINNED = 5 per assistant: entry.pinnedAt) never count toward those
  * limits and are never deleted automatically. Each is stored whole in the user's Firebase
@@ -40,11 +40,11 @@
     legacyHistory: "floma.history", // the single infinite chat before sessions (migrated once)
     seenBuild: "floma.seenBuild", reloadedFor: "floma.reloadedFor", // the published build this browser ran last (Step 59)
     unpinned: "floma.unpinned", // Step 70: pinned chats unpinned / deleted here that Firebase still has
+    queue: "floma.extractionQueue", // Step 74: chats waiting for their facts to be extracted
   };
   const MAX_STORED = 200; // messages per chat
   const SESSIONS = window.FLOMA_PLATFORM.chat_sessions; // the same limits on every platform
   const KEEP_SESSIONS = SESSIONS.keep; // unpinned chats kept per assistant once older ones are memorized (10)
-  const HARD_CAP = SESSIONS.hard_cap; // unpinned chats per assistant even when their facts couldn't be extracted (20)
   const MAX_PINNED = SESSIONS.max_pinned; // pinned chats per assistant (5)
   const KEY_PROBLEMS = ["MISSING_KEY", "INVALID_KEY"];
   const KEEP_DOCUMENTS = 3; // document text kept in localStorage for follow-up questions, newest only
@@ -578,6 +578,7 @@
     entry.updated = Date.now();
     delete entry.memorized; // new messages: something new to memorize when it ends
     delete entry.unsaved;
+    entry.extracted = "pending"; // Step 74: ⏳ in the chats list until its facts are in the memory
     if (entry.pinnedAt) {
       entry.pinDirty = true; // the copy in Firebase is behind now
       schedulePinnedUpload();
@@ -663,14 +664,117 @@
 
   /**
    * Retention for one assistant: its KEEP_SESSIONS newest unpinned chats stay; an older one is deleted once
-   * its facts are in the notes ("memorized"), and beyond HARD_CAP even if not. Pinned chats and open chats
+   * its facts are in the notes ("memorized"); otherwise it waits in the extraction queue. Pinned chats and open chats
    * are never deleted.
    */
   function pruneSessions(who) {
+    // Step 74: no hard cap that throws facts away - an older chat not extracted yet moves to the extraction queue.
+    let queued = 0;
     state.sessions.filter((x) => x.persona === who && !x.pinnedAt).forEach((entry, position) => {
-      if (position < KEEP_SESSIONS || isOpenSomewhere(entry.id)) return;
-      if (entry.memorized || position >= HARD_CAP) deleteSession(entry.id);
+      if (position < KEEP_SESSIONS || isOpenSomewhere(entry.id) || distilling.has(entry.id)) return;
+      if (Core.extractionStatus(entry) !== "extracted") {
+        enqueueChat(entry);
+        queued += 1;
+      }
+      deleteSession(entry.id);
     });
+    if (queued) processQueue();
+  }
+
+  // --- Step 74: the extraction queue (chats waiting for their facts; synced at memory_ledger.pending_root) ---
+
+  const LEDGER = window.FLOMA_PLATFORM.memory_ledger;
+  const lt = (key, values) => Core.ledgerText(key, lang(), values);
+  let extractionQueue = (load(STORE.queue, []) || []).filter((x) => x && x.id && x.persona && Array.isArray(x.messages));
+  const saveQueue = () => save(STORE.queue, extractionQueue);
+  let queueBusy = false;
+
+  const queueNode = (item) => ({ id: item.id, persona: item.persona, title: item.title, created: item.created,
+    queued_at: item.queued_at, device: item.device, messages: item.messages });
+
+  function enqueueChat(entry) {
+    const messages = load(STORE.chat(entry.id), []).filter((m) => !m.local && m.ts && m.text)
+      .slice(-LEDGER.max_queue_messages).map((m) => ({ role: m.role, text: m.text, ts: Math.trunc(m.ts) }));
+    const item = { id: entry.id, persona: entry.persona, title: entry.title || "", created: Math.trunc(entry.created || Date.now()),
+      queued_at: Date.now(), device: "web", messages, synced: false };
+    extractionQueue = [...extractionQueue.filter((x) => !(x.id === item.id && x.persona === item.persona)), item];
+    saveQueue();
+  }
+
+  /** Ours go up to Firebase; each queued chat (ours, or the phone's / the PC's) is summarized, then removed everywhere. */
+  async function processQueue() {
+    if (queueBusy) return;
+    if (failSafe()) { deferredBackground = true; return; }
+    queueBusy = true;
+    try {
+      const remote = Memory.configured() ? await Memory.fetchQueue() : null;
+      if (Memory.configured()) {
+        for (const item of extractionQueue) if (!item.synced && await Memory.putQueue(item.persona, item.id, queueNode(item))) item.synced = true;
+      }
+      const known = new Set(extractionQueue.map((x) => `${x.persona}/${x.id}`));
+      for (const [who, chats] of Object.entries(remote || {})) {
+        for (const [id, node] of Object.entries(chats || {})) {
+          if (known.has(`${who}/${id}`) || !node || !Array.isArray(node.messages)) continue;
+          const messages = node.messages.filter((m) => m && typeof m.text === "string" && (m.role === "user" || m.role === "assistant")
+            && typeof m.ts === "number");
+          extractionQueue.push({ id, persona: who, title: String(node.title || ""), created: node.created || 0,
+            queued_at: node.queued_at || 0, device: String(node.device || ""), messages, synced: true });
+        }
+      }
+      saveQueue();
+      let done = 0;
+      for (const item of extractionQueue.slice()) {
+        if (!(await Memory.distill(item.messages, summarizer(), 0))) continue; // no model now (or it failed): it waits
+        if (Memory.configured()) await Memory.putQueue(item.persona, item.id, null);
+        extractionQueue = extractionQueue.filter((x) => x !== item);
+        saveQueue();
+        done += 1;
+      }
+      if (done) showToast(lt("queue_done", { count: done }));
+    } finally {
+      queueBusy = false;
+      renderMemoryBadges();
+      if ($("memoryDialog").open) renderMemoryFacts();
+    }
+  }
+
+  // --- Step 74: back in front (focus / visible) - pull and push the memory, work on the queue (throttled) ---
+
+  let lastFocusSync = Date.now();
+  function syncOnFocus() {
+    if (Date.now() - lastFocusSync < LEDGER.focus_sync_seconds * 1000 || !Memory.configured() || failSafe()) return;
+    lastFocusSync = Date.now();
+    Memory.pull(true).then(() => Memory.push()).then(() => { fillSettings(); processQueue(); });
+  }
+
+  // --- Step 74: "ריכוז מידע" backups ---
+
+  function exportMemoryBackup() {
+    const doc = Memory.exportBackup();
+    const count = Object.values(doc.topics).reduce((n, items) => n + Object.values(items).filter((r) => !r.deleted).length, 0);
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([JSON.stringify(doc, null, 1)], { type: "application/json" }));
+    link.download = `floma-memory-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    showToast(lt("exported", { count }));
+    return doc;
+  }
+
+  async function importMemoryBackup(file) {
+    let doc = null;
+    try { doc = JSON.parse(await file.text()); } catch (e) { doc = null; }
+    const result = doc ? await Memory.importBackup(doc) : null;
+    if (!result) {
+      showToast(lt("import_bad"));
+      return null;
+    }
+    showToast(lt("imported", { added: result.added, updated: result.updated }));
+    renderMemoryFacts();
+    renderMemoryBadges();
+    return result;
   }
 
   // --- Pinned chats (Step 70) ---
@@ -858,9 +962,12 @@
     if (saved === true && id !== state.sessionId) {
       now.memorized = true;
       now.memoryTs = Math.max(now.memoryTs || 0, ...messages.map((m) => m.ts || 0));
+      now.extracted = "extracted";
+      now.extractedAt = Date.now();
       delete now.unsaved;
     } else if (saved !== true) {
       now.unsaved = true;
+      now.extracted = "failed";
     }
     saveSessions();
     pruneSessions(now.persona);
@@ -912,7 +1019,12 @@
       const updated = new Date(entry.updated);
       when.textContent = updated.toLocaleString(locale, updated.toDateString() === today
         ? { hour: "2-digit", minute: "2-digit" } : { day: "numeric", month: "short" });
-      if (entry.unsaved) when.textContent += ` · ${t("notSaved")}`;
+      // Step 74: whether its facts are in the memory yet (✓ בזיכרון / ⏳ ממתין לסיכום / ⚠ ...).
+      const status = Core.extractionStatus(entry);
+      const badge = document.createElement("span");
+      badge.className = `extract-badge ${status}`;
+      badge.textContent = lt(`badge_${status}`);
+      when.append(" · ", badge);
       open.append(title, when);
       open.addEventListener("click", () => openSession(entry.id));
       const remove = document.createElement("button");
@@ -1556,7 +1668,12 @@
       const entry = sessionEntry(id);
       if (saved === true && entry) {
         entry.memoryTs = Math.max(entry.memoryTs || 0, newest);
+        if (newest >= Math.max(0, ...messages.filter((m) => !m.local).map((m) => m.ts || 0))) {
+          entry.extracted = "extracted"; // everything in it is in the memory (✓)
+          entry.extractedAt = Date.now();
+        }
         saveSessions();
+        renderSessions();
       }
       return saved === true;
     } finally {
@@ -1736,8 +1853,8 @@
     if (!deferredBackground) return;
     deferredBackground = false;
     setTimeout(() => {
-      if (sweepWaiting) sweepSessions().then(() => checkpoint());
-      else checkpoint();
+      if (sweepWaiting) sweepSessions().then(() => checkpoint()).then(() => processQueue());
+      else checkpoint().then(() => processQueue());
     }, RESUME_DELAY_MS);
   }
 
@@ -1757,8 +1874,11 @@
    * personal note. Every change is saved locally at once and pushed to Firebase (Memory.setFacts).
    */
   function showSavedMemory() {
-    $("memoryDialogTitle").textContent = ct("memory_title");
+    $("memoryDialogTitle").textContent = `${lt("dashboard")} · ${ct("memory_title")}`;
     $("memoryDialogHint").textContent = ct("memory_hint");
+    $("memorySearch").placeholder = lt("search");
+    $("memoryExport").textContent = `⬇ ${lt("export")}`;
+    $("memoryImport").textContent = `⬆ ${lt("import")}`;
     $("memoryAddText").placeholder = ct("add_placeholder");
     $("memoryAddTopic").setAttribute("aria-label", ct("add_topic"));
     $("memoryAdd").textContent = ct("add");
@@ -1786,6 +1906,16 @@
     const box = $("memoryFacts");
     box.replaceChildren();
     $("memoryDialogStatus").textContent = memoryBadgeText();
+    // Step 74: "ריכוז מידע" - the facts count, the last Firebase sync, the queue, and the search.
+    const status = Memory.status();
+    const last = status.lastSync ? new Date(status.lastSync) : null;
+    const two = (n) => String(n).padStart(2, "0");
+    let summary = `${lt("facts_count", { count: status.facts, topics: status.topics })} · ${last
+      ? lt("last_sync", { time: `${two(last.getDate())}/${two(last.getMonth() + 1)} ${two(last.getHours())}:${two(last.getMinutes())}` })
+      : lt("never_synced")}`;
+    if (extractionQueue.length) summary += `\n${lt("queued", { count: extractionQueue.length })}`;
+    $("memoryDashboard").textContent = summary;
+    const query = $("memorySearch").value.trim().toLowerCase();
     const iconButton = (text, label, onClick) => {
       const button = document.createElement("button");
       button.type = "button";
@@ -1798,11 +1928,14 @@
     for (const category of window.FLOMA_PLATFORM.memory_categories) {
       const items = facts[category.key];
       if (!items) continue;
+      const matches = (fact) => !query || fact.toLowerCase().includes(query) || category.title.toLowerCase().includes(query);
+      if (!items.some(matches)) continue;
       const title = document.createElement("h3");
       title.textContent = category.title + (pending.has(category.key) ? ` (${t("memNotSavedYet")})` : "");
       const list = document.createElement("ul");
       list.className = "editable";
       items.forEach((fact, index) => {
+        if (!matches(fact)) return;
         const item = document.createElement("li");
         item.className = "fact";
         item.dataset.topic = category.key;
@@ -1836,7 +1969,7 @@
     if (!box.children.length) {
       const none = document.createElement("p");
       none.className = "hint";
-      none.textContent = ct("memory_empty");
+      none.textContent = query && Object.keys(facts).length ? lt("no_results") : ct("memory_empty");
       box.append(none);
     }
   }
@@ -2723,6 +2856,17 @@
     DOCKED.addEventListener("change", () => setSessions(false)); // widening docks the list: no drawer, no scrim
     $("setToby").addEventListener("change", () => switchPersona($("setToby").checked ? "toby" : "floma"));
     $("setVoicePreset").addEventListener("change", () => setVoicePreset($("setVoicePreset").value));
+    // Step 74: the dashboard's search and backups; syncing when the page comes back to the front.
+    $("memorySearch").addEventListener("input", () => renderMemoryFacts());
+    $("memoryExport").addEventListener("click", exportMemoryBackup);
+    $("memoryImport").addEventListener("click", () => $("memoryImportFile").click());
+    $("memoryImportFile").addEventListener("change", async () => {
+      const file = $("memoryImportFile").files[0];
+      $("memoryImportFile").value = "";
+      if (file) await importMemoryBackup(file);
+    });
+    window.addEventListener("focus", syncOnFocus);
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") syncOnFocus(); });
     $("loadReset").addEventListener("click", resetFailSafe);
     $("loadBadge").addEventListener("click", () => setDrawer(true));
     document.addEventListener("keydown", (event) => {
@@ -2927,7 +3071,8 @@
     // and the chat left open is checkpointed (its facts saved without closing it).
     Memory.setDatabaseUrl(() => state.settings.firebaseUrl);
     // Step 70: then the pinned chats come in from Firebase (and this browser's unsent ones go up).
-    Memory.refreshOnStart().then(fillSettings).then(() => syncPinned()).then(pullVoicePreset).then(sweepSessions).then(() => checkpoint());
+    Memory.refreshOnStart().then(fillSettings).then(() => syncPinned()).then(pullVoicePreset).then(sweepSessions).then(() => checkpoint())
+      .then(() => processQueue()); // Step 74: chats queued here or on another device
     // Step 73: the load meter (every 5 s) and its fail-safe.
     guardMonitor.onSnapshot = onLoad;
     guardMonitor.start();
