@@ -33,6 +33,7 @@ const SHELL = [
   "calc_academic.js",
   "skills.js",
   "voice.js",
+  "resource_guard.js",
   "documents.js",
   "update.js",
   "app.js",

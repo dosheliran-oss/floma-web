@@ -116,6 +116,13 @@
       async putPinned(who, id, node) {
         await call(node ? "PUT" : "DELETE", node || undefined, at(pinnedRoot, who, id));
       },
+      // Step 73: a synced setting ({value, updated_at, device}) at its own path, e.g. floma/settings/voice_preset.
+      async getNode(nodePath) {
+        return call("GET", undefined, at(...nodePath.split("/")));
+      },
+      async putNode(nodePath, node) {
+        await call("PUT", node, at(...nodePath.split("/")));
+      },
     };
   }
 
@@ -401,6 +408,30 @@
     }
   }
 
+  /** Step 73: a synced setting's node, or null (none yet, or unreachable); never touches the memory's backoff. */
+  async function fetchNodeJob(nodePath) {
+    const api = available();
+    if (!api) return null;
+    try {
+      const node = await api.getNode(nodePath);
+      return node && typeof node === "object" && !Array.isArray(node) ? node : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /** Uploads a synced setting's node; false when it couldn't be written (the next start or change retries). */
+  async function putNodeJob(nodePath, node) {
+    const api = available();
+    if (!api) return false;
+    try {
+      await api.putNode(nodePath, node);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   /** The saved facts by category key (Settings → "סיכום זיכרון"). */
   function facts() {
     const result = {};
@@ -441,6 +472,8 @@
     configured: () => configured(),
     fetchPinned: () => serial(fetchPinnedJob),
     putPinned: (who, id, node) => serial(() => putPinnedJob(who, id, node)),
+    fetchNode: (nodePath) => serial(() => fetchNodeJob(nodePath)),
+    putNode: (nodePath, node) => serial(() => putNodeJob(nodePath, node)),
     /** "Delete all chats": the chats go, the facts stay (here and in Firebase); only the bookmark resets. */
     forgetLocal() { state.coveredTs = 0; save(); },
     _mergeRemote: mergeRemote,

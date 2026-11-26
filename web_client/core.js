@@ -39,6 +39,8 @@
     webSearch: true, // the "Web search" extension; off = never attach Google Search
     speakReplies: false, // Toby reads his replies aloud (browser/OS text-to-speech); opt-in on the web
     autoSwitchSkills: true, // Step 60: a question that fits a skill goes to it by itself (skills.js)
+    voicePreset: "default", // Step 73: Toby's voice & personality style (floma_platform.js "voice_presets")
+    voicePresetTs: 0, // when it was last chosen (ms), here or on another device (Firebase: newest wins)
   };
 
   // --- Router (MessageRouter.kt) ----------------------------------------------------------------
@@ -190,8 +192,22 @@
     return Math.floor(Math.min(1, Math.max(0, value)) * 100 + 0.5);
   }
 
+  /** Step 73: the voice preset (an unknown id is the default one). */
+  function voicePresetOption(id) {
+    const options = P().voice_presets.options;
+    return options.find((o) => o.id === id) || options[0];
+  }
+
+  /** The preset in effect: null for "default", an unknown id, or another persona than the preset's (Floma). */
+  function activeVoicePreset(id, personaKey) {
+    const config = P().voice_presets;
+    if (!id || id === config.default || personaKey !== config.persona) return null;
+    const option = voicePresetOption(id);
+    return option.id === config.default ? null : option;
+  }
+
   /** The shared builder: identical output to persona.py and PromptManager.kt (persona-tests). */
-  function buildPrompt({ platform, name, personality, humor, language, serious, webSearch, memory = "", custom = "", persona = DEFAULT_PERSONA }) {
+  function buildPrompt({ platform, name, personality, humor, language, serious, webSearch, memory = "", custom = "", persona = DEFAULT_PERSONA, voicePreset = "default" }) {
     const p = P();
     const prof = profile(persona);
     const who = assistantName(name, persona);
@@ -211,6 +227,10 @@
       }
     } else {
       lines.push(prof.style);
+    }
+    const preset = activeVoicePreset(voicePreset, personaId(persona));
+    if (preset && !serious && (preset.prompt || []).length) {
+      lines.push("", preset.prompt_heading, ...preset.prompt.map((l) => fill(l, { name: who })));
     }
     lines.push("", "# Being a companion", ...p.companion);
     lines.push("", "# Language", fill(p.language, { language }), "", "# Length", p.length);
@@ -238,6 +258,7 @@
       memory,
       custom: settings.customInstructions || "",
       persona: settings.persona || DEFAULT_PERSONA,
+      voicePreset: settings.voicePreset || "default",
     });
   }
 
@@ -790,5 +811,6 @@
     theme, label, modelForChoice, modelChain, fallsBack, goesOffline,
     normalizeWords, formatDate, nowParts, offlineAnswer, wakePhrases, isWakePhrase, imagePrompt, withImage,
     cleanDocumentText, documentContext, documentLine, validVoiceId, speechText, cloudVoiceRequest,
+    voicePresetOption, activeVoicePreset,
   };
 })();

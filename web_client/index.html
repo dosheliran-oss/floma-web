@@ -10,12 +10,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Floma">
-  <meta name="floma-build" content="1.68.0-c21441585443-9ca7bf30">
+  <meta name="floma-build" content="1.69.0-4a0d96a41648-c0778aec">
   <title>Floma</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png?v=71c418f008">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=5eefe63104">
-  <link rel="stylesheet" href="styles.css?v=97955f0183">
+  <link rel="stylesheet" href="styles.css?v=a4b619dfdc">
 </head>
 <body>
   <div class="app">
@@ -27,6 +27,8 @@
       <div class="title">
         <h1 id="assistantName">Floma</h1>
         <span class="subtitle"><span class="brand">Floma</span> · <span id="subtitle"></span></span>
+        <!-- Step 73: the system load meter (green / orange / red); a click opens Settings (breakdown, reset). -->
+        <button class="load-badge" id="loadBadge" type="button" data-level="unknown"></button>
       </div>
       <!-- The quick "פלומה | טובי" switch: the same switch as the one in Settings (filled by app.js). -->
       <div class="persona-toggle" id="personaToggle" role="radiogroup" data-i18n-label="personaSwitch"></div>
@@ -86,6 +88,17 @@
       <button class="icon-button" id="closeSettings" type="button" data-i18n-label="close">✕</button>
     </div>
 
+    <!-- Step 73: מד עומס מערכת - the meter, its breakdown, the fail-safe's state and its reset. -->
+    <section class="load-meter">
+      <h3 id="loadTitle"></h3>
+      <p class="load-badge" id="loadBadgeSettings" data-level="unknown"></p>
+      <progress id="loadBar" max="100" value="0" data-level="unknown"></progress>
+      <p class="hint" id="loadDetail"></p>
+      <p class="hint" id="loadState"></p>
+      <div class="buttons"><button type="button" id="loadReset" disabled></button></div>
+      <p class="hint" id="loadHint"></p>
+    </section>
+
     <section>
       <h3 data-i18n="sectionAssistant"></h3>
       <p class="hint" data-i18n="assistantHint"></p>
@@ -113,6 +126,10 @@
         <select id="setLanguage"><option value="HEBREW">עברית</option><option value="ENGLISH">English</option></select>
       </label>
       <label class="row"><input id="setSerious" type="checkbox"><span data-i18n="serious"></span></label>
+      <!-- Step 73: סגנון קול ואישיות של טובי (floma_platform.js "voice_presets"; synced through Firebase). -->
+      <label><span id="voicePresetTitle"></span><select id="setVoicePreset"></select></label>
+      <p class="hint" id="voicePresetDesc"></p>
+      <p class="hint" id="voicePresetHint"></p>
       <label><span data-i18n="instructions"></span><textarea id="setInstructions" rows="3" dir="auto"></textarea></label>
     </section>
 
@@ -274,11 +291,11 @@
   </dialog>
 
   <!-- The Floma platform and its assistant personas, shared with Android and the desktop app. -->
-  <script src="../persona/floma_platform.js?v=97038dcffc"></script>
+  <script src="../persona/floma_platform.js?v=a72e05b667"></script>
   <script src="../persona/personas.js?v=76720a2a25"></script>
-  <script src="../persona/system_guide.js?v=de506c8dc5"></script>
-  <script src="core.js?v=0f63ad6a39"></script>
-  <script src="memory.js?v=052b01db31"></script>
+  <script src="../persona/system_guide.js?v=5adbbaadfa"></script>
+  <script src="core.js?v=a117624359"></script>
+  <script src="memory.js?v=b8ed7d48c7"></script>
   <script src="sites.js?v=27de92a66b"></script>
   <script src="../persona/sites_catalog.js?v=7f9b2bfb52"></script>
   <script src="catalog.js?v=e43e86c6c7"></script>
@@ -286,6 +303,7 @@
   <script src="agent.js?v=10c2d7e79e"></script>
   <script src="quota.js?v=207f9c9e4a"></script>
   <script src="voice.js?v=2f6dab09b6"></script>
+  <script src="resource_guard.js?v=7aae5d2cb5"></script>
   <script src="documents.js?v=49f1dd2c9f"></script>
   <script src="../persona/skills_registry.js?v=e0ecf0f810"></script>
   <script src="../persona/knowledge_vault.js?v=a2dd6cc98c"></script>
@@ -293,6 +311,6 @@
   <script src="calc_academic.js?v=708925087c"></script>
   <script src="skills.js?v=4efe695e6b"></script>
   <script src="update.js?v=dc7b6934b3"></script>
-  <script src="app.js?v=e4a5280453"></script>
+  <script src="app.js?v=5c9fff646d"></script>
 </body>
 </html>

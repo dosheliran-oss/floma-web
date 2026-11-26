@@ -311,6 +311,7 @@
         return;
       }
       dictation.cancel();
+      if (failSafe()) { showToast(guardText("tripped")); return; } // Step 73: the voice is off under high load
       markSpeaking(button);
       Voice.speak(text, lang(), { ...voiceTuning(), onDone: () => markSpeaking(null) });
     });
@@ -328,7 +329,16 @@
     }
   }
 
-  const voiceTuning = () => ({ rate: Number(state.settings.voiceRate) || 1, pitch: Number(state.settings.voicePitch) || 1 });
+  /** The user's speed and pitch; Step 73: the Vax style (Toby only) multiplies them (calmer, lower). */
+  const voiceTuning = () => {
+    const preset = Core.activeVoicePreset(state.settings.voicePreset, Core.personaId(persona()));
+    const tts = (preset && preset.tts) || {};
+    const clamp = (v) => Math.min(2, Math.max(0.5, v));
+    return {
+      rate: clamp((Number(state.settings.voiceRate) || 1) * (tts.rate || 1)),
+      pitch: clamp((Number(state.settings.voicePitch) || 1) * (tts.pitch || 1)),
+    };
+  };
 
   function renderMessage(message) {
     const bubble = document.createElement("div");
@@ -860,6 +870,8 @@
 
   /** At startup: every chat that isn't open (either assistant's) is memorized, then each list is trimmed. */
   async function sweepSessions() {
+    if (failSafe()) { deferredBackground = true; sweepWaiting = true; return; } // Step 73: nothing pruned unmemorized
+    sweepWaiting = false;
     for (const entry of state.sessions.slice().reverse()) {
       if (entry.id !== state.sessionId) await retireSession(entry.id);
     }
@@ -1484,6 +1496,10 @@
 
   /** Reads a reply aloud: always in a live conversation (then listens again), else per the setting. */
   function say(text) {
+    if (failSafe()) { // Step 73: silent text replies under high load (a live conversation just listens again)
+      if (live) listen();
+      return;
+    }
     if (live) {
       setVoiceStatus("liveSpeaking", "listening");
       Voice.speak(text, lang(), { ...voiceTuning(), onDone: () => { if (live) listen(); } });
@@ -1496,6 +1512,7 @@
 
   /** After a reply: pull what the other devices learned, then fold this chat's older messages into notes. */
   function updateMemory() {
+    if (failSafe()) { deferredBackground = true; return; } // Step 73: paused under high load
     const id = state.sessionId;
     const messages = state.messages.slice();
     const entry = sessionEntry(id);
@@ -1530,6 +1547,7 @@
    * chat that was never switched away from would never reach the memory.
    */
   async function checkpoint(id = state.sessionId) {
+    if (failSafe()) { deferredBackground = true; return false; } // Step 73: paused under high load
     const { messages, since, fresh, newest } = freshOf(id);
     if (fresh.length < 2 || distilling.has(id)) return false;
     distilling.add(id);
@@ -1604,15 +1622,134 @@
     }
   }
 
+  // --- Step 73: Toby's voice & personality style (synced), and the system load meter with its fail-safe ---
+
+  const Guard = window.FlomaResourceGuard;
+  const guardMonitor = Guard.createMonitor();
+  window.FlomaLoadMonitor = guardMonitor; // (read by web_client/check_web_load.js)
+  let deferredBackground = false; // background work skipped by the fail-safe, run when it lets go
+  const RESUME_DELAY_MS = 3500;
+  let sweepWaiting = false;
+  const failSafe = () => guardMonitor.active;
+  const guardText = (key, values) => Guard.text(key, lang(), values);
+  const presetConfig = () => window.FLOMA_PLATFORM.voice_presets;
+  const presetText = (key) => (presetConfig().texts[lang()] || presetConfig().texts.HEBREW)[key];
+
+  function fillVoicePreset() {
+    const select = $("setVoicePreset");
+    const chosen = Core.voicePresetOption(state.settings.voicePreset);
+    select.replaceChildren(...presetConfig().options.map((o) => {
+      const option = document.createElement("option");
+      option.value = o.id;
+      option.textContent = Core.label(o, lang());
+      return option;
+    }));
+    select.value = chosen.id;
+    $("voicePresetTitle").textContent = presetText("title");
+    $("voicePresetDesc").textContent = chosen.description[lang()] || chosen.description.HEBREW;
+    $("voicePresetHint").textContent = presetText("hint");
+  }
+
+  /** Chooses Toby's style: saved here at once (the next reply's prompt and voice use it), and with push, to Firebase. */
+  function setVoicePreset(id, updatedAt = null, push = true) {
+    const chosen = Core.voicePresetOption(id).id;
+    const changed = chosen !== Core.voicePresetOption(state.settings.voicePreset).id;
+    state.settings.voicePreset = chosen;
+    state.settings.voicePresetTs = updatedAt === null ? Date.now() : updatedAt;
+    save(STORE.settings, state.settings);
+    if (changed) {
+      Voice.stopSpeaking();
+      markSpeaking(null);
+      showToast(presetText("changed"));
+    }
+    if (push) {
+      Memory.putNode(presetConfig().firebase_path,
+        { value: chosen, updated_at: state.settings.voicePresetTs, device: "web" });
+    }
+    fillVoicePreset();
+    return changed;
+  }
+
+  /** The style saved in Firebase: newer than ours wins; ours, when newer (or Firebase has none), is uploaded. */
+  function adoptRemoteVoicePreset(node) {
+    const local = Number(state.settings.voicePresetTs) || 0;
+    const ids = presetConfig().options.map((o) => o.id);
+    if (node && ids.includes(node.value)) {
+      const remote = typeof node.updated_at === "number" ? node.updated_at : 0;
+      if (remote > local) return setVoicePreset(node.value, remote, false);
+      if (remote === local) return false;
+    }
+    if (local) setVoicePreset(state.settings.voicePreset, local, true);
+    return false;
+  }
+
+  async function pullVoicePreset() {
+    adoptRemoteVoicePreset(await Memory.fetchNode(presetConfig().firebase_path));
+  }
+
+  function renderLoad() {
+    const snap = guardMonitor.last;
+    const levelName = snap ? snap.level : "unknown";
+    const badge = !snap || snap.load === null ? guardText("badge_unknown") : guardText("badge", { load: snap.load });
+    for (const id of ["loadBadge", "loadBadgeSettings"]) {
+      const el = $(id);
+      el.textContent = `${failSafe() ? "⚠" : "⚡"} ${badge}`;
+      el.dataset.level = levelName;
+    }
+    $("loadBadge").title = guardText("title");
+    $("loadTitle").textContent = guardText("title");
+    $("loadBar").value = snap && snap.load !== null ? snap.load : 0;
+    $("loadBar").dataset.level = levelName;
+    const sample = (snap && snap.sample) || {};
+    const pct = (v) => (v === null || v === undefined ? guardText("unknown") : `${Math.round(v)}%`);
+    const app = sample.appMb ? `${Math.round(sample.appMb)}MB` : guardText("unknown");
+    $("loadDetail").textContent = `${guardText("cpu")}: ${pct(sample.cpu)}   ${guardText("memory")}: ${pct(sample.memory)}   ${guardText("app")}: ${app}`;
+    $("loadState").textContent = failSafe() ? guardText("active") : guardText("ok");
+    $("loadState").classList.toggle("error", failSafe());
+    $("loadReset").textContent = guardText("reset");
+    $("loadReset").disabled = !failSafe();
+    $("loadHint").textContent = guardText("hint");
+  }
+
+  /** Every sample. Tripped: the voice stops first, then background work pauses. Recovered/reset: it all comes back. */
+  function onLoad(snap) {
+    if (snap.event === Guard.TRIPPED) {
+      setLive(false);
+      Voice.stopSpeaking();
+      markSpeaking(null);
+      showToast(guardText("tripped"), 7000);
+    } else if (snap.event === Guard.RECOVERED || snap.event === Guard.RESET) {
+      showToast(guardText(snap.event === Guard.RECOVERED ? "recovered" : "reset_done"));
+      resumeBackground();
+    }
+    renderLoad();
+  }
+
+  function resetFailSafe() {
+    if (!failSafe()) return false;
+    guardMonitor.reset();
+    return true;
+  }
+
+  /** The paused work runs a moment after the notice (so its own "saved" toast doesn't hide it). */
+  function resumeBackground() {
+    if (!deferredBackground) return;
+    deferredBackground = false;
+    setTimeout(() => {
+      if (sweepWaiting) sweepSessions().then(() => checkpoint());
+      else checkpoint();
+    }, RESUME_DELAY_MS);
+  }
+
   let toastTimer = null;
 
   /** A small, quiet note above the input that goes away by itself. */
-  function showToast(text) {
+  function showToast(text, ms = 3200) {
     const toast = $("toast");
     toast.textContent = text;
     toast.hidden = false;
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { toast.hidden = true; }, 3200);
+    toastTimer = setTimeout(() => { toast.hidden = true; }, ms);
   }
 
   /**
@@ -2116,6 +2253,8 @@
     $("setLanguage").value = s.language;
     $("setSerious").checked = s.seriousMode;
     $("setInstructions").value = s.customInstructions;
+    fillVoicePreset();
+    renderLoad();
     $("setWebSearch").checked = s.webSearch;
     $("setAutoSkills").checked = s.autoSwitchSkills !== false;
     const relay = window.FlomaAgent.relays()[0];
@@ -2583,6 +2722,9 @@
     $("sessionsNewChat").addEventListener("click", () => openSession(null));
     DOCKED.addEventListener("change", () => setSessions(false)); // widening docks the list: no drawer, no scrim
     $("setToby").addEventListener("change", () => switchPersona($("setToby").checked ? "toby" : "floma"));
+    $("setVoicePreset").addEventListener("change", () => setVoicePreset($("setVoicePreset").value));
+    $("loadReset").addEventListener("click", resetFailSafe);
+    $("loadBadge").addEventListener("click", () => setDrawer(true));
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && !$("settings").hidden) setDrawer(false);
       else if (event.key === "Escape" && !$("sessions").hidden && !DOCKED.matches) setSessions(false);
@@ -2785,7 +2927,11 @@
     // and the chat left open is checkpointed (its facts saved without closing it).
     Memory.setDatabaseUrl(() => state.settings.firebaseUrl);
     // Step 70: then the pinned chats come in from Firebase (and this browser's unsent ones go up).
-    Memory.refreshOnStart().then(fillSettings).then(() => syncPinned()).then(sweepSessions).then(() => checkpoint());
+    Memory.refreshOnStart().then(fillSettings).then(() => syncPinned()).then(pullVoicePreset).then(sweepSessions).then(() => checkpoint());
+    // Step 73: the load meter (every 5 s) and its fail-safe.
+    guardMonitor.onSnapshot = onLoad;
+    guardMonitor.start();
+    renderLoad();
 
     // No key prompt: Gemini is optional (Settings → Model). Without it the chat answers in local mode.
     $("input").focus();

@@ -941,3 +941,18 @@ button.danger { background: transparent; color: var(--error); border: 1px solid 
   overflow-wrap: anywhere;
 }
 .chip:hover { background: var(--surface-variant); }
+
+/* Step 73: the system load meter - green below 70%, orange 70-84%, red from 85% (floma_platform.js "resource_guard"). */
+.load-badge {
+  --load: #8b949e;
+  display: block; padding: 0 6px; margin: 1px 0 0; border: 1px solid var(--load); border-radius: 999px;
+  background: transparent; color: var(--load); font: 600 0.7rem/1.4 inherit; cursor: pointer; width: max-content;
+}
+p.load-badge { cursor: default; font-size: 0.85rem; padding: 1px 8px; }
+.load-badge[data-level="ok"], #loadBar[data-level="ok"] { --load: #3fb950; }
+.load-badge[data-level="warn"], #loadBar[data-level="warn"] { --load: #f0883e; }
+.load-badge[data-level="high"], #loadBar[data-level="high"] { --load: #f85149; }
+#loadBar { --load: #8b949e; width: 100%; height: 8px; accent-color: var(--load); }
+#loadBar::-webkit-progress-bar { background: var(--surface2, #2a2f3a); border-radius: 4px; }
+#loadBar::-webkit-progress-value { background: var(--load); border-radius: 4px; }
+#loadBar::-moz-progress-bar { background: var(--load); border-radius: 4px; }

@@ -218,6 +218,94 @@ window.FLOMA_PLATFORM = {
       }
     }
   },
+  "voice_presets": {
+    "_comment": "Step 73: Toby's voice & personality style, the same on every platform. \"default\" changes nothing. \"vax\" (only while Toby is the assistant) adds the prompt section below (after the personality, not in serious mode), a calmer, lower voice (tts: multipliers of the user's pitch / speed for the phone's and browser's voice; the PC uses pc_companion/assets/voices/voice_palette.json's toby preset and the clips in toby/clips_vax/). The choice is saved on each device and synced as {value, updated_at, device} at firebase_path: the newest write wins.",
+    "setting": "voice_preset",
+    "default": "default",
+    "persona": "toby",
+    "firebase_path": "floma/settings/voice_preset",
+    "options": [
+      {
+        "id": "default",
+        "label": { "HEBREW": "ברירת מחדל — טובי הרגיל", "ENGLISH": "Default — regular Toby" },
+        "description": { "HEBREW": "הקול, הקליפים והאופי הרגילים של טובי.", "ENGLISH": "Toby's usual voice, clips and character." }
+      },
+      {
+        "id": "vax",
+        "label": { "HEBREW": "קול ואופי Vax — Vox Machina", "ENGLISH": "Vax voice & character — Vox Machina" },
+        "description": {
+          "HEBREW": "בריטון רגוע ובטוח של נוכל: הומור יבש, שאלות רטוריות, ביטחון בלי מאמץ ונאמנות שקטה. במחשב גם קליפי התגובה של Vax.",
+          "ENGLISH": "A calm, confident rogue baritone: dry wit, rhetorical humor, effortless confidence and quiet loyalty. On the PC, Vax's reaction clips too."
+        },
+        "tts": { "pitch": 0.85, "rate": 0.92 },
+        "prompt_heading": "# Voice and character: Vax",
+        "prompt": [
+          "The user chose the \"Vax\" style: speak like Vax'ildan of Vox Machina - a calm, confident rogue with a low, unhurried voice.",
+          "Dry wit and understatement. Use rhetorical questions for humor (\"Did you really think I'd let that slide?\") instead of loud jokes; never frantic, never over-excited.",
+          "Effortless confidence: hard things are \"easily done\". Make the difficult look casual, without bragging.",
+          "Grounded loyalty: under the sarcasm you always have the user's back. When something really matters, drop the act and be sincere, warm and protective.",
+          "Keep it in the user's language (Hebrew stays Hebrew) and in tone only: no fantasy jargon, no quoting the show, and you never claim to be Vax. You are still {name}, and every rule here still applies."
+        ]
+      }
+    ],
+    "texts": {
+      "HEBREW": {
+        "title": "סגנון קול ואישיות של טובי",
+        "hint": "חל רק כשטובי הוא העוזר. נשמר במכשיר ומסתנכרן דרך Firebase לכל המכשירים.",
+        "changed": "✓ סגנון הקול של טובי עודכן"
+      },
+      "ENGLISH": {
+        "title": "Toby's voice & personality style",
+        "hint": "Applies only while Toby is the assistant. Saved on this device and synced to all devices through Firebase.",
+        "changed": "✓ Toby's voice style updated"
+      }
+    }
+  },
+  "resource_guard": {
+    "_comment": "Step 73: the system load meter and fail-safe, the same rules on every platform (pc_companion/resource_guard.py, web_client/resource_guard.js, Android ResourceGuard.kt; persona-tests checks them against each other). Every poll_ms the device's CPU and memory use (0-100, either may be missing) become one load: round(cpu * cpu_weight + memory * memory_weight), or the one that is known. Below warn: green; warn..high-1: orange; high and up: red. When the load stays at or above high for sustain_ms, the fail-safe trips: first the voice (TTS, Toby's clips and the voice style) goes quiet with the 'tripped' notice, then non-essential background work (automatic chat summarization) pauses. It recovers by itself when the load drops below recover (voice back, with the 'recovered' notice), or by the reset button in Settings.",
+    "poll_ms": 5000,
+    "warn": 70,
+    "high": 85,
+    "sustain_ms": 10000,
+    "recover": 65,
+    "weights": { "cpu": 0.6, "memory": 0.4 },
+    "texts": {
+      "HEBREW": {
+        "title": "מד עומס מערכת",
+        "badge": "עומס {load}%",
+        "badge_unknown": "עומס —",
+        "hint": "נמדד כל 5 שניות. מעל 85% במשך 10 שניות מופעל מנגנון אל כשל: הקול מושתק זמנית ומשימות רקע מושהות עד שהעומס יורד מתחת ל-65%.",
+        "cpu": "מעבד",
+        "memory": "זיכרון",
+        "app": "האפליקציה",
+        "unknown": "לא זמין",
+        "ok": "תקין",
+        "active": "מנגנון אל כשל פעיל: הקול מושתק ומשימות רקע מושהות",
+        "tripped": "מנגנון אל כשל הופעל עקב עומס גבוה: חיקוי הקול הושבת זמנית",
+        "background_paused": "משימות רקע (כמו סיכום אוטומטי של שיחות) מושהות עד שהעומס ירד מתחת ל-65%.",
+        "recovered": "העומס ירד: הקול חזר לפעול",
+        "reset": "איפוס מנגנון אל כשל",
+        "reset_done": "✓ מנגנון אל כשל אופס"
+      },
+      "ENGLISH": {
+        "title": "System load",
+        "badge": "Load {load}%",
+        "badge_unknown": "Load —",
+        "hint": "Measured every 5 seconds. Above 85% for 10 seconds the fail-safe engages: the voice goes quiet and background work pauses until the load drops below 65%.",
+        "cpu": "CPU",
+        "memory": "Memory",
+        "app": "This app",
+        "unknown": "n/a",
+        "ok": "Normal",
+        "active": "Fail-safe active: voice muted, background work paused",
+        "tripped": "Fail-safe engaged due to high load: voice imitation is temporarily off",
+        "background_paused": "Background work (like automatic chat summaries) is paused until the load drops below 65%.",
+        "recovered": "Load is back down: the voice is on again",
+        "reset": "Reset the fail-safe",
+        "reset_done": "✓ Fail-safe reset"
+      }
+    }
+  },
   "quota": {
     "_comment": "Settings' key & quota cards (Step 56), the same on every platform: when each key was added, Gemini requests sent today from this device against an estimated daily limit (the day resets at midnight Pacific time), ElevenLabs characters from the user's own subscription, and the Firebase memory's size.",
     "gemini_daily_requests": 250,
