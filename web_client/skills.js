@@ -228,7 +228,7 @@
   // --- Skills ---------------------------------------------------------------------------------------
 
   // The skills this build has code for; a newer registry's other skills stay hidden until the app updates.
-  const IMPLEMENTED = ["vault", "phone", "translate", "calc"];
+  const IMPLEMENTED = ["vault", "phone", "translate", "calc", "code_vault"];
   const skills = (reg) => (reg || registry()).skills.filter((s) => IMPLEMENTED.includes(s.id));
   const byId = (id, reg) => skills(reg).find((s) => s.id === id) || null;
   const name = (skill, language) => (language === "ENGLISH" ? skill.name_en : skill.name_he);
@@ -328,6 +328,7 @@
     const v = vault || vaultData();
     if (skillId === "phone") return phoneAnswer(query, language, v, reg);
     if (skillId === "calc") return calcAnswer(query, language, reg);
+    if (skillId === "code_vault") return codeAnswer(query, language, reg);
     return reply(search(query, skill.search, v), skill, v, language);
   }
 
@@ -1125,10 +1126,89 @@
 
   const calcText = (key, language, reg) => calcConfig(reg).text[key][language === "ENGLISH" ? "ENGLISH" : "HEBREW"];
 
+  // --- @code (Step 72): a port of code_vault.py's answer - the personal Code Vault, two steps with chips -------------
+
+  const codeConfig = (reg) => byId("code_vault", reg).code_vault;
+  const codeText = (key, language, reg) => codeConfig(reg).text[key][language === "ENGLISH" ? "ENGLISH" : "HEBREW"];
+  const codeVaultData = () => window.FLOMA_CODE_VAULT || { languages: {} }; // persona/code_vault.js (the JSON's mirror)
+  const answersOnActivate = (skillId, reg) => Boolean((byId(skillId, reg) || {}).answer_on_activate);
+
+  function codeAnswer(query, language, reg, data) {
+    const skill = byId("code_vault", reg);
+    const cfg = skill.code_vault;
+    const lang = language === "ENGLISH" ? "ENGLISH" : "HEBREW";
+    const byLanguage = (data || codeVaultData()).languages;
+    const languages = Object.keys(byLanguage);
+    const t = (key, values = {}) => {
+      let out = cfg.text[key][lang];
+      for (const [k, v] of Object.entries(values)) out = out.split(`{${k}}`).join(String(v));
+      return out;
+    };
+    const back = { label: t("back"), send: t("back") };
+    const result = (text, chips, copy = null) => ({ text, sources: [], copy, chips });
+    const menu = (notFound = null) => {
+      if (!languages.length) return result(t("empty_vault", { icon: skill.icon }), []);
+      const lines = notFound ? [t("not_found", { query: notFound })] : [];
+      lines.push(t("choose_language", { icon: skill.icon, name: name(skill, lang) }));
+      for (const l of languages) lines.push(t("language_line", { language: l, count: byLanguage[l].length }));
+      return result(lines.join("\n"), languages.map((l) => ({ label: l, send: l })));
+    };
+    const titles = (chosen, notFound = null) => {
+      const snippets = byLanguage[chosen];
+      if (!snippets.length) return result(t("empty_language", { icon: skill.icon, language: chosen }), [back]);
+      const lines = notFound ? [t("not_found", { query: notFound })] : [];
+      lines.push(t("choose_title", { icon: skill.icon, language: chosen }));
+      for (const s of snippets) lines.push(t("title_line", { title: s.title }));
+      return result(lines.join("\n"), [...snippets.map((s) => ({ label: s.title, send: `${chosen}: ${s.title}` })), back]);
+    };
+    const show = (chosen, snippet) => {
+      const fence = (cfg.fences || {})[chosen] || "";
+      const code = snippet.code.replace(/\s+$/, "");
+      const lines = [t("snippet_head", { icon: skill.icon, language: chosen, title: snippet.title })];
+      if ((snippet.description || "").trim()) lines.push(snippet.description.trim());
+      lines.push("```" + fence + "\n" + code + "\n```");
+      return result(lines.join("\n"), [{ label: "⬅ " + chosen, send: chosen }, back], code);
+    };
+    const asked = String(query || "").split(/\s+/).filter(Boolean).join(" ");
+    const normalized = norm(asked);
+    if (!languages.length) return menu();
+    if (!normalized || (cfg.all_phrases || []).map(norm).includes(normalized)) return menu();
+    const byIdMatch = [];
+    for (const l of languages) for (const s of byLanguage[l]) if (norm(s.id) === normalized) byIdMatch.push([l, s]);
+    if (byIdMatch.length) return show(...byIdMatch[0]); // a snippet id, before its "py" is read as a language
+    const keys = [];
+    for (const l of languages) {
+      for (const key of [l, ...((cfg.aliases || {})[l] || [])]) {
+        const k = norm(key);
+        if (k && !keys.some(([a, b]) => a === k && b === l)) keys.push([k, l]);
+      }
+    }
+    keys.sort((a, b) => b[0].length - a[0].length); // stable: longest first, then the vault's order
+    let chosen = null;
+    let rest = normalized;
+    for (const [key, keyLanguage] of keys) {
+      if (normalized === key) return titles(keyLanguage);
+      if (normalized.startsWith(key + " ")) {
+        chosen = keyLanguage;
+        rest = normalized.slice(key.length + 1);
+        break;
+      }
+    }
+    const pool = [];
+    for (const l of chosen ? [chosen] : languages) for (const s of byLanguage[l]) pool.push([l, s]);
+    const exact = pool.filter(([, s]) => rest === norm(s.title) || rest === norm(s.id));
+    if (exact.length) return show(...exact[0]);
+    const partial = pool.filter(([, s]) => rest.length >= 2 && norm(s.title).includes(rest));
+    if (partial.length === 1) return show(...partial[0]);
+    if (chosen) return titles(chosen, partial.length ? null : asked);
+    return menu(asked);
+  }
+
   window.FlomaSkills = {
     norm, variants, levenshtein, analyze, search, reply, resolve, answer, activatedText, mentionMatches, mentionToken,
     findNumber, phoneInfo, phoneMatches, translateRequest, translateCaption, translateText, textLanguage,
     calcAnswer, calcText, calcFmt: Calc.fmt, calcCheck: Calc.check, calcRun: Calc.run, urlKey, exactMatches,
+    codeAnswer, codeText, answersOnActivate,
     skills, byId, name, description, text, vault: vaultData,
   };
 })();

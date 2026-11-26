@@ -404,16 +404,31 @@
       });
       bubble.append(copy);
     }
-    if (message.copyValue) {  // @calc (Step 64): one tap copies the result
+    if (message.copyValue) {  // @calc (Step 64) / @code (Step 72): one tap copies the result or the code
+      const code = message.skill === "code_vault";
       const copy = document.createElement("button");
       copy.type = "button";
       copy.className = "copy-details copy-result";
-      copy.textContent = Skills.calcText("copy", lang());
+      copy.textContent = code ? Skills.codeText("copy", lang()) : Skills.calcText("copy", lang());
       copy.addEventListener("click", async () => {
         await copyText(message.copyValue);
-        showToast(Skills.calcText("copied", lang()));
+        showToast(code ? Skills.codeText("copied", lang()) : Skills.calcText("copied", lang()));
       });
       bubble.append(copy);
+    }
+    if (message.chips) {  // Step 72: quick replies - a tap sends the chip's text as the next message
+      const row = document.createElement("div");
+      row.className = "chips";
+      for (const chip of message.chips) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "chip";
+        button.dir = "auto";
+        button.textContent = chip.label; // never innerHTML: titles come from the vault file
+        button.addEventListener("click", () => sendChip(chip.send, message.skill));
+        row.append(button);
+      }
+      bubble.append(row);
     }
     if (message.caption) {
       const caption = document.createElement("small");
@@ -985,6 +1000,13 @@
     $("skillPillClose").title = skillText("dismiss");
   }
 
+  /** A quick-reply chip (Step 72): its text goes out as the next message, to the skill that offered it. */
+  function sendChip(text, skill) {
+    if (state.thinking || !text) return;
+    if (skill && state.activeSkill !== skill && Skills.byId(skill)) setActiveSkill(skill);
+    send(text);
+  }
+
   function sendSkill(text, decision) {
     hideMentions();
     addMessage({ role: "user", text, local: true });
@@ -995,7 +1017,7 @@
       return;
     }
     if (decision.activate) setActiveSkill(decision.skill);
-    if (decision.activate && !decision.query) {
+    if (decision.activate && !decision.query && !Skills.answersOnActivate(decision.skill)) {
       addMessage({ role: "assistant", text: Skills.activatedText(decision.skill, lang()), local: true, skill: decision.skill });
     } else if (decision.skill === "translate") {
       sendTranslate(decision.query);
@@ -1004,7 +1026,8 @@
       const answer = Skills.answer(decision.skill, decision.query, lang());
       // @phone's links get the launcher's badge and "copy the details" button (Step 61).
       addMessage({ role: "assistant", text: answer.text, sources: answer.sources, local: true, skill: decision.skill,
-        launcher: decision.skill === "phone" && answer.sources.length > 0, copyValue: answer.copy || null });
+        launcher: decision.skill === "phone" && answer.sources.length > 0, copyValue: answer.copy || null,
+        chips: answer.chips && answer.chips.length ? answer.chips : undefined }); // Step 72: @code's quick replies
     }
     setEmotion(Core.avatarFor("action_done"));
   }
@@ -1149,7 +1172,13 @@
   function useSkill(id) {
     if (state.thinking) return;
     setActiveSkill(id);
-    addMessage({ role: "assistant", text: Skills.activatedText(id, lang()), local: true, skill: id });
+    if (Skills.answersOnActivate(id)) { // Step 72: @code opens with its language menu (chips)
+      const menu = Skills.answer(id, "", lang());
+      addMessage({ role: "assistant", text: menu.text, sources: [], local: true, skill: id, copyValue: menu.copy || null,
+        chips: menu.chips && menu.chips.length ? menu.chips : undefined });
+    } else {
+      addMessage({ role: "assistant", text: Skills.activatedText(id, lang()), local: true, skill: id });
+    }
     if ($("skillsDialog").open) $("skillsDialog").close();
     $("input").focus();
   }

@@ -2227,6 +2227,136 @@ window.FLOMA_SKILLS = {
      }
     }
    }
+  },
+  {
+   "id": "code_vault",
+   "handle": "@code",
+   "aliases": [
+    "@קוד",
+    "@מאגר"
+   ],
+   "names": [
+    "מאגר קודים",
+    "מאגר הקודים",
+    "קטעי קוד",
+    "code vault",
+    "code snippets"
+   ],
+   "name_he": "מאגר קודים",
+   "name_en": "Code Vault",
+   "icon": "💻",
+   "description_he": "קטעי הקוד השמורים שלך לפי שפת תכנות: בוחרים שפה, בוחרים כותרת, ומקבלים את הקוד המלא עם כפתור העתקה. מקומי לגמרי, 0 טוקנים. המאגר עצמו הוא persona/code_vault.json - קל לערוך ולהוסיף, ומתעדכן בכל המכשירים.",
+   "description_en": "Your saved code snippets by programming language: pick a language, pick a title, and get the full code with a copy button. Fully local, 0 tokens. The vault is persona/code_vault.json - easy to edit, and it updates on every device.",
+   "auto_triggers": [],
+   "answer_on_activate": true,
+   "platforms": [
+    "desktop",
+    "web",
+    "android"
+   ],
+   "code_vault": {
+    "aliases": {
+     "Python": [
+      "python",
+      "py",
+      "פייתון",
+      "פיתון"
+     ],
+     "JavaScript": [
+      "javascript",
+      "js",
+      "ג'אווהסקריפט",
+      "גאווהסקריפט",
+      "ג'אווה סקריפט",
+      "node"
+     ],
+     "TypeScript": [
+      "typescript",
+      "ts",
+      "טייפסקריפט"
+     ],
+     "React": [
+      "react",
+      "jsx",
+      "ריאקט"
+     ],
+     "SQL": [
+      "sql",
+      "אסקיואל"
+     ],
+     "HTML/CSS": [
+      "html",
+      "css",
+      "html css",
+      "html/css"
+     ]
+    },
+    "fences": {
+     "Python": "python",
+     "JavaScript": "javascript",
+     "TypeScript": "typescript",
+     "React": "jsx",
+     "SQL": "sql",
+     "HTML/CSS": "html"
+    },
+    "all_phrases": [
+     "שפות",
+     "כל השפות",
+     "רשימת שפות",
+     "חזרה",
+     "תפריט",
+     "languages",
+     "all languages",
+     "back",
+     "menu"
+    ],
+    "text": {
+     "choose_language": {
+      "HEBREW": "{icon} {name} - באיזו שפה? בחר/י שפה (או כתוב/י את שמה):",
+      "ENGLISH": "{icon} {name} - which language? Pick one (or type its name):"
+     },
+     "language_line": {
+      "HEBREW": "• {language} - {count} קטעים",
+      "ENGLISH": "• {language} - {count} snippets"
+     },
+     "choose_title": {
+      "HEBREW": "{icon} {language} - בחר/י כותרת:",
+      "ENGLISH": "{icon} {language} - pick a title:"
+     },
+     "title_line": {
+      "HEBREW": "• {title}",
+      "ENGLISH": "• {title}"
+     },
+     "empty_language": {
+      "HEBREW": "{icon} עוד אין קטעי קוד ב-{language}. מוסיפים ב-persona/code_vault.json.",
+      "ENGLISH": "{icon} No {language} snippets yet. Add some in persona/code_vault.json."
+     },
+     "empty_vault": {
+      "HEBREW": "{icon} המאגר ריק. מוסיפים שפות וקטעי קוד ב-persona/code_vault.json.",
+      "ENGLISH": "{icon} The vault is empty. Add languages and snippets in persona/code_vault.json."
+     },
+     "not_found": {
+      "HEBREW": "לא מצאתי \"{query}\" במאגר.",
+      "ENGLISH": "I didn't find \"{query}\" in the vault."
+     },
+     "snippet_head": {
+      "HEBREW": "{icon} {language} · {title}",
+      "ENGLISH": "{icon} {language} · {title}"
+     },
+     "back": {
+      "HEBREW": "⬅ כל השפות",
+      "ENGLISH": "⬅ All languages"
+     },
+     "copy": {
+      "HEBREW": "📋 העתקת הקוד",
+      "ENGLISH": "📋 Copy the code"
+     },
+     "copied": {
+      "HEBREW": "✓ הקוד הועתק",
+      "ENGLISH": "✓ Code copied"
+     }
+    }
+   }
   }
  ]
 };

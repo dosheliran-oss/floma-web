@@ -925,3 +925,19 @@ button.danger { background: transparent; color: var(--error); border: 1px solid 
 }
 /* @translate (Step 63): the small direction line under a translation */
 .bubble-caption { display: block; margin-top: 6px; color: var(--muted); font-size: 0.75rem; }
+
+/* Step 72: quick-reply chips under a skill's reply (@code's languages and titles). */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip {
+  border: 1px solid var(--primary);
+  border-radius: 999px;
+  padding: 5px 12px;
+  background: transparent;
+  color: var(--primary);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.chip:hover { background: var(--surface-variant); }
