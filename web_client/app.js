@@ -417,6 +417,17 @@
       });
       bubble.append(copy);
     }
+    if (message.tutor) {  // Step 78: the math tutor's explanation, copied as it is (its notation pastes cleanly)
+      const copy = document.createElement("button");
+      copy.type = "button";
+      copy.className = "copy-details copy-tutor";
+      copy.textContent = Skills.tutorText("copy", lang());
+      copy.addEventListener("click", async () => {
+        await copyText(message.text);
+        showToast(Skills.tutorText("copied", lang()));
+      });
+      bubble.append(copy);
+    }
     if (message.copyValue) {  // @calc (Step 64) / @code (Step 72): one tap copies the result or the code
       const code = message.skill === "code_vault";
       const copy = document.createElement("button");
@@ -1158,6 +1169,9 @@
     } else if (decision.skill === "translate") {
       sendTranslate(decision.query);
       return;
+    } else if (decision.skill === "calc" && Skills.tutorWanted(decision.query)) {
+      sendTutor(decision.query); // Step 78: beyond the local solver - the math tutor
+      return;
     } else {
       const answer = Skills.answer(decision.skill, decision.query, lang());
       // @phone's links get the launcher's badge and "copy the details" button (Step 61).
@@ -1197,6 +1211,34 @@
       setThinking(false);
       const reason = e instanceof Core.AiError ? e.kind : "BAD_RESPONSE";
       addMessage({ role: "assistant", text: Skills.translateText("failed", lang(), undefined, { reason }), local: true, skill: "translate" });
+    }
+  }
+
+  /** @calc's math tutor (Step 78): Gemini with the tutor's instruction (verification first, the matched syllabus
+   * modules, the notation asked for) and this chat's last tutor exchanges. Without a key: the local solver's answer and
+   * how to turn the tutor on. */
+  let tutorHistory = { chat: null, turns: [] };
+  async function sendTutor(query) {
+    const chat = state.sessionId || null;
+    if (tutorHistory.chat !== chat) tutorHistory = { chat, turns: [] }; // the tutor's context belongs to its chat
+    if (!state.apiKey) {
+      const local = Skills.calcAnswer(query, lang());
+      addMessage({ role: "assistant", text: `${local.text}\n\n${Skills.tutorText("no_model", lang())}`, local: true, skill: "calc" });
+      return;
+    }
+    const request = Skills.tutorRequest(query, lang(), undefined, tutorHistory.turns, assistant());
+    setThinking(true);
+    setEmotion(Core.avatarFor("thinking"));
+    try {
+      const text = await Core.tutor(state.apiKey, request.system, request.text);
+      setThinking(false);
+      tutorHistory.turns = tutorHistory.turns.concat([{ q: query, a: text }]).slice(-Skills.tutorConfig().history_turns);
+      addMessage({ role: "assistant", text, local: true, skill: "calc", tutor: true, caption: Skills.tutorCaption(request, lang()) });
+      setEmotion(Core.avatarFor("action_done"));
+    } catch (e) {
+      setThinking(false);
+      const reason = e instanceof Core.AiError ? e.kind : "BAD_RESPONSE";
+      addMessage({ role: "assistant", text: Skills.tutorText("failed", lang(), undefined, { reason }), local: true, skill: "calc" });
     }
   }
 

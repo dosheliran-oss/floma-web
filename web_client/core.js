@@ -978,6 +978,21 @@
     return out;
   }
 
+  /** @calc's math tutor (Step 78): high thinking, so every step is recomputed before it's confirmed or corrected. */
+  async function tutor(apiKey, system, text) {
+    if (!apiKey) throw new AiError("MISSING_KEY");
+    const body = {
+      systemInstruction: { parts: [{ text: system }] },
+      contents: [{ role: "user", parts: [{ text }] }],
+      generationConfig: { thinkingConfig: { thinkingLevel: "high" } },
+    };
+    const raw = JSON.parse(await post(apiKey, MODELS.DEFAULT, body));
+    const parts = (raw.candidates && raw.candidates[0] && raw.candidates[0].content && raw.candidates[0].content.parts) || [];
+    const out = parts.filter((x) => !x.thought).map((x) => x.text || "").join("").trim();
+    if (!out) throw new AiError("BAD_RESPONSE", "empty answer");
+    return out;
+  }
+
   /** null if Google accepts the key, otherwise an AiError kind (no tokens are spent). */
   async function verifyKey(apiKey) {
     try {
@@ -1231,7 +1246,7 @@
   window.FlomaCore = {
     MODELS, EMOTIONS, DEFAULT_SETTINGS, AiError,
     route, modelFor, detectSeriousMode, systemPrompt, buildPrompt, memoryNotes, summarizerPrompt,
-    memoryNode, notesFromNode, complete, summarizeMemory, verifyKey, translate,
+    memoryNode, notesFromNode, complete, summarizeMemory, verifyKey, translate, tutor,
     factId, itemsFromNode, mergeItems, liveItems, notesFromItems, applyNotes, editItem, nodeFromItems,
     backupDocument, parseBackup, restoreItems, extractionStatus, ledgerText,
     normalizeUsername, passwordHash, passwordOk, userRecord, verifyPassword, newSalt, userRoot, userPath, legacyHasData,

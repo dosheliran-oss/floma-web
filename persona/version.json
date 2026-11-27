@@ -1,13 +1,13 @@
 {
- "app_version": "1.73.0",
- "engine_version": "f750140d5ab4",
+ "app_version": "1.74.0",
+ "engine_version": "6e12b059f395",
  "bundle_format": 1,
  "files": {
   "sites_catalog.js": "7f9b2bfb5201c062fa68812356561230a475313cd25b286befcfb78629a569b8",
   "floma_platform.js": "025492b290f72a26bc1ad38515716a76a7b3db5ee1f89efebf8d2920a75e0ff7",
   "personas.js": "76720a2a259dc6e38665c5807b24906f3e6a0627603f7bd7561c4010d80208c6",
-  "system_guide.js": "eb31289e99986c655a6ae5dc715f05ff3368e7e9001ea921db1d37f060326c00",
-  "skills_registry.js": "e0ecf0f810907c017feb817c421ce648b48475b2b607a4181c2608214e95320a",
+  "system_guide.js": "2438740481dcbd236c0dcf6b2476a3fc7d04a58c28c122187033b9ddfcaf56e5",
+  "skills_registry.js": "76379ea9c4a956aa3767ebac8c30ec382b842867ed4288a121073fe84947c436",
   "knowledge_vault.js": "a2dd6cc98c9b4e898771a7c27d488531fb0f2fd47e2d41a0635b5d563afdaf32",
   "code_vault.json": "a94a1d4b3c60d2ba5d4cdd44446e544872cb6159c023ec901a1752fd7a18428c"
  },
@@ -15,5 +15,5 @@
  "site_url": "https://dosheliran-oss.github.io/floma-web/",
  "android_apk_url": "https://github.com/dosheliran-oss/floma-web/releases/latest/download/Floma.apk",
  "windows_exe_url": "https://github.com/dosheliran-oss/floma-web/releases/latest/download/FlomaPCCompanion.exe",
- "web_build": "1.73.0-f750140d5ab4-7c348a45"
+ "web_build": "1.74.0-6e12b059f395-b420badc"
 }

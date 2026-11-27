@@ -319,6 +319,8 @@
           if (search(stripped, skill.search, v).items.length) return decision("vault", stripped, false, false, true);
         }
       }
+      // An academic math question ("מצא את הערכים העצמיים...", "prove by induction...") - @calc's tutor (Step 78).
+      if (byId("calc", reg) && tutorModules(stripped, reg).length) return decision("calc", stripped, false, false, true);
     }
     return decision();
   }
@@ -1126,6 +1128,103 @@
 
   const calcText = (key, language, reg) => calcConfig(reg).text[key][language === "ENGLISH" ? "ENGLISH" : "HEBREW"];
 
+  // --- @calc's math tutor (Step 78): a port of skills.py's tutor_* - Linear Algebra, Calculus, Logic & Set Theory ----
+
+  const tutorConfig = (reg) => calcConfig(reg).tutor;
+
+  /** [phrase]'s words in a row in [words]; each may carry one or two Hebrew prefix letters ("הערכים העצמיים"). */
+  function hasPhrase(words, phrase, prefixes) {
+    const n = phrase.length;
+    for (let i = 0; i + n <= words.length; i++) {
+      let all = true;
+      for (let k = 0; k < n && all; k++) all = variants(words[i + k], prefixes).includes(phrase[k]);
+      if (all) return true;
+    }
+    return false;
+  }
+
+  function tutorModules(message, reg) {
+    const cfg = tutorConfig(reg);
+    const words = norm(message).split(" ").filter(Boolean);
+    const found = [];
+    for (const module of cfg.modules) {
+      if (module.symbols.some((symbol) => message.includes(symbol))) {
+        found.push(module.id);
+        continue;
+      }
+      for (const term of module.triggers) {
+        const phrase = norm(term).split(" ").filter(Boolean);
+        if (phrase.length && hasPhrase(words, phrase, cfg.prefixes)) {
+          found.push(module.id);
+          break;
+        }
+      }
+    }
+    return found;
+  }
+
+  /** True when the local solver can't answer [query] itself and there is something to ask the tutor. */
+  function tutorWanted(query, reg) {
+    if (!norm(query)) return false;
+    return tutorConfig(reg).fallback_errors.includes(Calc.run(query, calcConfig(reg), "HEBREW").error);
+  }
+
+  function tutorNotation(message, reg) {
+    const cfg = tutorConfig(reg);
+    const words = norm(message).split(" ").filter(Boolean);
+    for (const [style, cues] of Object.entries(cfg.notation_cues)) {
+      if (cues.some((c) => norm(c) && hasPhrase(words, norm(c).split(" ").filter(Boolean), cfg.prefixes))) return style;
+    }
+    return "unicode";
+  }
+
+  function tutorCut(text, limit) {
+    const chars = Array.from(text); // code points, like Python's len()
+    return chars.length <= limit ? text : chars.slice(0, limit).join("").trimEnd() + "…";
+  }
+
+  /** {modules, general, notation, language, system, text}: the tutor's call for [query] ([history]: [{q, a}], oldest first). */
+  function tutorRequest(query, language, reg, history, assistant = "Floma") {
+    const cfg = tutorConfig(reg);
+    query = query.trim();
+    const turns = cfg.history_turns > 0 ? (history || []).slice(-cfg.history_turns) : [];
+    let ids = tutorModules(query, reg);
+    if (!ids.length) ids = tutorModules(turns.map((turn) => turn.q).join(" "), reg); // a follow-up keeps its modules
+    const general = !ids.length;
+    const chosen = cfg.modules.filter((m) => general || ids.includes(m.id));
+    const lines = chosen.map((m) => cfg.module_line.split("{name_en}").join(m.name.ENGLISH).split("{name_he}").join(m.name.HEBREW)
+      .split("{topics}").join(m.topics.ENGLISH.join("; ")).split("{method}").join(m.method));
+    const answerIn = textLanguage(query) || (language === "ENGLISH" ? "ENGLISH" : "HEBREW");
+    const notation = tutorNotation(query, reg);
+    const system = cfg.system_prompt.split("{name}").join(assistant).split("{language}").join(cfg.language_names[answerIn])
+      .split("{notation}").join(cfg.notation[notation]).split("{modules}").join(lines.join("\n"));
+    let text = query;
+    if (turns.length) {
+      const past = [cfg.history_head];
+      for (const turn of turns) {
+        past.push(cfg.history_q.split("{text}").join(tutorCut(turn.q, cfg.history_chars)));
+        past.push(cfg.history_a.split("{text}").join(tutorCut(turn.a, cfg.history_chars)));
+      }
+      text = past.join("\n") + "\n\n" + cfg.question_head + "\n" + query;
+    }
+    return { modules: chosen.map((m) => m.id), general, notation, language: answerIn, system, text };
+  }
+
+  function tutorCaption(request, language, local = false, reg) {
+    const cfg = tutorConfig(reg);
+    const lang = language === "ENGLISH" ? "ENGLISH" : "HEBREW";
+    const names = Object.fromEntries(cfg.modules.map((m) => [m.id, m.name[lang]]));
+    const modules = request.general ? cfg.text.general[lang] : request.modules.map((id) => names[id]).join(", ");
+    const line = cfg.text.caption[lang].split("{modules}").join(modules);
+    return line + (local ? ` · ${cfg.text.local_model[lang]}` : "");
+  }
+
+  function tutorText(key, language, reg, values) {
+    let template = tutorConfig(reg).text[key][language === "ENGLISH" ? "ENGLISH" : "HEBREW"];
+    for (const [k, v] of Object.entries(values || {})) template = template.split(`{${k}}`).join(String(v));
+    return template;
+  }
+
   // --- @code (Step 72): a port of code_vault.py's answer - the personal Code Vault, two steps with chips -------------
 
   const codeConfig = (reg) => byId("code_vault", reg).code_vault;
@@ -1207,7 +1306,8 @@
   window.FlomaSkills = {
     norm, variants, levenshtein, analyze, search, reply, resolve, answer, activatedText, mentionMatches, mentionToken,
     findNumber, phoneInfo, phoneMatches, translateRequest, translateCaption, translateText, textLanguage,
-    calcAnswer, calcText, calcFmt: Calc.fmt, calcCheck: Calc.check, calcRun: Calc.run, urlKey, exactMatches,
+    calcAnswer, calcText, tutorModules, tutorWanted, tutorNotation, tutorRequest, tutorCaption, tutorText, tutorConfig,
+    calcFmt: Calc.fmt, calcCheck: Calc.check, calcRun: Calc.run, urlKey, exactMatches,
     codeAnswer, codeText, answersOnActivate,
     skills, byId, name, description, text, vault: vaultData,
   };
