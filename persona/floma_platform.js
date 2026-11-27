@@ -161,7 +161,7 @@ window.FLOMA_PLATFORM = {
     }
   },
   "bot_sessions": {
-    "_comment": "Step 76: the assistant's own browser identity on the PC (pc_companion/bot_session_vault.py): an isolated browser profile in the app's data folder (never the repo, never the user's Chrome/Edge profiles), an encrypted registry of connected sites {site_id, label, login_url, search_url, domain, last_authenticated_at, status: active | expired} and an encrypted storage state (cookies + localStorage, Playwright's format). The user signs in once in a window that uses that profile; the session is captured when the window closes. Sites the catalog marks restricted (anti-bot or personal data - every caller-ID / phone directory among them) can't be connected and are never fetched: phone lookups keep their official links. A connected site with a search URL ({phone} or {q}) is queried headlessly with the saved session. Web and Android see the connected sites (bot_sites, no secrets) and send requests to the PC through live_lookup_requests/<id> ({kind: phone | open_login | test_site, query, status: pending | done | failed, result, created_at, device}); the PC answers within poll_ms and old requests expire after expire_ms.",
+    "_comment": "Step 77: a phone number's public mentions are searched on DuckDuckGo inside the bot's isolated browser (headless, private: nothing is kept even in its profile), across the local, plain and international formats; only the results page's titles and snippets are read (Google search is restricted, and no result link is visited). \"open_bot\" opens the official lookup links in a private window of the bot's profile on the PC; from the phone / the browser it's the relay command open_in_bot_browser ({urls}), and the device's own browser is never opened. The PC opens only https addresses on the phone skill's official link hosts. Step 76: the assistant's own browser identity on the PC (pc_companion/bot_session_vault.py): an isolated browser profile in the app's data folder (never the repo, never the user's Chrome/Edge profiles), an encrypted registry of connected sites {site_id, label, login_url, search_url, domain, last_authenticated_at, status: active | expired} and an encrypted storage state (cookies + localStorage, Playwright's format). The user signs in once in a window that uses that profile; the session is captured when the window closes. Sites the catalog marks restricted (anti-bot or personal data - every caller-ID / phone directory among them) can't be connected and are never fetched: phone lookups keep their official links. A connected site with a search URL ({phone} or {q}) is queried headlessly with the saved session. Web and Android see the connected sites (bot_sites, no secrets) and send requests to the PC through live_lookup_requests/<id> ({kind: phone | open_login | test_site, query, status: pending | done | failed, result, created_at, device}); the PC answers within poll_ms and old requests expire after expire_ms.",
     "poll_ms": 4000,
     "wait_ms": 30000,
     "expire_ms": 600000,
@@ -196,7 +196,12 @@ window.FLOMA_PLATFORM = {
         "pc_hint": "החיבורים נשמרים במחשב בלבד. מכאן אפשר לראות אותם ולבקש מהמחשב לפתוח חלון התחברות.",
         "pc_requested": "✓ הבקשה נשלחה למחשב",
         "pc_waiting": "שואל את המחשב…",
-        "pc_offline": "המחשב לא ענה (אולי Floma PC לא פועל). הקישורים הרשמיים עובדים בכל מקרה."
+        "pc_offline": "המחשב לא ענה (אולי Floma PC לא פועל). הקישורים הרשמיים עובדים בכל מקרה.",
+        "open_bot": "פתח בדפדפן המבודד של הבוט (ללא עקבות)",
+        "open_bot_sending": "שולח למחשב…",
+        "open_bot_done": "✓ הקישורים נפתחו בדפדפן המבודד של הבוט במחשב",
+        "open_bot_refused": "המחשב פותח רק את הקישורים הרשמיים של איתור המספר.",
+        "open_bot_no_browser": "לא נמצא במחשב Microsoft Edge או Google Chrome לדפדפן המבודד."
       },
       "ENGLISH": {
         "title": "Bot site connections",
@@ -226,7 +231,12 @@ window.FLOMA_PLATFORM = {
         "pc_hint": "Sessions are kept on the PC only. From here you can see them and ask the PC to open a sign-in window.",
         "pc_requested": "✓ Sent to the PC",
         "pc_waiting": "Asking the PC…",
-        "pc_offline": "The PC didn't answer (maybe Floma PC isn't running). The official links work either way."
+        "pc_offline": "The PC didn't answer (maybe Floma PC isn't running). The official links work either way.",
+        "open_bot": "Open in the bot's isolated browser (no traces)",
+        "open_bot_sending": "Sending to the PC…",
+        "open_bot_done": "✓ The links opened in the bot's isolated browser on the PC",
+        "open_bot_refused": "The PC opens only the phone lookup's official links.",
+        "open_bot_no_browser": "Microsoft Edge or Google Chrome wasn't found on the PC for the isolated browser."
       }
     }
   },

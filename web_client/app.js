@@ -456,6 +456,15 @@
       copy.textContent = window.FLOMA_PLATFORM.site_query.copy_details[lang()];
       copy.addEventListener("click", () => copyDetails(message.text));
       bubble.append(copy);
+      // Step 77: the phone lookup's official links open on the PC, in the bot's isolated browser - never here.
+      if (message.skill === "phone" && Account.userId()) {
+        const openBot = document.createElement("button");
+        openBot.type = "button";
+        openBot.className = "copy-details open-bot";
+        openBot.textContent = `🕶 ${bt("open_bot")}`;
+        openBot.addEventListener("click", () => openInBotBrowser(message, openBot));
+        bubble.append(openBot);
+      }
     }
     if (message.action === "addKey") {
       const actions = document.createElement("div");
@@ -1154,6 +1163,7 @@
       // @phone's links get the launcher's badge and "copy the details" button (Step 61).
       addMessage({ role: "assistant", text: answer.text, sources: answer.sources, local: true, skill: decision.skill,
         launcher: decision.skill === "phone" && answer.sources.length > 0, copyValue: answer.copy || null,
+        lookupQuery: decision.skill === "phone" ? decision.query : undefined, // Step 77: for "open in the bot's browser"
         chips: answer.chips && answer.chips.length ? answer.chips : undefined }); // Step 72: @code's quick replies
       if (decision.skill === "phone" && answer.sources.length > 0) phoneViaPc(decision.query); // Step 76
     }
@@ -1828,12 +1838,14 @@
   let botSites = null; // the PC's published connections ({site_id: {label, domain, status, last_authenticated_at, searchable}})
 
   /** A request the PC answers (live_lookup_requests): the answered node, or null when it didn't answer in time. */
-  async function askPc(kind, query) {
+  async function askPc(kind, query, urls) {
     const uid = Account.userId();
     if (!uid || !Memory.configured()) return null;
     const id = `w${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
     const path = Core.userPath(uid, "lookups", id);
-    if (!(await Memory.putNode(path, { kind, query, status: "pending", created_at: Date.now(), device: "web" }))) return null;
+    const request = { kind, query, status: "pending", created_at: Date.now(), device: "web" };
+    if (urls) request.urls = urls;
+    if (!(await Memory.putNode(path, request))) return null;
     const deadline = Date.now() + BOT.wait_ms;
     while (Date.now() < deadline) {
       await new Promise((r) => setTimeout(r, BOT.poll_ms / 2));
@@ -1841,6 +1853,18 @@
       if (node && node.status && node.status !== "pending") return node;
     }
     return null;
+  }
+
+  /** Step 77: "פתח בדפדפן המבודד של הבוט (ללא עקבות)": the official links go to the PC as open_in_bot_browser and
+   * open there in a private window of the bot's profile. This browser never opens them. */
+  async function openInBotBrowser(message, button) {
+    const urls = (message.sources || []).map((s) => s && s.uri).filter((u) => typeof u === "string" && u.startsWith("https://"));
+    if (!urls.length) return;
+    if (button) button.disabled = true;
+    showToast(bt("open_bot_sending"));
+    const node = await askPc("open_in_bot_browser", message.lookupQuery || "", urls);
+    if (button) button.disabled = false;
+    showToast((node && node.result && node.result.text) || bt("pc_offline"), 5000);
   }
 
   async function loadBotSites() {
