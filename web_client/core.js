@@ -847,7 +847,7 @@
     return turns;
   }
 
-  function requestBody(prompt, history, model, webSearch, image = null) {
+  function requestBody(prompt, history, model, webSearch, image = null, thinking = "low") {
     const generationConfig = {
       responseMimeType: "application/json",
       responseSchema: {
@@ -856,7 +856,7 @@
         required: ["text", "emotion"],
       },
     };
-    if (model === MODELS.DEFAULT) generationConfig.thinkingConfig = { thinkingLevel: "low" };
+    if (model === MODELS.DEFAULT) generationConfig.thinkingConfig = { thinkingLevel: thinking }; // Step 79: "high" when deep
     const body = { systemInstruction: { parts: [{ text: prompt }] }, contents: withImage(contents(history), image), generationConfig };
     if (webSearch) body.tools = [{ google_search: {} }];
     return body;
@@ -888,13 +888,13 @@
    * out, fails, is unreachable or out of quota, the next model in the chain is tried quietly. Key and
    * content problems (invalid key, refusal) are not retried. Returns the reply plus which model answered.
    */
-  async function complete(apiKey, settings, history, routeInfo, memory = "", image = null) {
+  async function complete(apiKey, settings, history, routeInfo, memory = "", image = null, plan = null) {
     if (!apiKey) throw new AiError("MISSING_KEY");
     const chain = modelChain(modelForChoice(settings.modelChoice, routeInfo.model));
     let failure = null;
     for (const model of chain) {
       try {
-        const reply = await completeWith(apiKey, settings, history, model, routeInfo.webSearch, memory, image);
+        const reply = await completeWith(apiKey, settings, history, model, routeInfo.webSearch, memory, image, plan);
         return Object.assign(reply, { model, fellBack: model !== chain[0] });
       } catch (e) {
         if (!(e instanceof AiError) || !fallsBack(e.kind)) throw e;
@@ -904,15 +904,22 @@
     throw failure;
   }
 
-  async function completeWith(apiKey, settings, history, model, webSearch, memory, image) {
+  /** [plan] (Step 79, Skills.reasoningPlan): the deep tier's addendum after the persona's prompt, and its thinking level. */
+  async function completeWith(apiKey, settings, history, model, webSearch, memory, image, plan = null) {
+    const addendum = (plan && plan.addendum) || "";
+    const thinking = (plan && plan.thinking) || "low";
+    const prompt = (search) => {
+      const base = systemPrompt(settings, search, memory);
+      return addendum ? `${base}\n\n${addendum}` : base;
+    };
     if (webSearch) {
       try {
-        return parseResponse(await post(apiKey, model, requestBody(systemPrompt(settings, true, memory), history, model, true, image)));
+        return parseResponse(await post(apiKey, model, requestBody(prompt(true), history, model, true, image, thinking)));
       } catch (e) {
         if (!(e instanceof AiError) || !["RATE_LIMITED", "QUOTA_EXCEEDED", "BAD_RESPONSE"].includes(e.kind)) throw e;
       }
     }
-    return parseResponse(await post(apiKey, model, requestBody(systemPrompt(settings, false, memory), history, model, false, image)));
+    return parseResponse(await post(apiKey, model, requestBody(prompt(false), history, model, false, image, thinking)));
   }
 
   /**
@@ -979,12 +986,12 @@
   }
 
   /** @calc's math tutor (Step 78): high thinking, so every step is recomputed before it's confirmed or corrected. */
-  async function tutor(apiKey, system, text) {
+  async function tutor(apiKey, system, text, thinking = "high") {
     if (!apiKey) throw new AiError("MISSING_KEY");
     const body = {
       systemInstruction: { parts: [{ text: system }] },
       contents: [{ role: "user", parts: [{ text }] }],
-      generationConfig: { thinkingConfig: { thinkingLevel: "high" } },
+      generationConfig: { thinkingConfig: { thinkingLevel: thinking } }, // "low" under load (Step 79)
     };
     const raw = JSON.parse(await post(apiKey, MODELS.DEFAULT, body));
     const parts = (raw.candidates && raw.candidates[0] && raw.candidates[0].content && raw.candidates[0].content.parts) || [];

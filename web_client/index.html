@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Floma">
-  <meta name="floma-build" content="1.74.0-6e12b059f395-b420badc">
+  <meta name="floma-build" content="1.75.0-9a5801a62309-f6837c31">
   <title>Floma</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png?v=71c418f008">
@@ -82,6 +82,8 @@
       </div>
       <input type="file" id="imageInput" accept="image/*,.pdf,.txt,.md,.csv,.json,.log,application/pdf,text/plain" hidden>
       <button class="attach" id="attach" type="button" data-i18n-label="attach"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M16.5 6v11.5a4 4 0 0 1-8 0V5a2.5 2.5 0 0 1 5 0v10.5a1 1 0 0 1-2 0V6H10v9.5a2.5 2.5 0 0 0 5 0V5a4 4 0 0 0-8 0v12.5a5.5 5.5 0 0 0 11 0V6h-1.5Z"/></svg></button>
+      <!-- Step 79: "📚 סיכום שיעור אקדמי" - one tap: a lesson summary of what's typed or attached. -->
+      <button class="attach lesson-chip" id="lessonChip" type="button"><span aria-hidden="true">📚</span></button>
       <textarea id="input" rows="1" dir="auto" data-i18n-placeholder="placeholder" autocomplete="off"></textarea>
       <button class="live" id="live" type="button" aria-pressed="false" data-i18n-label="liveStart" hidden><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M7 18h2V6H7v12Zm4 4h2V2h-2v20Zm-8-8h2v-4H3v4Zm12 4h2V6h-2v12Zm4-8v4h2v-4h-2Z"/></svg></button>
       <button class="mic" id="mic" type="button" aria-pressed="false" data-i18n-label="micStart" hidden><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg></button>
@@ -340,8 +342,8 @@
   <!-- The Floma platform and its assistant personas, shared with Android and the desktop app. -->
   <script src="../persona/floma_platform.js?v=025492b290"></script>
   <script src="../persona/personas.js?v=76720a2a25"></script>
-  <script src="../persona/system_guide.js?v=2438740481"></script>
-  <script src="core.js?v=127e0ed349"></script>
+  <script src="../persona/system_guide.js?v=5ccf86548d"></script>
+  <script src="core.js?v=a3da26e327"></script>
   <script src="account.js?v=48513a5c52"></script>
   <script src="memory.js?v=a5fe00759b"></script>
   <script src="sites.js?v=27de92a66b"></script>
@@ -353,12 +355,12 @@
   <script src="voice.js?v=2f6dab09b6"></script>
   <script src="resource_guard.js?v=7aae5d2cb5"></script>
   <script src="documents.js?v=49f1dd2c9f"></script>
-  <script src="../persona/skills_registry.js?v=76379ea9c4"></script>
+  <script src="../persona/skills_registry.js?v=2e7390fee1"></script>
   <script src="../persona/knowledge_vault.js?v=a2dd6cc98c"></script>
   <script src="../persona/code_vault.js?v=17064a4ee1"></script>
   <script src="calc_academic.js?v=708925087c"></script>
-  <script src="skills.js?v=3717d21009"></script>
+  <script src="skills.js?v=268e18a260"></script>
   <script src="update.js?v=dc7b6934b3"></script>
-  <script src="app.js?v=bb817872fc"></script>
+  <script src="app.js?v=a0399c83ed"></script>
 </body>
 </html>

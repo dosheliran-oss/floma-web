@@ -2227,7 +2227,7 @@ window.FLOMA_SKILLS = {
      }
     },
     "tutor": {
-     "_comment": "Step 78: @calc's academic math tutor. The local solver answers first (exact, 0 tokens); when it can't (a proof, an explanation, a proposed answer to check, anything beyond its syntax - one of fallback_errors), the question goes to the model with system_prompt, filled with the matched syllabus modules (all of them when none matches), the notation and the language. Auto-Switch also turns @calc on for a message with one of the modules' triggers (whole words, each may carry a Hebrew prefix: \"הערכים העצמיים\") or one of its symbols. Up to history_turns earlier tutor exchanges (each cut to history_chars) go along so a follow-up keeps its context.",
+     "_comment": "Step 78: @calc's academic math tutor. The local solver answers first (exact, 0 tokens); when it can't (a proof, an explanation, a proposed answer to check, anything beyond its syntax - one of fallback_errors), the question goes to the model with system_prompt, filled with the matched syllabus modules (all of them when none matches), the notation and the language. Auto-Switch also turns @calc on for a message with one of the modules' triggers (whole words, each may carry a Hebrew prefix: \"הערכים העצמיים\") or one of its symbols. Up to history_turns earlier tutor exchanges (each cut to history_chars) go along so a follow-up keeps its context. Step 79: a message with one of socratic_cues (practice, \"check my solution\") adds the Socratic trap-detection instruction with the pitfalls. On the PC, math_check.py first computes what it can exactly (sympy, else numpy, else fractions) and adds it as a \"Local check\" block (local_check tells the model to reconcile with it); a final answer that contradicts it gets the \"mismatch\" note.",
      "fallback_errors": [
       "no_expression",
       "academic_syntax",
@@ -2736,8 +2736,87 @@ window.FLOMA_SKILLS = {
       "copied": {
        "HEBREW": "ההסבר הועתק",
        "ENGLISH": "Explanation copied"
+      },
+      "mismatch": {
+       "HEBREW": "⚠️ בדיקה מקומית במחשב ({engine}) מצאה תוצאה אחרת: {facts}. כדאי לבדוק את השלב האחרון שוב.",
+       "ENGLISH": "⚠️ A local check on this PC ({engine}) found a different result: {facts}. Worth rechecking the last step."
       }
-     }
+     },
+     "socratic_cues": [
+      "תרגול",
+      "לתרגל",
+      "תרגל אותי",
+      "בחן אותי",
+      "בוחן",
+      "בדוק את הפתרון",
+      "בדוק את הפתרון שלי",
+      "בדוק את התשובה",
+      "בדוק אותי",
+      "בדוק לי",
+      "בדקו את",
+      "האם פתרתי נכון",
+      "האם זה נכון",
+      "האם צדקתי",
+      "איפה טעיתי",
+      "מה הטעות",
+      "check my",
+      "check my solution",
+      "check my answer",
+      "is this correct",
+      "is my answer",
+      "did i get",
+      "where did i go wrong",
+      "practice",
+      "quiz me",
+      "drill"
+     ],
+     "pitfalls": [
+      "Sign errors: a dropped minus when expanding, moving a term across =, or multiplying an inequality by a negative without flipping it",
+      "A theorem used without its preconditions: IVT / Weierstrass without continuity on a closed interval, Rolle / Lagrange without differentiability on the open interval, L'Hôpital without a 0/0 or ∞/∞ form, Cramer's rule or an inverse with det = 0",
+      "Division by zero: dividing by an expression or a pivot that may be 0, or cancelling a factor without excluding where it vanishes",
+      "Wrong quantifier negation: ¬∀x P(x) written as ∀x ¬P(x), or ¬(P → Q) written as ¬P → ¬Q instead of P ∧ ¬Q",
+      "Matrix algebra slips: assuming AB = BA, det(A + B) = det A + det B, or (AB)⁻¹ = A⁻¹B⁻¹",
+      "A lost constant or domain: a missing + C, a root or logarithm outside its domain, a solution that fails when substituted back",
+      "Circular or incomplete proofs: assuming what is to be proved, an induction step that never uses the hypothesis, only one inclusion for a set equality"
+     ],
+     "socratic": "Socratic trap-detection mode (the student wants to practise, or to have their solution checked): first verify their work silently and completely. Then, instead of handing over a full solution, name the first problem you found - quote the exact step - and guide them with one short question or hint so they fix it themselves, one step at a time; confirm each correct step briefly. Look specifically for these common traps:\n{pitfalls}\nIf the work is fully correct, say so and name the trap they avoided. If they ask outright for the full solution, give it.",
+     "local_check": "A \"Local check\" block, when present, was computed exactly on the student's PC (not by you): reconcile your answer with it, and if they disagree, recheck your work step by step before answering.",
+     "local_check_head": "Local check (computed on this PC with {engine}):"
+    }
+   }
+  },
+  {
+   "id": "lesson_summarizer",
+   "handle": "@lesson",
+   "aliases": [
+    "@סיכום",
+    "@שיעור"
+   ],
+   "icon": "📚",
+   "name_he": "סיכום שיעור אקדמי",
+   "name_en": "Lesson summary",
+   "names": [
+    "סיכום שיעור אקדמי",
+    "סיכום שיעור",
+    "סיכום הרצאה",
+    "lesson summary",
+    "lesson summarizer",
+    "lecture summary"
+   ],
+   "platforms": [
+    "desktop",
+    "web",
+    "android"
+   ],
+   "auto_triggers": [],
+   "description_he": "הדביקו תמלול של הרצאה או רשימות מהשיעור, או צרפו תמונה של הלוח - ואקבל סיכום מסודר להדבקה ב-OneNote: סיכום מנהלים קצר, הגדרות פורמליות, משפטים וכללי מפתח, דוגמאות פתורות שלב אחר שלב, השלמת שלבים שהושמטו על הלוח ושאלת בדיקה עצמית. משוואות בשורות נפרדות בפורמט של OneNote (Alt + =), עם הבדיקה של המורה למתמטיקה.",
+   "description_en": "Paste a lecture transcript or class notes, or attach a whiteboard photo, and get a summary ready to paste into OneNote: an executive overview, formal definitions, theorems and key rules, worked examples step by step, the steps skipped on the board, and a self-check question. Equations on their own lines in OneNote's format (Alt + =), checked like the math tutor.",
+   "lesson": {
+    "_comment": "Step 79: not answered locally - the turn goes to the chat model (so a whiteboard photo or a document works as usual) with system_prompt added through reasoning_plan (reason \"lesson\"). It turns on by @lesson / the chip / the Skills panel, or by itself (Auto-Switch not needed) when a message has one of reasoning.cues.lesson and is at least reasoning.lesson_min_chars long or has an attachment.",
+    "system_prompt": "Lesson summary mode (סיכום שיעור אקדמי): the student shared a lecture transcript, raw class notes or a whiteboard photo. Summarize it for direct copy-paste into OneNote, in Hebrew (the English term in parentheses the first time), with exactly these six sections, in this order, each opened by its heading on its own line:\n1. סיכום מנהלים קצר - 3 to 5 lines: what the lecture covered and why it matters.\n2. הגדרות פורמליות - every definition formal and exact, symbol by symbol.\n3. משפטים וכללי מפתח - every theorem or rule with its name, its exact hypotheses and its conclusion.\n4. דוגמאות פתורות שלב אחר שלב - the lecture's examples solved in numbered steps, every step recomputed.\n5. השלמת שלבים שהושמטו על הלוח - the transitions the lecturer skipped on the board, filled in and marked as added.\n6. שאלת בדיקה עצמית קצרה - one short comprehension question, with its answer on a last line after \"תשובה:\".\nFormat: one idea per line; never mix Hebrew text and math on the same line - every equation goes on its own line in {onenote}; no Markdown tables and no filler. Apply @calc's tutor rules to the math: verify every step before you write it. If part of the material is unreadable or missing, say so in its section instead of inventing it.",
+    "chip": {
+     "HEBREW": "📚 סיכום שיעור אקדמי",
+     "ENGLISH": "📚 Lesson summary"
     }
    }
   },
@@ -2871,5 +2950,196 @@ window.FLOMA_SKILLS = {
     }
    }
   }
- ]
+ ],
+ "reasoning": {
+  "_comment": "Step 79: the two-tier reasoning router (skills.py reasoning_plan, ported to skills.js and Skills.kt). Fast reflex: short / everyday messages, or the resource guard's load at or above fast_load - the usual prompt and low thinking. Deep synthesis & self-check: proofs, multi-step problems, code design, an academic topic (an @calc tutor module), lesson material, or a long message - high thinking and an addendum: the three verifiable quality rules, the matching enrolled courses (prerequisites, exam pitfalls), the cross-memory instruction and the recent chat topics. Lesson material (a lesson cue with an attachment or lesson_min_chars, or the lesson_summarizer skill) also gets the lesson summary structure - even under load, though then with low thinking.",
+  "fast_load": 70,
+  "short_chars": 80,
+  "long_chars": 500,
+  "lesson_min_chars": 200,
+  "prefixes": "ובהלכמש",
+  "thinking": {
+   "fast": "low",
+   "deep": "high"
+  },
+  "cues": {
+   "proof": [
+    "הוכח",
+    "הוכיחו",
+    "הוכחה",
+    "להוכיח",
+    "הפרך",
+    "הפריכו",
+    "הראה כי",
+    "הראו כי",
+    "הראה ש",
+    "הראו ש",
+    "prove",
+    "proof",
+    "disprove",
+    "show that"
+   ],
+   "multi_step": [
+    "שלב אחר שלב",
+    "צעד אחר צעד",
+    "פתור את התרגיל",
+    "פתור את הבעיה",
+    "פתרו את התרגיל",
+    "תרגיל",
+    "בעיה מילולית",
+    "פתרון מלא",
+    "step by step",
+    "step-by-step",
+    "solve the problem",
+    "solve this problem",
+    "exercise",
+    "word problem",
+    "full solution",
+    "derive"
+   ],
+   "code_design": [
+    "ארכיטקטורה",
+    "תכנן מערכת",
+    "תכנון מערכת",
+    "דפוס עיצוב",
+    "תבנית עיצוב",
+    "אלגוריתם",
+    "סיבוכיות",
+    "מבנה נתונים",
+    "סכמת מסד נתונים",
+    "תרשים מחלקות",
+    "architecture",
+    "system design",
+    "design a system",
+    "design pattern",
+    "algorithm",
+    "complexity",
+    "refactor",
+    "data structure",
+    "database schema",
+    "api design",
+    "class diagram",
+    "uml"
+   ],
+   "lesson": [
+    "תמלול",
+    "הרצאה",
+    "שיעור",
+    "סיכום שיעור",
+    "רשימות מהשיעור",
+    "הלוח",
+    "מצגת השיעור",
+    "lecture",
+    "transcript",
+    "class notes",
+    "lecture notes",
+    "whiteboard",
+    "board notes",
+    "slides"
+   ]
+  },
+  "deep_head": "Deep synthesis and self-check: this message needs care. Before you answer, meet these three verifiable quality rules:",
+  "rules": [
+   "Exact correctness: independently recompute and verify every algebraic, numeric and logical step (and every code path you propose) before you confirm anything or answer; if a step fails your check, fix it first.",
+   "Format compliance: an RTL-safe Hebrew layout - Hebrew sentences on their own lines; every equation, formula or piece of code on its own separate line or block (code in ``` fences), never mixed mid-sentence with Hebrew; a clean, copy-ready structure with short headings or numbered steps.",
+   "Concise precision: no filler, no restating the question and no generic disclaimers; focused, clear and direct - every sentence adds information."
+  ],
+  "courses_head": "The student studies a B.Sc. in Information Systems at Ono Academic College. Enrolled courses this message relates to:",
+  "course_line": "- {name_en} ({name_he}). Prerequisites: {prerequisites}. Exam pitfalls: {pitfalls}.",
+  "cross_memory": "Cross-reference: connect the answer with what you know about the student (the memory notes), these courses and the recent topics below - point out a prerequisite link or a likely exam pitfall briefly, only when it genuinely helps. Never pad a casual reply with it.",
+  "recent_head": "Recent chat topics:",
+  "max_recent": 3,
+  "recent_chars": 80,
+  "courses": [
+   {
+    "id": "linear_algebra",
+    "module": "linear_algebra",
+    "name": {
+     "HEBREW": "יסודות האלגברה הלינארית",
+     "ENGLISH": "Linear Algebra"
+    },
+    "triggers": [],
+    "prerequisites": "solving linear systems and basic set notation and proof (Logic & Set Theory)",
+    "pitfalls": "assuming AB = BA; det(A + B) = det A + det B; dividing by a pivot that may be 0; confusing algebraic and geometric multiplicity; calling a set a subspace without checking 0 and closure"
+   },
+   {
+    "id": "calculus",
+    "module": "calculus",
+    "name": {
+     "HEBREW": "חשבון אינפיניטסימלי (חדו\"א)",
+     "ENGLISH": "Infinitesimal Calculus"
+    },
+    "triggers": [],
+    "prerequisites": "functions and inequalities, and the logic of quantifiers (a limit's ε-δ definition is a ∀∃ statement, from Logic & Set Theory)",
+    "pitfalls": "L'Hôpital without a 0/0 or ∞/∞ form; a dropped + C; dividing by an expression that may be 0; IVT or Rolle without continuity / differentiability; flipping an inequality's direction"
+   },
+   {
+    "id": "logic_sets",
+    "module": "logic_sets",
+    "name": {
+     "HEBREW": "לוגיקה ותורת הקבוצות",
+     "ENGLISH": "Logic & Set Theory"
+    },
+    "triggers": [],
+    "prerequisites": "none - it is the language of the proofs in Linear Algebra and Calculus",
+    "pitfalls": "negating ∀x (P → Q) as ∀x ¬(P → Q) instead of ∃x (P ∧ ¬Q); confusing ∈ with ⊆; proving only one inclusion for a set equality; an induction step that never uses the hypothesis; truth-table rows out of the canonical order"
+   },
+   {
+    "id": "cyber_law",
+    "module": null,
+    "name": {
+     "HEBREW": "דיני סייבר",
+     "ENGLISH": "Cyber Law"
+    },
+    "triggers": [
+     "דיני סייבר",
+     "משפט וסייבר",
+     "משפט הסייבר",
+     "חוק המחשבים",
+     "חוק הגנת הפרטיות",
+     "הגנת הפרטיות",
+     "חדירה לחומר מחשב",
+     "חדירה שלא כדין",
+     "עבירות מחשב",
+     "עבירת מחשב",
+     "נגיף מחשב",
+     "ראיות דיגיטליות",
+     "ראיה דיגיטלית",
+     "חוק חתימה אלקטרונית",
+     "חתימה אלקטרונית",
+     "קניין רוחני",
+     "זכויות יוצרים",
+     "לשון הרע ברשת",
+     "מאגר מידע",
+     "רשם מאגרי המידע",
+     "הרשות להגנת הפרטיות",
+     "cyber law",
+     "computer law",
+     "computers law",
+     "privacy law",
+     "privacy protection",
+     "gdpr",
+     "intellectual property",
+     "copyright",
+     "unauthorized access",
+     "computer crime",
+     "digital evidence",
+     "electronic signature",
+     "data protection"
+    ],
+    "prerequisites": "the elements of an offence (the factual element and criminal intent), and the Israeli Computers Law (1995) and Privacy Protection Law (1981) as the base texts",
+    "pitfalls": "confusing unauthorized access (s. 4) with access to commit another offence (s. 5); applying US or EU law (DMCA, GDPR) as if it were Israeli law; skipping the 'without authorization' element; quoting a section without its conditions and exceptions"
+   }
+  ],
+  "caption": {
+   "deep": {
+    "HEBREW": "🧠 חשיבה מעמיקה · בדיקה עצמית",
+    "ENGLISH": "🧠 Deep reasoning · self-checked"
+   },
+   "lesson": {
+    "HEBREW": "📚 סיכום שיעור אקדמי · מוכן להדבקה ב-OneNote",
+    "ENGLISH": "📚 Lesson summary · ready for OneNote"
+   }
+  }
+ }
 };

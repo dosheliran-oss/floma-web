@@ -228,7 +228,7 @@
   // --- Skills ---------------------------------------------------------------------------------------
 
   // The skills this build has code for; a newer registry's other skills stay hidden until the app updates.
-  const IMPLEMENTED = ["vault", "phone", "translate", "calc", "code_vault"];
+  const IMPLEMENTED = ["vault", "phone", "translate", "calc", "lesson_summarizer", "code_vault"];
   const skills = (reg) => (reg || registry()).skills.filter((s) => IMPLEMENTED.includes(s.id));
   const byId = (id, reg) => skills(reg).find((s) => s.id === id) || null;
   const name = (skill, language) => (language === "ENGLISH" ? skill.name_en : skill.name_he);
@@ -330,6 +330,7 @@
     const v = vault || vaultData();
     if (skillId === "phone") return phoneAnswer(query, language, v, reg);
     if (skillId === "calc") return calcAnswer(query, language, reg);
+    if (skillId === "lesson_summarizer") return { text: activatedText(skillId, language, reg), sources: [] }; // (the chat model's work)
     if (skillId === "code_vault") return codeAnswer(query, language, reg);
     return reply(search(query, skill.search, v), skill, v, language);
   }
@@ -1178,6 +1179,13 @@
     return "unicode";
   }
 
+  /** Step 79: the student wants to practise or to have a solution checked. */
+  function tutorSocratic(message, reg) {
+    const cfg = tutorConfig(reg);
+    const words = norm(message).split(" ").filter(Boolean);
+    return cfg.socratic_cues.some((c) => norm(c) && hasPhrase(words, norm(c).split(" ").filter(Boolean), cfg.prefixes));
+  }
+
   function tutorCut(text, limit) {
     const chars = Array.from(text); // code points, like Python's len()
     return chars.length <= limit ? text : chars.slice(0, limit).join("").trimEnd() + "…";
@@ -1196,8 +1204,10 @@
       .split("{topics}").join(m.topics.ENGLISH.join("; ")).split("{method}").join(m.method));
     const answerIn = textLanguage(query) || (language === "ENGLISH" ? "ENGLISH" : "HEBREW");
     const notation = tutorNotation(query, reg);
-    const system = cfg.system_prompt.split("{name}").join(assistant).split("{language}").join(cfg.language_names[answerIn])
+    let system = cfg.system_prompt.split("{name}").join(assistant).split("{language}").join(cfg.language_names[answerIn])
       .split("{notation}").join(cfg.notation[notation]).split("{modules}").join(lines.join("\n"));
+    const socratic = tutorSocratic(query, reg);
+    if (socratic) system += "\n\n" + cfg.socratic.split("{pitfalls}").join(cfg.pitfalls.map((x) => `- ${x}`).join("\n")); // Step 79
     let text = query;
     if (turns.length) {
       const past = [cfg.history_head];
@@ -1207,7 +1217,7 @@
       }
       text = past.join("\n") + "\n\n" + cfg.question_head + "\n" + query;
     }
-    return { modules: chosen.map((m) => m.id), general, notation, language: answerIn, system, text };
+    return { modules: chosen.map((m) => m.id), general, notation, language: answerIn, socratic, system, text };
   }
 
   function tutorCaption(request, language, local = false, reg) {
@@ -1218,6 +1228,76 @@
     const line = cfg.text.caption[lang].split("{modules}").join(modules);
     return line + (local ? ` · ${cfg.text.local_model[lang]}` : "");
   }
+
+  // --- Step 79: a port of skills.py's reasoning_plan - the two tiers, the enrolled courses, the lesson summarizer ---
+
+  const reasoningConfig = (reg) => (reg || registry()).reasoning;
+  const codePoints = (text) => Array.from(text).length; // like Python's len()
+
+  function cueHit(words, cues, prefixes) {
+    return cues.some((c) => norm(c) && hasPhrase(words, norm(c).split(" ").filter(Boolean), prefixes));
+  }
+
+  function courseIds(message, reg) {
+    const cfg = reasoningConfig(reg);
+    const modules = tutorModules(message, reg);
+    const words = norm(message).split(" ").filter(Boolean);
+    return cfg.courses.filter((c) => (c.module ? modules.includes(c.module) : cueHit(words, c.triggers, cfg.prefixes))).map((c) => c.id);
+  }
+
+  /** {tier, reason, lesson, thinking, courses, addendum} for [message] on its way to the chat model. */
+  function reasoningPlan(message, load = null, attachment = false, skill = null, recent = null, reg) {
+    const cfg = reasoningConfig(reg);
+    const stripped = message.trim();
+    const words = norm(stripped).split(" ").filter(Boolean);
+    const prefixes = cfg.prefixes;
+    const lesson = skill === "lesson_summarizer" ||
+      (cueHit(words, cfg.cues.lesson, prefixes) && (attachment || codePoints(stripped) >= cfg.lesson_min_chars));
+    let tier;
+    let reason;
+    if (load !== null && load !== undefined && load >= cfg.fast_load) [tier, reason] = ["fast", "load"];
+    else if (lesson) [tier, reason] = ["deep", "lesson"];
+    else {
+      [tier, reason] = ["fast", codePoints(stripped) < cfg.short_chars ? "short" : "everyday"];
+      const kind = ["proof", "multi_step", "code_design"].find((k) => cueHit(words, cfg.cues[k], prefixes));
+      if (kind) [tier, reason] = ["deep", kind];
+      else if (courseIds(stripped, reg).length) [tier, reason] = ["deep", "academic"];
+      else if (codePoints(stripped) >= cfg.long_chars) [tier, reason] = ["deep", "long"];
+    }
+    const courses = tier === "deep" ? courseIds(stripped, reg) : [];
+    const parts = [];
+    if (tier === "deep") parts.push(cfg.deep_head + "\n" + cfg.rules.map((rule, i) => `${i + 1}. ${rule}`).join("\n"));
+    if (lesson) {
+      const onenote = tutorConfig(reg).notation.onenote;
+      parts.push(byId("lesson_summarizer", reg).lesson.system_prompt.split("{onenote}").join(onenote));
+    }
+    if (tier === "deep") {
+      const shown = courses.length ? courses : (["lesson", "academic"].includes(reason) ? cfg.courses.map((c) => c.id) : []);
+      if (shown.length) {
+        const lines = [cfg.courses_head];
+        for (const course of cfg.courses) {
+          if (shown.includes(course.id)) {
+            lines.push(cfg.course_line.split("{name_en}").join(course.name.ENGLISH).split("{name_he}").join(course.name.HEBREW)
+              .split("{prerequisites}").join(course.prerequisites).split("{pitfalls}").join(course.pitfalls));
+          }
+        }
+        parts.push(lines.join("\n"));
+      }
+      const topics = (recent || []).filter((t) => t && t.trim())
+        .map((t) => tutorCut(t.split(/\s+/).filter(Boolean).join(" "), cfg.recent_chars)).slice(0, cfg.max_recent);
+      parts.push(cfg.cross_memory + (topics.length ? "\n" + cfg.recent_head + "\n" + topics.map((t) => `- ${t}`).join("\n") : ""));
+    }
+    return { tier, reason, lesson, thinking: cfg.thinking[tier], courses, addendum: parts.join("\n\n") };
+  }
+
+  function reasoningCaption(plan, language, reg) {
+    const cfg = reasoningConfig(reg);
+    const lang = language === "ENGLISH" ? "ENGLISH" : "HEBREW";
+    if (plan.lesson) return cfg.caption.lesson[lang];
+    return plan.tier === "deep" ? cfg.caption.deep[lang] : "";
+  }
+
+  const lessonChip = (language, reg) => byId("lesson_summarizer", reg).lesson.chip[language === "ENGLISH" ? "ENGLISH" : "HEBREW"];
 
   function tutorText(key, language, reg, values) {
     let template = tutorConfig(reg).text[key][language === "ENGLISH" ? "ENGLISH" : "HEBREW"];
@@ -1307,6 +1387,7 @@
     norm, variants, levenshtein, analyze, search, reply, resolve, answer, activatedText, mentionMatches, mentionToken,
     findNumber, phoneInfo, phoneMatches, translateRequest, translateCaption, translateText, textLanguage,
     calcAnswer, calcText, tutorModules, tutorWanted, tutorNotation, tutorRequest, tutorCaption, tutorText, tutorConfig,
+    tutorSocratic, reasoningPlan, reasoningCaption, reasoningConfig, courseIds, lessonChip,
     calcFmt: Calc.fmt, calcCheck: Calc.check, calcRun: Calc.run, urlKey, exactMatches,
     codeAnswer, codeText, answersOnActivate,
     skills, byId, name, description, text, vault: vaultData,

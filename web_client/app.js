@@ -260,6 +260,8 @@
     document.querySelectorAll("[data-i18n-title]").forEach((el) => { el.title = t(el.dataset.i18nTitle); }); // tooltips
     // Step 70: the shared texts (persona/floma_platform.js → chat_sessions.texts).
     $("summarizeLabel").textContent = ct("summarize");
+    $("lessonChip").setAttribute("aria-label", Skills.lessonChip(lang())); // Step 79: "📚 סיכום שיעור אקדמי"
+    $("lessonChip").title = Skills.lessonChip(lang());
     $("summarizeChat").title = ct("summarize_hint");
     $("summarizeChat").setAttribute("aria-label", ct("summarize"));
     updateSubtitle();
@@ -1227,10 +1229,12 @@
       return;
     }
     const request = Skills.tutorRequest(query, lang(), undefined, tutorHistory.turns, assistant());
+    const reasoning = Skills.reasoningConfig();
+    const thinking = reasoning.thinking[(currentLoad() || 0) >= reasoning.fast_load ? "fast" : "deep"]; // Step 79
     setThinking(true);
     setEmotion(Core.avatarFor("thinking"));
     try {
-      const text = await Core.tutor(state.apiKey, request.system, request.text);
+      const text = await Core.tutor(state.apiKey, request.system, request.text, thinking);
       setThinking(false);
       tutorHistory.turns = tutorHistory.turns.concat([{ q: query, a: text }]).slice(-Skills.tutorConfig().history_turns);
       addMessage({ role: "assistant", text, local: true, skill: "calc", tutor: true, caption: Skills.tutorCaption(request, lang()) });
@@ -1240,6 +1244,34 @@
       const reason = e instanceof Core.AiError ? e.kind : "BAD_RESPONSE";
       addMessage({ role: "assistant", text: Skills.tutorText("failed", lang(), undefined, { reason }), local: true, skill: "calc" });
     }
+  }
+
+  /** Step 79: the resource guard's last load (%), null before the first sample. */
+  function currentLoad() {
+    const last = guardMonitor && guardMonitor.last;
+    return last && typeof last.load === "number" ? last.load : null;
+  }
+
+  /** Step 79: the titles of the latest other chats (newest first), for the deep tier's cross-reference. */
+  function recentTopics() {
+    return state.sessions.filter((s) => s.id !== state.sessionId && (!s.persona || s.persona === persona()))
+      .map((s) => s.title || "").slice(0, 5);
+  }
+
+  /** Step 79: the chat bar's "📚 סיכום שיעור אקדמי": what's typed (or attached) goes out as a lesson summary now;
+   * otherwise the skill turns on for this chat and says what to paste or attach. */
+  function lessonChip() {
+    if (state.thinking) return;
+    setActiveSkill("lesson_summarizer");
+    const input = $("input");
+    if (input.value.trim() || state.pendingImage || state.pendingDocument) {
+      const text = input.value;
+      input.value = "";
+      send(text);
+      return;
+    }
+    addMessage({ role: "assistant", text: Skills.activatedText("lesson_summarizer", lang()), local: true, skill: "lesson_summarizer" });
+    input.focus();
   }
 
   /** The "@" list: built only while the word at the caret starts with "@"; emptied and hidden otherwise. */
@@ -1373,23 +1405,29 @@
     if (docContext) text = docContext.question;
     const image = state.pendingImage;
     // A picture always goes to the model; with no text the question is "What's in this picture?".
-    const trimmed = image ? Core.imagePrompt(text, lang()) : text.trim();
+    let trimmed = image ? Core.imagePrompt(text, lang()) : text.trim();
     if (!trimmed) return;
     Voice.stopSpeaking(); // a new message interrupts Toby
     dictation.cancel(); // and late dictation results must not refill the cleared field
     if (image || doc) clearAttachment();
+    let lessonTurn = false; // Step 79: a lesson summary goes straight to the chat model, like a picture
     if (!image && !doc) {
       // Skills (Step 60): an @ mention, a "switch to skill" phrase, the open chat's skill, or a question whose
       // triggers fit a skill that finds something (when automatic switching is on) - answered here, 0 tokens.
       const decision = Skills.resolve(trimmed, state.activeSkill, state.settings.autoSwitchSkills !== false);
-      if (decision.skill || decision.deactivate) {
+      if (decision.skill === "lesson_summarizer" && decision.query) {
+        if (decision.activate) setActiveSkill("lesson_summarizer");
+        trimmed = decision.query;
+        lessonTurn = true;
+      } else if (decision.skill || decision.deactivate) {
         sendSkill(trimmed, decision);
         return;
       }
     }
+    const direct = Boolean(image || doc || lessonTurn);
     const routed = Core.route(trimmed, state.settings);
     const seriousChange = routed.seriousChange;
-    const route = image || doc ? { kind: "model", model: Core.MODELS.DEFAULT, webSearch: false } : routed.route;
+    const route = direct ? { kind: "model", model: Core.MODELS.DEFAULT, webSearch: false } : routed.route;
 
     if (seriousChange) {
       state.settings.seriousMode = seriousChange === "ENTER";
@@ -1399,7 +1437,7 @@
 
     // The legal Smart Query Launcher (launcher.js): a lookup on a restricted site gets official links, never a
     // fetch. A restricted site named outright goes first; a phone lookup goes here rather than to "only on Android".
-    const lookupRoute = !image && !doc && (route.kind === "model" || route.extension === "contacts");
+    const lookupRoute = !direct && (route.kind === "model" || route.extension === "contacts");
     // "Can you check phone numbers?": what the app really does, answered right here (Step 58).
     const capability = lookupRoute ? Launcher.capabilityReply(trimmed, lang()) : null;
     if (capability) {
@@ -1421,7 +1459,7 @@
     // The built-in catalog (catalog.js): weather, books, anime... read straight from their open APIs (0 tokens).
     // (The user's own sites come first, as on the desktop: a browser can't read them, so that path below says so.)
     const ownSites = Sites.plan(trimmed, state.settings.querySites, Boolean(state.apiKey));
-    let sources = !image && !doc && route.kind === "model" && !ownSites.length
+    let sources = !direct && route.kind === "model" && !ownSites.length
       ? Catalog.route(trimmed, Sites.wantsLookup(trimmed), Boolean(state.apiKey)) : [];
     if (buying && !ownSites.length) {
       // Buying a book or a product (Step 58): the real answer first, the store links after it. A book is always
@@ -1459,7 +1497,7 @@
       sent.context = docContext.prompt;
     }
     addMessage(sent);
-    if (!image && !doc && Sites.plan(trimmed, state.settings.querySites, Boolean(state.apiKey)).length
+    if (!direct && Sites.plan(trimmed, state.settings.querySites, Boolean(state.apiKey)).length
         && !state.messages.some((m) => m.reason === "SITES_NEED_DESKTOP")) {
       // Reading the user's sites needs the desktop engine (a browser can't fetch other sites): say so once.
       addMessage({ role: "assistant", text: window.FLOMA_PLATFORM.site_query.needs_desktop[lang()], local: true,
@@ -1475,11 +1513,15 @@
     // A document's text rides with its message (and with follow-ups while it's among the newest ones).
     const history = state.messages.filter((m) => !m.local).map((m) => ({ role: m.role, text: m.context || m.text }));
     try {
+      // Step 79: the fast reflex or the deep synthesis & self-check tier (load, attachment, the chat's skill).
+      const plan = Skills.reasoningPlan(trimmed, currentLoad(), Boolean(image || doc), state.activeSkill, recentTopics());
       // The shared notes come from the local copy, so a GitHub outage never delays or breaks a reply.
       const reply = await Core.complete(state.apiKey, state.settings, history, route, Memory.notes(),
-        image ? { mime: image.mime, data: image.data } : null);
+        image ? { mime: image.mime, data: image.data } : null, plan);
       setThinking(false);
-      addMessage({ role: "assistant", text: reply.text, sources: reply.sources, searchWidget: reply.searchWidget });
+      const caption = Skills.reasoningCaption(plan, lang());
+      addMessage({ role: "assistant", text: reply.text, sources: reply.sources, searchWidget: reply.searchWidget,
+        ...(caption ? { caption } : {}) });
       setEmotion(reply.emotion);
       say(reply.text);
       updateMemory();
@@ -3237,6 +3279,7 @@
     $("memView").addEventListener("click", showSavedMemory);
     // Step 70: "סיכום שיחה" on the top bar, and adding a note in "סיכום זיכרון".
     $("summarizeChat").addEventListener("click", summarizeChat);
+    $("lessonChip").addEventListener("click", lessonChip);
     const addNote = () => {
       const text = $("memoryAddText").value;
       addMemoryFact(text, $("memoryAddTopic").value).then((ok) => { if (ok) $("memoryAddText").value = ""; });
