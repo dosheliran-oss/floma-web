@@ -416,6 +416,102 @@ window.FLOMA_PLATFORM = {
       }
     }
   },
+  "voice_clone": {
+    "_comment": "Step 80 (Floma PC only; the web app and Android stay lightweight and never bundle voice models): replies read aloud in a voice cloned locally from the user's OWN reference recordings. Consent first: references come only from <LOCALAPPDATA>/Floma/PCCompanion/voices/my_voice (files the user puts there) and are used only after the user confirms in Settings that the voice is theirs or used with explicit permission; the app's bundled clips (Toby's and the Vax style's - a voice actor's recordings) are never used as a reference, by path or by content. Backend: XTTS-v2 through the Coqui TTS package, when the user installed it and downloaded the model themselves (the app never installs it or accepts its licence); its languages only (no Hebrew). Without it, the standard voice with a pitch close to the reference's (an approximation, not a clone). Synthesis runs on one background worker; at fast_load% load or more, past timeout_ms, on any error, or for an unsupported language, the standard voice reads it - silently. Clips are cached by text hash in <LOCALAPPDATA>/Floma/PCCompanion/tts_cache (least recently used first out, cache_mb at most), so a repeated phrase plays at once even under load.",
+    "folder": "my_voice",
+    "extensions": [
+      ".wav",
+      ".mp3"
+    ],
+    "min_seconds": 3,
+    "max_seconds": 30,
+    "ideal_seconds": 10,
+    "min_mp3_kb": 30,
+    "max_mp3_mb": 20,
+    "fast_load": 70,
+    "timeout_ms": 20000,
+    "max_chars": 600,
+    "cache_mb": 200,
+    "xtts": {
+      "model": "tts_models/multilingual/multi-dataset/xtts_v2",
+      "model_dir": "tts_models--multilingual--multi-dataset--xtts_v2",
+      "languages": [
+        "en",
+        "es",
+        "fr",
+        "de",
+        "it",
+        "pt",
+        "pl",
+        "tr",
+        "ru",
+        "nl",
+        "cs",
+        "ar",
+        "zh-cn",
+        "ja",
+        "hu",
+        "ko",
+        "hi"
+      ]
+    },
+    "pitch_hz": [
+      [
+        100,
+        -2
+      ],
+      [
+        130,
+        -1
+      ],
+      [
+        185,
+        0
+      ],
+      [
+        230,
+        1
+      ]
+    ],
+    "texts": {
+      "HEBREW": {
+        "title": "קול משובט מההקלטות שלי",
+        "enable": "הקראת התשובות בקול משובט מההקלטות שלי (מקומי)",
+        "consent": "אני מאשר/ת שההקלטות בתיקייה הן של הקול שלי, או של מי שנתן לי הסכמה מפורשת להשתמש בקולו",
+        "consent_needed": "כדי להפעיל, יש לאשר קודם את ההסכמה.",
+        "confirm": "אני מאשר/ת",
+        "hint": "שימו בתיקייה הקלטה נקייה אחת או יותר (WAV או MP3, 3-30 שניות, דיבור ברור בלי רעש או מוזיקה). קליפי התגובה המובנים - כולל של סגנון Vax - לעולם לא משמשים לשיבוט.",
+        "open_folder": "פתח את תיקיית ההקלטות",
+        "reference": "הקלטת הייחוס:",
+        "none_found": "אין עדיין הקלטות בתיקייה.",
+        "backend_on": "מנוע השיבוט: XTTS-v2, על המחשב הזה.",
+        "backend_no_model": "החבילה TTS מותקנת, אבל המודל XTTS-v2 עוד לא הורד - הקראה בקול הרגיל.",
+        "backend_off": "XTTS-v2 לא מותקן - הקראה בקול הרגיל, עם גובה צליל קרוב להקלטה שלך (התקנה ידנית: pip install TTS).",
+        "hebrew_note": "XTTS-v2 לא תומך בעברית: תשובות בעברית נקראות בקול הרגיל.",
+        "cache": "מטמון: {count} קטעים, {mb} MB",
+        "clear_cache": "ניקוי המטמון",
+        "cleared": "מטמון הקול נוקה"
+      },
+      "ENGLISH": {
+        "title": "A voice cloned from my recordings",
+        "enable": "Read replies in a voice cloned from my recordings (local)",
+        "consent": "I confirm the recordings in the folder are my own voice, or of someone who gave me explicit permission to use their voice",
+        "consent_needed": "To turn it on, confirm the consent first.",
+        "confirm": "I confirm",
+        "hint": "Put one or more clean recordings in the folder (WAV or MP3, 3-30 seconds, clear speech without noise or music). The built-in reaction clips - the Vax style's included - are never used for cloning.",
+        "open_folder": "Open the recordings folder",
+        "reference": "Reference recording:",
+        "none_found": "No recordings in the folder yet.",
+        "backend_on": "Cloning engine: XTTS-v2, on this PC.",
+        "backend_no_model": "The TTS package is installed, but the XTTS-v2 model isn't downloaded yet - the standard voice reads.",
+        "backend_off": "XTTS-v2 isn't installed - the standard voice reads, with a pitch close to your recording (to install by hand: pip install TTS).",
+        "hebrew_note": "XTTS-v2 has no Hebrew: Hebrew replies are read in the standard voice.",
+        "cache": "Cache: {count} clips, {mb} MB",
+        "clear_cache": "Clear the cache",
+        "cleared": "The voice cache was cleared"
+      }
+    }
+  },
   "voice_presets": {
     "_comment": "Step 73: Toby's voice & personality style, the same on every platform. \"default\" changes nothing. \"vax\" (only while Toby is the assistant) adds the prompt section below (after the personality, not in serious mode), a calmer, lower voice (tts: multipliers of the user's pitch / speed for the phone's and browser's voice; the PC uses pc_companion/assets/voices/voice_palette.json's toby preset and the clips in toby/clips_vax/). The choice is saved on each device and synced as {value, updated_at, device} at firebase_path: the newest write wins.",
     "setting": "voice_preset",
